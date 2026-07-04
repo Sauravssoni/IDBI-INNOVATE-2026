@@ -34,6 +34,7 @@ class SessionStore(Base):
     __tablename__ = "sessions"
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_token = mapped_column(String, unique=True, index=True, nullable=False) # Cryptographically random
+    csrf_token_hash = mapped_column(String, nullable=True) # CSRF protection
     user_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     expires_at = mapped_column(DateTime, nullable=False)
     created_at = mapped_column(DateTime, default=utc_now, nullable=False)
