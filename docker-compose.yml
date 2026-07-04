@@ -5,15 +5,15 @@ services:
     image: postgres:15-alpine
     container_name: vyapar_pulse_db
     environment:
-      POSTGRES_USER: vyapar_admin
-      POSTGRES_PASSWORD: vyapar_password_123
-      POSTGRES_DB: vyapar_pulse
+      POSTGRES_USER: ${POSTGRES_USER:-vyapar_local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-development-password}
+      POSTGRES_DB: ${POSTGRES_DB:-vyapar_pulse}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vyapar_admin -d vyapar_pulse"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vyapar_local} -d ${POSTGRES_DB:-vyapar_pulse}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,7 +29,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://vyapar_admin:vyapar_password_123@db:5432/vyapar_pulse
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-vyapar_local}:${POSTGRES_PASSWORD:-change-this-local-development-password}@db:5432/${POSTGRES_DB:-vyapar_pulse}
       - ENVIRONMENT=development
     depends_on:
       db:
@@ -40,11 +40,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: vyapar_pulse_frontend
+    command: npm run dev
     volumes:
       - ./frontend:/app
       - /app/node_modules
     ports:
-      - "3000:3000"
+      - "3005:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
