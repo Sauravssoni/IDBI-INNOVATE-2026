@@ -3,14 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import cases
 from app.api import auth
 
+import os
+
 app = FastAPI(
     title="VYAPAR PULSE AI API",
     version="1.0.0",
     description="Evidence-First Financial Health Card and Credit-Twin for MSMEs.",
 )
 
-# Replace with exact frontend URL in production
-FRONTEND_URL = "http://localhost:3000"
+# Configuration-driven origins
+frontend_port = os.getenv("FRONTEND_HOST_PORT", "3000")
+FRONTEND_URL = f"http://localhost:{frontend_port}"
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,19 +23,43 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import JSONResponse
+import hashlib
+import secrets
+
 @app.middleware("http")
 async def csrf_middleware(request: Request, call_next):
     if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-        origin = request.headers.get("origin")
-        referer = request.headers.get("referer")
+        if request.url.path.startswith("/api/auth/login"):
+            return await call_next(request)
+            
+        csrf_header = request.headers.get("x-csrf-token")
+        session_cookie = request.cookies.get("vyapar_session_token")
         
-        # If no origin but we have referer, we can check referer.
-        check_val = origin or (referer.split('/')[2] if referer else None)
+        if not csrf_header or not session_cookie:
+            return JSONResponse(status_code=403, content={"detail": "CSRF token missing"})
+            
+        from app.db.session import SessionLocal
+        from app.db.orm.users import SessionStore
         
-        # Very simple CSRF check for prototype
-        if check_val and "localhost:3000" not in check_val:
-            # For strict CSRF, we might block this, but for dev we can pass
-            pass
+        db = SessionLocal()
+        try:
+            session_hash = hashlib.sha256(session_cookie.encode("utf-8")).hexdigest()
+            db_session = db.query(SessionStore).filter(SessionStore.session_token == session_hash).first()
+            if not db_session:
+                return JSONResponse(status_code=403, content={"detail": "Invalid session"})
+                
+            expected_csrf_hash = db_session.csrf_token_hash
+            if not expected_csrf_hash:
+                return JSONResponse(status_code=403, content={"detail": "CSRF token missing on session"})
+                
+            actual_csrf_hash = hashlib.sha256(csrf_header.encode("utf-8")).hexdigest()
+            
+            if not secrets.compare_digest(expected_csrf_hash, actual_csrf_hash):
+                return JSONResponse(status_code=403, content={"detail": "CSRF token invalid"})
+                
+        finally:
+            db.close()
             
     return await call_next(request)
 
