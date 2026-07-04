@@ -77,7 +77,7 @@ class DecisionPolicy:
         # Rule 6: Requested structure supportable with sufficient evidence
         else:
             decision = SystemRecommendation.READY_FOR_REVIEW.value
-            reasons = [f"Requested structure supportable."]
+            reasons = ["Requested structure supportable."]
             
         return {
             "decision": decision,

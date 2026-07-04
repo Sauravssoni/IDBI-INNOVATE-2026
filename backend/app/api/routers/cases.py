@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from uuid import UUID
-from typing import Dict, Any, List, Optional
+from typing import Optional
 from app.db.session import SessionLocal
-from app.db.orm.cases import Business, Case
+from pydantic import BaseModel
+from app.db.orm.cases import Case, HumanDecisionAction, AnalystRecommendationAction
 from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
@@ -71,7 +72,7 @@ def evaluate_case(
     # We will use optimistic locking here.
     
     # 1. Derive Features
-    feature_engine = FeatureEngine(db, case.business_id_fk)
+    feature_engine = FeatureEngine(db, str(case.business_id_fk))
     features = feature_engine.derive_all_features()
     
     # 2. Score
@@ -79,17 +80,18 @@ def evaluate_case(
     scores = scorer.compute_all_scores()
     
     # 3. Decision
-    policy = DecisionPolicy(features, scores, case.requested_amount, case.requested_facility_type)
+    from decimal import Decimal
+    policy = DecisionPolicy(features, scores, Decimal(str(case.requested_amount)), str(case.requested_facility_type))
     decision = policy.evaluate()
     
     # 4. Save back to Case (Persist) with Optimistic Concurrency
-    case.recommendation = decision["decision"]
-    case.version += 1
+    case.recommendation = decision["decision"] # type: ignore
+    case.version = case.version + 1 # type: ignore
     
     # Wrap in atomic transaction
     try:
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=409, detail="Concurrency conflict during evaluation")
     
@@ -101,9 +103,6 @@ def evaluate_case(
         "scores": scores,
         "decision": decision
     }
-
-from pydantic import BaseModel
-from app.db.orm.cases import HumanDecisionAction, AnalystRecommendationAction
 
 class AnalystRecommendationRequest(BaseModel):
     recommendation: AnalystRecommendationAction
@@ -124,12 +123,12 @@ def record_analyst_recommendation(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
         
-    case.analyst_recommendation = req.recommendation
-    case.version += 1
+    case.analyst_recommendation = req.recommendation # type: ignore
+    case.version = case.version + 1 # type: ignore
     
     try:
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=409, detail="Concurrency conflict")
         
@@ -155,12 +154,12 @@ def record_human_decision(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
         
-    case.human_decision = req.decision
-    case.version += 1
+    case.human_decision = req.decision # type: ignore
+    case.version = case.version + 1 # type: ignore
     
     try:
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
         raise HTTPException(status_code=409, detail="Concurrency conflict")
         

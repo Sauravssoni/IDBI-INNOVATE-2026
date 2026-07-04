@@ -1,5 +1,6 @@
 import uuid
-from sqlalchemy import Column, String, Integer, JSON, ForeignKey, Enum, Boolean, Numeric, DateTime
+from sqlalchemy import Column, String, Integer, JSON, ForeignKey, Enum, Numeric, DateTime
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from ..base import Base
@@ -39,50 +40,50 @@ class AnalystRecommendationAction(str, enum.Enum):
 
 class Business(Base):
     __tablename__ = "businesss"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    business_id = Column(String, unique=True, index=True, nullable=False)
-    legal_name = Column(String, nullable=False)
-    sector = Column(String, nullable=False)
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id = mapped_column(String, unique=True, index=True, nullable=False)
+    legal_name = mapped_column(String, nullable=False)
+    sector = mapped_column(String, nullable=False)
     
     cases = relationship("Case", back_populates="business")
 
 class Case(Base):
     __tablename__ = "cases"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    business_id_fk = Column(UUID(as_uuid=True), ForeignKey("businesss.id"), nullable=False)
-    requested_facility_type = Column(String, nullable=False)
-    requested_amount = Column(Numeric(20, 2, asdecimal=True), nullable=False)
-    status = Column(Enum(CaseStatus), default=CaseStatus.INITIATED, nullable=False)
-    recommendation = Column(Enum(SystemRecommendation), nullable=True)
-    analyst_recommendation = Column(Enum(AnalystRecommendationAction), nullable=True)
-    human_decision = Column(Enum(HumanDecisionAction), nullable=True)
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    business_id_fk = mapped_column(UUID(as_uuid=True), ForeignKey("businesss.id"), nullable=False)
+    requested_facility_type = mapped_column(String, nullable=False)
+    requested_amount = mapped_column(Numeric(20, 2, asdecimal=True), nullable=False)
+    status: Mapped[CaseStatus] = mapped_column(Enum(CaseStatus), default=CaseStatus.INITIATED, nullable=False)
+    recommendation: Mapped[SystemRecommendation | None] = mapped_column(Enum(SystemRecommendation), nullable=True)
+    analyst_recommendation: Mapped[AnalystRecommendationAction | None] = mapped_column(Enum(AnalystRecommendationAction), nullable=True)
+    human_decision: Mapped[HumanDecisionAction | None] = mapped_column(Enum(HumanDecisionAction), nullable=True)
     
     # Financial aggregate cache (calculated from features)
-    monthly_revenue_inr = Column(Numeric(20, 2, asdecimal=True), nullable=True)
-    dscr = Column(Numeric(12, 6, asdecimal=True), nullable=True)
-    cash_buffer_days = Column(Integer, nullable=True)
+    monthly_revenue_inr = mapped_column(Numeric(20, 2, asdecimal=True), nullable=True)
+    dscr = mapped_column(Numeric(12, 6, asdecimal=True), nullable=True)
+    cash_buffer_days = mapped_column(Integer, nullable=True)
     
     # Scores
-    financial_health_score = Column(Numeric(5, 2, asdecimal=True), nullable=True)
-    data_confidence_score = Column(Numeric(5, 2, asdecimal=True), nullable=True)
-    resilience_score = Column(Numeric(5, 2, asdecimal=True), nullable=True)
+    financial_health_score = mapped_column(Numeric(5, 2, asdecimal=True), nullable=True)
+    data_confidence_score = mapped_column(Numeric(5, 2, asdecimal=True), nullable=True)
+    resilience_score = mapped_column(Numeric(5, 2, asdecimal=True), nullable=True)
     
     # Optimistic Concurrency
-    version = Column(Integer, default=1, nullable=False)
+    version = mapped_column(Integer, default=1, nullable=False)
 
     business = relationship("Business", back_populates="cases")
     audit_events = relationship("AuditEvent", back_populates="case")
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    case_id = Column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=False)
-    event_type = Column(String, nullable=False)
-    actor = Column(String, nullable=False)
-    actor_role = Column(String, nullable=False)
-    correlation_id = Column(String, index=True)
-    idempotency_key = Column(String, unique=True, nullable=True)
-    metadata_json = Column(JSON, default={})
-    created_at = Column(DateTime, nullable=False, default=utc_now)
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    case_id = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=False)
+    event_type = mapped_column(String, nullable=False)
+    actor = mapped_column(String, nullable=False)
+    actor_role = mapped_column(String, nullable=False)
+    correlation_id = mapped_column(String, index=True)
+    idempotency_key = mapped_column(String, unique=True, nullable=True)
+    metadata_json = mapped_column(JSON, default={})
+    created_at = mapped_column(DateTime, nullable=False, default=utc_now)
     
     case = relationship("Case", back_populates="audit_events")

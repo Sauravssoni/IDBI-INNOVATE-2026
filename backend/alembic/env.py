@@ -1,9 +1,19 @@
+import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
 from alembic import context
+from dotenv import load_dotenv
+
+# Add the parent directory of 'app' to the sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app.db.base import Base
+
+load_dotenv()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -14,33 +24,19 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import os
-import sys
-from dotenv import load_dotenv
-
-# Add the parent directory of 'app' to the sys.path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from app.db.base import Base
-import app.db.orm.cases
-import app.db.orm.consents
-import app.db.orm.evidence
-import app.db.orm.users
-
-load_dotenv()
-
 # Override the database URL if provided in the environment
-config = context.config
 if os.getenv("DATABASE_URL"):
     # SQLAlchemy needs postgresql:// instead of postgres://
     url = os.getenv("DATABASE_URL").replace("postgres://", "postgresql://")
     config.set_main_option("sqlalchemy.url", url)
 else:
     # Use fallback if not found in .env
-    config.set_main_option("sqlalchemy.url", "postgresql://vyapar_admin:vyapar_password_123@127.0.0.1:5433/vyapar_pulse")
+    db_user = os.getenv("POSTGRES_USER", "vyapar_local")
+    db_pass = os.getenv("POSTGRES_PASSWORD", "change-this-local-development-password")
+    db_name = os.getenv("POSTGRES_DB", "vyapar_pulse")
+    config.set_main_option("sqlalchemy.url", f"postgresql://{db_user}:{db_pass}@127.0.0.1:5433/{db_name}")
 
 target_metadata = Base.metadata
-
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

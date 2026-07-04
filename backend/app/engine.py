@@ -1,9 +1,8 @@
 from __future__ import annotations
+from typing import Literal
 
 from dataclasses import dataclass
 from hashlib import sha256
-from math import exp
-from typing import Callable
 
 from .models import (
     Assessment,
@@ -179,6 +178,8 @@ class CreditEngine:
         return result
 
     def _decision(self, p: BusinessProfile, health: int, confidence: int, resilience: int) -> CreditStructure:
+        from typing import Literal
+        outcome: Literal["eligible", "conditional_offer", "structured_offer", "additional_data_required", "bankability_plan"]
         monthly_free_cash_proxy = p.monthly_revenue_inr * max(0.04, min(0.22, 0.04 + 0.08 * p.dscr))
         tenure_factor = min(p.requested_tenure_months, 36)
         safe_amount = round(monthly_free_cash_proxy * tenure_factor * (0.55 + health / 250), -3)
@@ -246,7 +247,7 @@ class CreditEngine:
         return min(p.requested_tenure_months, 24)
 
     @staticmethod
-    def _band(health: int, confidence: int) -> str:
+    def _band(health: int, confidence: int) -> Literal["A", "B", "C", "D", "E"]:
         if confidence < 65:
             return "E"
         if health >= 80:

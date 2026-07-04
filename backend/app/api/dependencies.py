@@ -1,7 +1,6 @@
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
-from app.db.session import SessionLocal
 from app.db.orm.users import User, SessionStore, UserRole
 from app.api.auth import SESSION_COOKIE_NAME, get_db
 from typing import List

@@ -88,4 +88,4 @@ class SafeLimitEngine:
             cls.working_capital_line(features),
             cls.term_loan(features)
         ]
-        return [l for l in limits if l["applicability"] == "APPLICABLE"]
+        return [limit for limit in limits if limit["applicability"] == "APPLICABLE"]
