@@ -16,7 +16,10 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not token:
         raise credentials_exception
         
-    db_session = db.query(SessionStore).filter(SessionStore.session_token == token).first()
+    from app.api.auth import hash_token
+    token_hash = hash_token(token)
+        
+    db_session = db.query(SessionStore).filter(SessionStore.session_token == token_hash).first()
     
     if not db_session:
         raise credentials_exception

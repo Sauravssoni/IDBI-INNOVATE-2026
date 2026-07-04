@@ -40,6 +40,14 @@ jobs:
         source .venv/bin/activate
         bandit -r app/
         
+    - name: Enforce specific nosec suppressions
+      run: |
+        cd backend
+        if grep -rnE "# nosec\s*$" app/; then
+          echo "Found rule-less # nosec! Please specify the rule ID (e.g., # nosec B311)."
+          exit 1
+        fi
+        
     - name: Run Tests
       run: |
         cd backend
