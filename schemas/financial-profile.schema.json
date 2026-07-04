@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://syntheon.example/schemas/financial-profile.schema.json",
+  "title": "VYAPAR PULSE Normalized Financial Profile",
+  "type": "object",
+  "required": ["business_id", "legal_name", "sector", "monthly_revenue_inr", "data_quality"],
+  "properties": {
+    "business_id": {"type": "string"},
+    "legal_name": {"type": "string"},
+    "sector": {"enum": ["manufacturing", "retail", "services", "wholesale", "food_hospitality"]},
+    "monthly_revenue_inr": {"type": "number", "exclusiveMinimum": 0},
+    "data_quality": {
+      "type": "object",
+      "required": ["completeness", "recency", "cross_source_agreement", "identity_match", "anomaly_risk"],
+      "properties": {
+        "completeness": {"type": "number", "minimum": 0, "maximum": 1},
+        "recency": {"type": "number", "minimum": 0, "maximum": 1},
+        "cross_source_agreement": {"type": "number", "minimum": 0, "maximum": 1},
+        "identity_match": {"type": "number", "minimum": 0, "maximum": 1},
+        "anomaly_risk": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    }
+  }
+}

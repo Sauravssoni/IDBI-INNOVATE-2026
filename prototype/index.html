@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>VYAPAR PULSE AI</title>
+<style>
+:root{--bg:#07110f;--panel:#0d1d19;--muted:#9bb4aa;--text:#edf8f3;--accent:#64f4b1;--line:#1d3a32;--warn:#ffd479}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui;background:radial-gradient(circle at 80% 0,#14382f 0,transparent 35%),var(--bg);color:var(--text)}
+header{padding:28px 34px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.brand{font-weight:800;letter-spacing:.08em}.tag{color:var(--muted);font-size:13px}
+main{padding:28px;max-width:1400px;margin:auto}.grid{display:grid;grid-template-columns:340px 1fr;gap:22px}.panel{background:rgba(13,29,25,.92);border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 18px 60px #0005}
+.case{padding:15px;border:1px solid var(--line);border-radius:14px;margin:10px 0;cursor:pointer}.case:hover,.case.active{border-color:var(--accent);background:#102a23}.case small{color:var(--muted)}
+.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}.pill{padding:7px 10px;border-radius:999px;background:#16372e;color:var(--accent);font-weight:700;font-size:12px}.scores{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0}.score{padding:18px;border:1px solid var(--line);border-radius:14px}.score b{font-size:34px;display:block}.score span{color:var(--muted);font-size:12px}.driver{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding:13px 0}.pos{color:var(--accent)}.neg{color:#ff9f9f}.muted{color:var(--muted)}
+button{background:var(--accent);color:#052019;border:0;padding:12px 16px;border-radius:12px;font-weight:800;cursor:pointer} input{width:100%}.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:900px){.grid,.two{grid-template-columns:1fr}.scores{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><div><div class="brand">VYAPAR PULSE AI</div><div class="tag">Credit Readiness & Resilience OS</div></div><div class="pill">SYNTHETIC SANDBOX</div></header>
+<main><div class="grid"><aside class="panel"><h3>MSME cases</h3><div id="cases"></div></aside><section class="panel" id="detail"><p class="muted">Start the API and choose a case.</p></section></div></main>
+<script>
+const API='http://127.0.0.1:8000';let cases=[];
+async function init(){cases=await fetch(API+'/api/v1/demo-cases').then(r=>r.json());document.getElementById('cases').innerHTML=cases.map((c,i)=>`<div class="case ${i===0?'active':''}" onclick="loadCase(${i},this)"><b>${c.legal_name}</b><br><small>${c.sector} · ₹${(c.monthly_revenue_inr/100000).toFixed(1)}L monthly</small></div>`).join('');loadCase(0,document.querySelector('.case'))}
+async function loadCase(i,el){document.querySelectorAll('.case').forEach(x=>x.classList.remove('active'));el?.classList.add('active');let p=cases[i];let a=await fetch(API+'/api/v1/assess',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(p)}).then(r=>r.json());
+let drivers=a.top_drivers.map(d=>`<div class="driver"><div><b>${d.label}</b><div class="muted">${d.evidence}</div></div><div class="${d.direction==='positive'?'pos':d.direction==='negative'?'neg':'muted'}">${d.impact>0?'+':''}${d.impact}</div></div>`).join('');
+document.getElementById('detail').innerHTML=`<div class="top"><div><h1>${p.legal_name}</h1><div class="muted">${p.business_id}</div></div><div class="pill">RISK BAND ${a.risk_band}</div></div><div class="scores"><div class="score"><b>${a.financial_health_score}</b><span>FINANCIAL HEALTH</span></div><div class="score"><b>${a.data_confidence_score}</b><span>DATA CONFIDENCE</span></div><div class="score"><b>${a.resilience_score}</b><span>RESILIENCE</span></div></div><div class="two"><div><h3>Decision</h3><p><b>${a.decision.outcome.replaceAll('_',' ').toUpperCase()}</b></p><p>${a.decision.recommended_product}</p><p>Safe amount: <b>₹${a.decision.safe_amount_inr.toLocaleString('en-IN')}</b></p><h3>Bankability actions</h3>${a.bankability_actions.map(x=>`<p>• ${x}</p>`).join('')}</div><div><h3>Evidence-linked drivers</h3>${drivers}</div></div><hr style="border-color:var(--line)"><h3>Stress lab</h3><div class="two"><label>Revenue shock: <b id="shockLabel">-25%</b><input id="shock" type="range" min="-50" max="0" value="-25" oninput="shockLabel.textContent=this.value+'%'"></label><label>Buyer delay: <b id="delayLabel">45 days</b><input id="delay" type="range" min="0" max="90" value="45" oninput="delayLabel.textContent=this.value+' days'"></label></div><p><button onclick="stress(${i})">Run stress scenario</button></p><div id="stressResult"></div>`}
+async function stress(i){let body={profile:cases[i],revenue_shock_pct:Number(shock.value)/100,buyer_delay_days:Number(delay.value)};let r=await fetch(API+'/api/v1/simulate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json());stressResult.innerHTML=`<div class="panel"><b>${r.baseline_score} → ${r.stressed_score}</b><p>${r.recommendation}</p><span class="muted">Stressed DSCR ${r.stressed_dscr} · cash buffer ${r.stressed_cash_buffer_days} days</span></div>`}
+init().catch(()=>document.getElementById('detail').innerHTML='<h2>API not running</h2><p class="muted">Run the FastAPI service on port 8000, then refresh.</p>');
+</script>
+</body></html>
