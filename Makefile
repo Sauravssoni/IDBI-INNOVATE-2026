@@ -11,10 +11,20 @@ setup:
 dev:
 	@echo "Starting development environment..."
 	docker-compose up -d db
-	@echo "Waiting for database to be ready..."
-	sleep 5
-	cd backend && source .venv/bin/activate && alembic upgrade head
+	@echo "Waiting for database to be ready and running migrations..."
+	@cd backend && for i in 1 2 3 4 5 6; do \
+		source .venv/bin/activate && alembic upgrade head && break || (echo "Retrying..." && sleep 5); \
+	done
 	docker-compose up backend frontend
+
+dev-detached:
+	@echo "Starting development environment in background..."
+	docker-compose up -d db
+	@echo "Waiting for database to be ready and running migrations..."
+	@cd backend && for i in 1 2 3 4 5 6; do \
+		source .venv/bin/activate && alembic upgrade head && break || (echo "Retrying..." && sleep 5); \
+	done
+	docker-compose up -d backend frontend
 
 seed:
 	@echo "Seeding deterministic data..."
@@ -47,7 +57,42 @@ build:
 	docker-compose build backend
 
 demo-reset:
+	@echo "WARNING: This will DESTROY all local database volumes for this project."
+	@echo "Waiting 5 seconds before proceeding... (Ctrl+C to cancel)"
+	@sleep 5
 	@echo "Resetting demo environment..."
 	docker-compose down -v
-	make dev
+	make dev-detached
 	make seed
+
+demo:
+	@echo "Starting non-destructive demo environment..."
+	make dev-detached
+	@echo "Demo environment is ready."
+
+clean-room:
+	@echo "Starting isolated clean-room verification..."
+	COMPOSE_PROJECT_NAME=vyapar_pulse_cleanroom docker-compose up -d db
+	@echo "Waiting for clean-room database..."
+	@cd backend && for i in 1 2 3 4 5 6; do \
+		source .venv/bin/activate && alembic upgrade head && break || (echo "Retrying..." && sleep 5); \
+	done
+	COMPOSE_PROJECT_NAME=vyapar_pulse_cleanroom docker-compose up -d backend frontend
+	@echo "Clean-room verification started. Run 'COMPOSE_PROJECT_NAME=vyapar_pulse_cleanroom docker-compose down -v' when done."
+
+down:
+	@echo "Stopping services and preserving volumes..."
+	docker-compose down
+
+purge:
+	@if [ "$(CONFIRM)" != "YES" ]; then \
+		echo "ERROR: You must pass CONFIRM=YES to execute purge."; \
+		exit 1; \
+	fi
+	@echo "Purging all project resources..."
+	docker-compose down -v --rmi all --remove-orphans
+
+docs-check:
+	@echo "Running documentation quality gates..."
+	./scripts/docs_check.sh
+
