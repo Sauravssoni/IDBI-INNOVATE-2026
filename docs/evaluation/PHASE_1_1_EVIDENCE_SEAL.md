@@ -36,7 +36,7 @@
 - **Coverage Result**: 100% on tested security boundaries and decision monotonicities.
 - **Scanner Results**: Bandit (PASS, 0 issues), eslint (PASS, 0 issues), tsc (PASS), mypy (PASS).
 - **Clean-Room Result**: Setup scripts and demo execute seamlessly.
-- **Remaining Findings**: 0 unresolved findings in the codebase.
+- **Remaining Findings:** Several security capabilities are NOT_IMPLEMENTED (e.g. CSRF, session token hashing, object-level authorisation).
 - **Migration Revision**: Empty migration initialized on baseline.
 - **Known Limitations**: 
   - GitHub Actions currently fail to provision runners.
