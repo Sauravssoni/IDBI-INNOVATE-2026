@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal
 from app.db.orm.users import User, UserRole
+from app.db.orm.cases import Case, CaseStatus, Business
 from app.api.auth import get_password_hash
 import uuid
 
@@ -16,10 +17,11 @@ def db_session():
 
 @pytest.fixture(scope="module")
 def test_users(db_session):
-    # Create test users with different roles
     users = []
     unique_suffix = str(uuid.uuid4())[:8]
-    for role in [UserRole.CREDIT_ANALYST, UserRole.SANCTIONING_AUTHORITY, UserRole.SYSTEM_ADMIN]:
+    roles = [UserRole.CREDIT_ANALYST, UserRole.SANCTIONING_AUTHORITY, UserRole.SYSTEM_ADMIN, UserRole.RELATIONSHIP_MANAGER]
+    
+    for role in roles:
         email = f"test_{role.value}_{unique_suffix}@example.com"
         u = User(
             email=email,
@@ -32,64 +34,96 @@ def test_users(db_session):
         users.append(u)
     db_session.commit()
     
-    yield {u.role: u for u in users}
+    user_dict = {u.role: u for u in users}
+    
+    # Create an assigned case
+    b = Business(
+        business_id=f"BIZ_{unique_suffix}",
+        legal_name="Test Business",
+        sector="Retail"
+    )
+    db_session.add(b)
+    db_session.commit()
+    
+    c = Case(
+        business_id_fk=b.id,
+        requested_facility_type="WORKING_CAPITAL",
+        requested_amount=100000,
+        status=CaseStatus.INITIATED,
+        assigned_credit_analyst_id=user_dict[UserRole.CREDIT_ANALYST].id,
+        version=1
+    )
+    db_session.add(c)
+    db_session.commit()
+    
+    yield {"users": user_dict, "case": c}
     
     # Cleanup
-    from sqlalchemy import text
+    db_session.delete(c)
+    db_session.delete(b)
+    db_session.commit() # Commit deletions before users
+    
+    from app.db.orm.users import SessionStore
     for u in users:
-        db_session.execute(text(f"DELETE FROM sessions WHERE user_id = '{u.id}'"))
+        db_session.query(SessionStore).filter(SessionStore.user_id == u.id).delete()
         db_session.delete(u)
     db_session.commit()
 
 def login(email, password):
-    # This assumes we have a /api/auth/login endpoint 
-    # Returning the cookies/session
     response = client.post("/api/auth/login", json={"email": email, "password": password})
     return response
 
+def get_cookie_from_response(response, cookie_name):
+    for cookie in response.headers.get_list("set-cookie"):
+        if cookie.startswith(f"{cookie_name}="):
+            return cookie.split(";")[0].split("=")[1]
+    return ""
+
 def test_csrf_protection_on_mutations():
-    # Attempt a POST request without X-CSRF-Token should fail
-    response = client.post("/api/cases/123e4567-e89b-12d3-a456-426614174000/evaluate")
-    # Our custom CSRF middleware might return 403 or 401 or 404 if not found
-    assert response.status_code in (401, 403, 404)
+    # POST without X-CSRF-Token should be exactly 403
+    response = client.post("/api/cases/123e4567-e89b-12d3-a456-426614174000/evaluate", json={"expected_version": 1})
+    assert response.status_code == 403
+    assert response.json()["detail"] == "CSRF token missing"
 
 def test_vertical_escalation_system_admin_cannot_evaluate(test_users):
-    # Login as SYSTEM_ADMIN
-    login_resp = login(test_users[UserRole.SYSTEM_ADMIN].email, "securepass123")
+    login_resp = login(test_users["users"][UserRole.SYSTEM_ADMIN].email, "securepass123")
     assert login_resp.status_code == 200
-    cookies = login_resp.cookies
-    csrf_token = cookies.get("csrf_token") or "dummy_token"
     
-    # Try to evaluate a case
-    fake_case_id = str(uuid.uuid4())
+    session_token = get_cookie_from_response(login_resp, "vyapar_session_token")
+    csrf_token = get_cookie_from_response(login_resp, "vyapar_csrf_token")
+    cookies = {"vyapar_session_token": session_token}
+    
+    case_id = str(test_users["case"].id)
     resp = client.post(
-        f"/api/cases/{fake_case_id}/evaluate",
+        f"/api/cases/{case_id}/evaluate",
+        json={"expected_version": 1},
         cookies=cookies,
-        headers={"X-CSRF-Token": csrf_token}
+        headers={"x-csrf-token": csrf_token}
     )
-    # Should be 403 Forbidden or 401 if CSRF/Auth fails
-    assert resp.status_code in (401, 403)
+    assert resp.status_code == 403
+    assert "Insufficient role" in resp.json()["detail"]
 
 def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
-    # Login as CREDIT_ANALYST
-    login_resp = login(test_users[UserRole.CREDIT_ANALYST].email, "securepass123")
+    login_resp = login(test_users["users"][UserRole.CREDIT_ANALYST].email, "securepass123")
     assert login_resp.status_code == 200
-    cookies = login_resp.cookies
-    csrf_token = cookies.get("csrf_token") or "dummy_token"
     
-    fake_case_id = str(uuid.uuid4())
-    # Try to sanction (human-decision)
+    session_token = get_cookie_from_response(login_resp, "vyapar_session_token")
+    csrf_token = get_cookie_from_response(login_resp, "vyapar_csrf_token")
+    cookies = {"vyapar_session_token": session_token}
+    
+    case_id = str(test_users["case"].id)
     resp = client.post(
-        f"/api/cases/{fake_case_id}/human-decision",
-        json={"decision": "APPROVE_AS_REQUESTED", "reason": "Looks good enough"},
+        f"/api/cases/{case_id}/human-decision",
+        json={"decision": "APPROVE_AS_REQUESTED", "reason": "Looks good enough", "expected_version": 1},
         cookies=cookies,
-        headers={"X-CSRF-Token": csrf_token}
+        headers={"x-csrf-token": csrf_token}
     )
-    # Should be 403 Forbidden or 401 if CSRF/Auth fails
-    assert resp.status_code in (401, 403)
+    assert resp.status_code == 403
+    assert "Insufficient role" in resp.json()["detail"]
 
 def test_sql_injection_resistance_login():
-    # Attempt SQL injection on login
     sqli_payload = "' OR 1=1 --"
     response = client.post("/api/auth/login", json={"email": sqli_payload, "password": "password"})
-    assert response.status_code in (401, 422) # Should be rejected, not a 500 DB error
+    assert response.status_code in (401, 422)
+    if response.status_code == 401:
+        assert response.json()["detail"] == "Invalid email or password"
