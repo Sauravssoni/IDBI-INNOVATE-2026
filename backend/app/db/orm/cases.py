@@ -58,6 +58,9 @@ class Case(Base):
     analyst_recommendation: Mapped[AnalystRecommendationAction | None] = mapped_column(Enum(AnalystRecommendationAction), nullable=True)
     human_decision: Mapped[HumanDecisionAction | None] = mapped_column(Enum(HumanDecisionAction), nullable=True)
     
+    # BOLA / Access Control
+    assigned_relationship_manager_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_credit_analyst_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     # Financial aggregate cache (calculated from features)
     monthly_revenue_inr = mapped_column(Numeric(20, 2, asdecimal=True), nullable=True)
     dscr = mapped_column(Numeric(12, 6, asdecimal=True), nullable=True)
@@ -81,9 +84,32 @@ class AuditEvent(Base):
     event_type = mapped_column(String, nullable=False)
     actor = mapped_column(String, nullable=False)
     actor_role = mapped_column(String, nullable=False)
-    correlation_id = mapped_column(String, index=True)
+    # Idempotency and Audit
     idempotency_key = mapped_column(String, unique=True, nullable=True)
     metadata_json = mapped_column(JSON, default={})
+    
+    # Required for tamper-evident audit chain
+    case_version = mapped_column(Integer, nullable=True)
+    prior_event_hash = mapped_column(String, nullable=True)
+    event_hash = mapped_column(String, nullable=True)
+    reason = mapped_column(String, nullable=True)
+    
     created_at = mapped_column(DateTime, nullable=False, default=utc_now)
     
     case = relationship("Case", back_populates="audit_events")
+
+
+class IdempotencyRecord(Base):
+    """Persistent records for tracking idempotent operations."""
+    __tablename__ = "idempotency_records"
+    
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    idempotency_key = mapped_column(String, unique=True, index=True, nullable=False)
+    user_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    case_id = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=True)
+    action = mapped_column(String, nullable=False)
+    request_hash = mapped_column(String, nullable=False)
+    response_status = mapped_column(Integer, nullable=True)
+    response_payload = mapped_column(JSON, nullable=True)
+    created_at = mapped_column(DateTime, default=utc_now, nullable=False)
+    expires_at = mapped_column(DateTime, nullable=False)
