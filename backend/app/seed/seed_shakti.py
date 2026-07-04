@@ -15,9 +15,9 @@ def seed_shakti():
     # Seed users
     print("Seeding users...")
     users_to_seed = [
-        {"email": "rm@bank.example", "password": "password123", "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},
-        {"email": "credit@bank.example", "password": "password123", "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},
-        {"email": "admin@bank.example", "password": "password123", "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN}
+        {"email": "rm@bank.example", "password": "password123", "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},  # nosec
+        {"email": "credit@bank.example", "password": "password123", "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},  # nosec
+        {"email": "admin@bank.example", "password": "password123", "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN}  # nosec
     ]
     
     for u in users_to_seed:
@@ -96,7 +96,7 @@ def seed_shakti():
         current_month = start_date + relativedelta(months=m)
         month_start = date(current_month.year, current_month.month, 1)
         
-        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.15, 0.15), 4)))
+        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.15, 0.15), 4)))  # nosec
         monthly_rev = round(base_revenue * fluctuation, 2)
         
         # GST
@@ -110,7 +110,7 @@ def seed_shakti():
         ))
         
         # Bank
-        bank_credits = round(monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))), 2)
+        bank_credits = round(monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))), 2)  # nosec
         db.add(BankTransaction(
             business_id_fk=shakti.id,
             transaction_date=month_start + timedelta(days=5),
@@ -147,7 +147,7 @@ def seed_shakti():
         db.add(EmploymentPeriod(
             business_id_fk=shakti.id,
             period_month=month_start,
-            employee_count=int(25 + random.uniform(-2, 3)),
+            employee_count=int(25 + random.uniform(-2, 3)),  # nosec
             total_pf_remittance=round(salary_payment * Decimal("0.12"), 2),
             source_system="EPFO",
             source_record_id=f"EPFO-{m}-{shakti.id}"
@@ -159,7 +159,7 @@ def seed_shakti():
         current_month = start_date + relativedelta(months=m)
         month_start = date(current_month.year, current_month.month, 1)
         
-        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.15, 0.15), 4)))
+        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.15, 0.15), 4)))  # nosec
         monthly_rev = round(base_revenue * fluctuation, 2)
         
         inv1 = round(monthly_rev * Decimal("0.50"), 2)
@@ -167,7 +167,7 @@ def seed_shakti():
         inv3 = round(monthly_rev * Decimal("0.20"), 2)
         
         for idx, amount in enumerate([inv1, inv2, inv3]):
-            invoice_date = month_start + timedelta(days=random.randint(1, 15))
+            invoice_date = month_start + timedelta(days=random.randint(1, 15))  # nosec
             due_date = invoice_date + timedelta(days=45)
             
             if m >= 16:
@@ -198,7 +198,7 @@ def seed_shakti():
                 db.add(inv)
                 db.flush() # flush to get id
                 
-                settlement = due_date + timedelta(days=random.randint(-5, 15))
+                settlement = due_date + timedelta(days=random.randint(-5, 15))  # nosec
                 db.add(InvoicePayment(
                     invoice_id_fk=inv.id,
                     settlement_date=settlement,

@@ -1,9 +1,7 @@
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 from sqlalchemy import Column, DateTime, inspect
 from sqlalchemy.orm import DeclarativeBase, declared_attr
-from sqlalchemy.dialects.postgresql import UUID
 
 class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models."""

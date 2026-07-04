@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from app.db.session import SessionLocal
-from app.db.orm.users import User, SessionStore, UserRole
+from app.db.orm.users import User, SessionStore
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -71,7 +71,7 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
 
     # Session rotation: Optional: delete old sessions for this user, but we'll allow multiple for now
     
-    session_token = create_session(db, user.id)
+    session_token = create_session(db, str(user.id))
     
     # Set HttpOnly, Secure cookie
     response.set_cookie(
@@ -85,9 +85,9 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
     
     return LoginResponse(
         id=str(user.id),
-        full_name=user.full_name,
+        full_name=str(user.full_name),
         role=user.role.value,
-        email=user.email
+        email=str(user.email)
     )
 
 @router.post("/logout")

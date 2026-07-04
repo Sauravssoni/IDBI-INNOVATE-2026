@@ -3,7 +3,7 @@ from typing import Dict, Any
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from app.db.orm.cases import Business
-from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod
+from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, EmploymentPeriod
 
 class FeatureEngine:
     """
@@ -39,8 +39,8 @@ class FeatureEngine:
         avg_revenue = sum(revenues) / Decimal(str(len(revenues)))
         
         # Coefficient of Variation (CV) = Standard Deviation / Mean
-        variance = sum((r - avg_revenue) ** 2 for r in revenues) / Decimal(str(len(revenues)))
-        std_dev = Decimal(str(math.sqrt(float(variance)))) # approximate sqrt is fine for ratio
+        variance = sum((float(r) - float(avg_revenue)) ** 2 for r in revenues) / float(len(revenues)) # type: ignore
+        std_dev = Decimal(str(math.sqrt(float(variance)))) # type: ignore
         cv = (std_dev / avg_revenue) if avg_revenue > 0 else Decimal("0")
         
         trend = "STABLE"
@@ -122,9 +122,10 @@ class FeatureEngine:
             
         total_amount = sum((i.amount for i in invoices), Decimal("0"))
         
-        buyer_totals = {}
+        buyer_totals: Dict[str, Decimal] = {}
         for i in invoices:
-            buyer_totals[i.counterparty_name] = buyer_totals.get(i.counterparty_name, Decimal("0")) + i.amount
+            name = str(i.counterparty_name)
+            buyer_totals[name] = buyer_totals.get(name, Decimal("0")) + Decimal(str(i.amount))
             
         top_buyer_share = max(buyer_totals.values()) / total_amount if total_amount > 0 else Decimal("0")
         concentration = "HIGH" if top_buyer_share > Decimal("0.4") else ("MEDIUM" if top_buyer_share > Decimal("0.2") else "LOW")

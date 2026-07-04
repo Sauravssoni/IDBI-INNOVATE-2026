@@ -1,11 +1,11 @@
-from .models import BusinessProfile
+from .models import BusinessProfile, Sector, DataQuality
 
 
 DEMO_CASES = [
     BusinessProfile(
         business_id="MSME-HIDDEN-CHAMPION-01",
         legal_name="Shakti Precision Components",
-        sector="manufacturing",
+        sector=Sector.MANUFACTURING,
         vintage_months=38,
         monthly_revenue_inr=4200000,
         revenue_growth_6m=0.18,
@@ -24,18 +24,18 @@ DEMO_CASES = [
         bureau_score=None,
         requested_amount_inr=6500000,
         requested_tenure_months=24,
-        data_quality={
-            "completeness": 0.94,
-            "recency": 0.98,
-            "cross_source_agreement": 0.93,
-            "identity_match": 1.0,
-            "anomaly_risk": 0.08,
-        },
+        data_quality=DataQuality(
+            completeness=0.94,
+            recency=0.98,
+            cross_source_agreement=0.93,
+            identity_match=1.0,
+            anomaly_risk=0.08,
+        ),
     ),
     BusinessProfile(
         business_id="MSME-SEASONAL-RETAIL-02",
         legal_name="Rangrez Festive Retail",
-        sector="retail",
+        sector=Sector.RETAIL,
         vintage_months=55,
         monthly_revenue_inr=1800000,
         revenue_growth_6m=0.09,
@@ -54,18 +54,18 @@ DEMO_CASES = [
         bureau_score=708,
         requested_amount_inr=3500000,
         requested_tenure_months=18,
-        data_quality={
-            "completeness": 0.88,
-            "recency": 0.96,
-            "cross_source_agreement": 0.86,
-            "identity_match": 0.98,
-            "anomaly_risk": 0.10,
-        },
+        data_quality=DataQuality(
+            completeness=0.88,
+            recency=0.96,
+            cross_source_agreement=0.86,
+            identity_match=0.98,
+            anomaly_risk=0.10,
+        ),
     ),
     BusinessProfile(
         business_id="MSME-EVIDENCE-GAP-03",
         legal_name="NavPrerna Business Services",
-        sector="services",
+        sector=Sector.SERVICES,
         vintage_months=14,
         monthly_revenue_inr=850000,
         revenue_growth_6m=0.31,
@@ -84,12 +84,12 @@ DEMO_CASES = [
         bureau_score=None,
         requested_amount_inr=2200000,
         requested_tenure_months=24,
-        data_quality={
-            "completeness": 0.52,
-            "recency": 0.63,
-            "cross_source_agreement": 0.48,
-            "identity_match": 0.94,
-            "anomaly_risk": 0.32,
-        },
+        data_quality=DataQuality(
+            completeness=0.52,
+            recency=0.63,
+            cross_source_agreement=0.48,
+            identity_match=0.94,
+            anomaly_risk=0.32,
+        ),
     ),
 ]
