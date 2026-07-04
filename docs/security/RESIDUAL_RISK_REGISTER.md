@@ -18,6 +18,11 @@ This document tracks identified security risks that remain after the implementat
 | RSK-004 | Lack of 2FA/MFA for Banker Console logins. | Medium | Current authentication relies on strong passwords and simulated SSO headers. RBAC strictly enforced post-login. | Phase 3 (Auth Extension) |
 | RSK-005 | No automated DAST pipeline implemented yet. | Medium | Heavy SAST, strict linting, and manual validation. | Phase 8 (Final Hardening) |
 | RSK-006 | AI context length vulnerability (Denial of Wallet). | Low | Maximum token limits hardcoded in prompt definitions. No untrusted user strings fed directly to agent evaluation block. | Ongoing monitoring |
+| RSK-009 | Missing CSRF Token protection. | High | NOT_IMPLEMENTED. Relying on simple origin check. | Immediate Correction Phase |
+| RSK-010 | Session tokens stored in plaintext in DB. | High | NOT_IMPLEMENTED. Must migrate to SHA-256 hashes. | Immediate Correction Phase |
+| RSK-011 | Broken Object Level Authorization (BOLA). | High | NOT_IMPLEMENTED. Analysts can view any case. | Immediate Correction Phase |
+| RSK-012 | Lacking Optimistic Concurrency (CAS). | Medium | NOT_IMPLEMENTED. Concurrent updates may overwrite. | Immediate Correction Phase |
+| RSK-013 | Non-atomic Audit Events. | High | NOT_IMPLEMENTED. Decisions can commit without an audit trail. | Immediate Correction Phase |
 
 ## 3. GitHub & CI/CD Security
 
