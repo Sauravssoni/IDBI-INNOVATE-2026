@@ -2,6 +2,7 @@ from decimal import Decimal
 from hypothesis import given, strategies as st
 from app.core.decision.policy import DecisionPolicy
 from app.db.orm.cases import SystemRecommendation
+from app.db.orm.org import ProductType
 
 @given(
     revenue=st.decimals(min_value=Decimal("100000.00"), max_value=Decimal("100000000.00"), places=2),
@@ -31,7 +32,7 @@ def test_monotonicity_higher_revenue_yields_higher_or_equal_limit(
         "financial_health_score": 80.0
     }
     
-    policy_base = DecisionPolicy(features_base, scores, requested_amount, "WORKING_CAPITAL")
+    policy_base = DecisionPolicy(features_base, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
     decision_base = policy_base.evaluate()
     limit_base = decision_base["binding_limit"]
     
@@ -40,7 +41,7 @@ def test_monotonicity_higher_revenue_yields_higher_or_equal_limit(
     features_increased["monthly_revenue_inr"] = str(revenue * Decimal("1.5"))
     features_increased["banking_inflow_inr"] = str(revenue * Decimal("1.5"))
     
-    policy_increased = DecisionPolicy(features_increased, scores, requested_amount, "WORKING_CAPITAL")
+    policy_increased = DecisionPolicy(features_increased, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
     decision_increased = policy_increased.evaluate()
     limit_increased = decision_increased["binding_limit"]
     
@@ -68,7 +69,7 @@ def test_decision_bounds_offers_never_exceed_binding_limit(requested_amount: Dec
         "financial_health_score": 90.0
     }
     
-    policy = DecisionPolicy(features, scores, requested_amount, "WORKING_CAPITAL")
+    policy = DecisionPolicy(features, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
     decision = policy.evaluate()
     
     binding_limit = decision["binding_limit"]
@@ -99,7 +100,7 @@ def test_conditional_offer_when_requested_exceeds_limit(requested_amount: Decima
         "financial_health_score": 70.0
     }
     
-    policy = DecisionPolicy(features, scores, requested_amount, "WORKING_CAPITAL")
+    policy = DecisionPolicy(features, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
     decision = policy.evaluate()
     
     binding_limit = decision["binding_limit"]

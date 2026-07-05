@@ -56,12 +56,11 @@ def test_users(db_session):
 
     c = Case(
         business_id_fk=b.id,
-        requested_facility_type="WORKING_CAPITAL",
         requested_amount=100000,
         status=CaseStatus.INITIATED,
         assigned_credit_analyst_id=user_dict[UserRole.CREDIT_ANALYST].id,
         originating_branch_id=branch.id,
-        requested_product=ProductType.WORKING_CAPITAL,
+        requested_product=ProductType.WORKING_CAPITAL_LINE,
         version=1
     )
     db_session.add(c)
@@ -109,7 +108,7 @@ def test_vertical_escalation_system_admin_cannot_evaluate(test_users):
         f"/api/cases/{case_id}/evaluate",
         json={"expected_version": 1},
         cookies=cookies,
-        headers={"x-csrf-token": csrf_token}
+        headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4())}
     )
     assert resp.status_code == 404
     assert "Case not found or access denied" in resp.json()["detail"]
@@ -127,10 +126,10 @@ def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
         f"/api/cases/{case_id}/human-decision",
         json={"decision": "APPROVE_AS_REQUESTED", "reason": "Looks good enough", "expected_version": 1},
         cookies=cookies,
-        headers={"x-csrf-token": csrf_token}
+        headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4())}
     )
     assert resp.status_code == 403
-    assert "Insufficient role" in resp.json()["detail"]
+    assert "Only sanctioning authorities can record decisions" in resp.json()["detail"]
 
 def test_sql_injection_resistance_login():
     sqli_payload = "' OR 1=1 --"

@@ -7,38 +7,19 @@ from app.db.orm.cases import Business, Case, CaseStatus
 from app.db.orm.consents import Consent, DataConnection, ConsentStatus
 from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod
 from app.db.orm.users import User, UserRole
+from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate, ProductType
 from app.api.auth import get_password_hash
+from app.db.orm.cases import utc_now
 
 def seed_shakti():
     db = SessionLocal()
     
-    # Seed users
-    print("Seeding users...")
-    users_to_seed = [
-        {"email": "rm@bank.example", "password": "password123", "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},  # nosec B105
-        {"email": "credit@bank.example", "password": "password123", "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},  # nosec B105
-        {"email": "admin@bank.example", "password": "password123", "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN}  # nosec B105
-    ]
-    
-    for u in users_to_seed:
-        existing_user = db.query(User).filter(User.email == u["email"]).first()
-        if not existing_user:
-            new_user = User(
-                email=u["email"],
-                hashed_password=get_password_hash(u["password"]),
-                full_name=u["full_name"],
-                role=u["role"]
-            )
-            db.add(new_user)
-    db.commit()
-
-    # 1. Clear existing Shakti data to make seeding idempotent
+    # Clean previous data to be idempotent
     existing_business = db.query(Business).filter(Business.business_id == "SHAKTI_PRECISION_001").first()
     if existing_business:
         db.query(GSTPeriod).filter(GSTPeriod.business_id_fk == existing_business.id).delete()
         db.query(BankTransaction).filter(BankTransaction.business_id_fk == existing_business.id).delete()
         
-        # Invoices and Payments
         invoices = db.query(Invoice).filter(Invoice.business_id_fk == existing_business.id).all()
         for inv in invoices:
             db.query(InvoicePayment).filter(InvoicePayment.invoice_id_fk == inv.id).delete()
@@ -51,9 +32,84 @@ def seed_shakti():
         for c in existing_business.cases:
             from app.db.orm.cases import AuditEvent
             db.query(AuditEvent).filter(AuditEvent.case_id == c.id).delete()
+            from app.db.orm.cases import IdempotencyRecord
+            db.query(IdempotencyRecord).filter(IdempotencyRecord.case_id == c.id).delete()
             
         db.query(Case).filter(Case.business_id_fk == existing_business.id).delete()
         db.delete(existing_business)
+        db.commit()
+
+    # Clear previously seeded Org and Users if we want strict idempotency?
+    # Simpler: just get or create
+    
+    # 1. Org Structure
+    jaipur_region = db.query(Region).filter(Region.code == "RJ-JAIPUR").first()
+    if not jaipur_region:
+        jaipur_region = Region(code="RJ-JAIPUR", name="Jaipur Region")
+        db.add(jaipur_region)
+        db.commit()
+        db.refresh(jaipur_region)
+        
+    malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
+    if not malviya_nagar_branch:
+        malviya_nagar_branch = Branch(code="BR-MN-JAI", name="Jaipur/Malviya Nagar", region_id=jaipur_region.id)
+        db.add(malviya_nagar_branch)
+        db.commit()
+        db.refresh(malviya_nagar_branch)
+
+    # Seed users
+    print("Seeding users and scopes...")
+    users_to_seed = [
+        {"email": "rm@bank.example", "password": "password123", "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},
+        {"email": "credit@bank.example", "password": "password123", "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},
+        {"email": "sa@bank.example", "password": "password123", "full_name": "Sanctioning Authority", "role": UserRole.SANCTIONING_AUTHORITY},
+        {"email": "admin@bank.example", "password": "password123", "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN},
+        {"email": "auditor@bank.example", "password": "password123", "full_name": "Auditor", "role": UserRole.AUDITOR},
+        {"email": "system@bank.example", "password": "password123", "full_name": "System Admin", "role": UserRole.SYSTEM_ADMIN}
+    ]
+    
+    seeded_users = {}
+    for u in users_to_seed:
+        user = db.query(User).filter(User.email == u["email"]).first()
+        if not user:
+            user = User(
+                email=u["email"],
+                hashed_password=get_password_hash(u["password"]),
+                full_name=u["full_name"],
+                role=u["role"]
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+        seeded_users[user.role] = user
+        
+        # Add branch scope for non-System Admins
+        if user.role != UserRole.SYSTEM_ADMIN:
+            scope = db.query(UserBranchScope).filter(
+                UserBranchScope.user_id == user.id, 
+                UserBranchScope.branch_id == malviya_nagar_branch.id
+            ).first()
+            if not scope:
+                scope = UserBranchScope(
+                    user_id=user.id,
+                    branch_id=malviya_nagar_branch.id,
+                    active=True,
+                    scope_role="PRIMARY"
+                )
+                db.add(scope)
+    db.commit()
+
+    sa_user = seeded_users[UserRole.SANCTIONING_AUTHORITY]
+    mandate = db.query(SanctioningMandate).filter(SanctioningMandate.user_id == sa_user.id).first()
+    if not mandate:
+        mandate = SanctioningMandate(
+            user_id=sa_user.id,
+            product_type=ProductType.WORKING_CAPITAL_LINE,
+            currency="INR",
+            maximum_amount=Decimal("10000000.00"),
+            active=True
+        )
+        db.add(mandate)
         db.commit()
 
     # Seed deterministic random for reproducibility
@@ -212,9 +268,13 @@ def seed_shakti():
     # 5. Create Case
     case = Case(
         business_id_fk=shakti.id,
-        requested_facility_type="Working Capital Term Loan",
+        requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=Decimal("5000000.00"),
-        status=CaseStatus.INITIATED
+        currency="INR",
+        status=CaseStatus.INITIATED,
+        originating_branch_id=malviya_nagar_branch.id,
+        assigned_relationship_manager_id=seeded_users[UserRole.RELATIONSHIP_MANAGER].id,
+        assigned_credit_analyst_id=seeded_users[UserRole.CREDIT_ANALYST].id
     )
     db.add(case)
     db.commit()

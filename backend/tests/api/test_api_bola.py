@@ -78,8 +78,7 @@ def setup_bola_data(db_session):
     # Case 1 in Branch 1 (Assigned to our RM)
     case1 = Case(
         business_id_fk=biz1.id,
-        requested_facility_type="WORKING_CAPITAL",
-        requested_product=ProductType.WORKING_CAPITAL,
+        requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=100000,
         status=CaseStatus.INITIATED,
         originating_branch_id=b1.id,
@@ -89,8 +88,7 @@ def setup_bola_data(db_session):
     # Case 2 in Branch 2 (Not assigned to our RM, so our RM and our Risk Admin shouldn't see it)
     case2 = Case(
         business_id_fk=biz2.id,
-        requested_facility_type="WORKING_CAPITAL",
-        requested_product=ProductType.TERM_LOAN,
+        requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=500000,
         status=CaseStatus.INITIATED,
         originating_branch_id=b2.id,

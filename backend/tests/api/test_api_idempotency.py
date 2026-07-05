@@ -56,8 +56,7 @@ def setup_idemp_data(db_session):
     
     case1 = Case(
         business_id_fk=biz.id,
-        requested_facility_type="WORKING_CAPITAL",
-        requested_product=ProductType.WORKING_CAPITAL,
+        requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=100000,
         status=CaseStatus.INITIATED,
         originating_branch_id=b.id,
@@ -66,8 +65,7 @@ def setup_idemp_data(db_session):
     )
     case2 = Case(
         business_id_fk=biz.id,
-        requested_facility_type="WORKING_CAPITAL",
-        requested_product=ProductType.WORKING_CAPITAL,
+        requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=100000,
         status=CaseStatus.INITIATED,
         originating_branch_id=b.id,
@@ -159,7 +157,7 @@ def test_concurrency_conflict_returns_409(setup_idemp_data):
     login_resp = login(setup_idemp_data["user"].email, "securepass123")
     cookies = {"vyapar_session_token": get_cookie_from_response(login_resp, "vyapar_session_token")}
     csrf = get_cookie_from_response(login_resp, "vyapar_csrf_token")
-    headers = {"x-csrf-token": csrf}
+    headers = {"x-csrf-token": csrf, "Idempotency-Key": str(uuid.uuid4())}
     
     # We will use case 1, which was already evaluated in the first test and is now version 2!
     case_id = str(setup_idemp_data["case1"].id)

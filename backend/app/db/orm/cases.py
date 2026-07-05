@@ -52,7 +52,7 @@ class Case(Base):
     __tablename__ = "cases"
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     business_id_fk = mapped_column(UUID(as_uuid=True), ForeignKey("businesss.id"), nullable=False)
-    requested_facility_type = mapped_column(String, nullable=False)
+    currency = mapped_column(String, default="INR", nullable=False)
     requested_amount = mapped_column(Numeric(20, 2, asdecimal=True), nullable=False)
     status: Mapped[CaseStatus] = mapped_column(Enum(CaseStatus), default=CaseStatus.INITIATED, nullable=False)
     recommendation: Mapped[SystemRecommendation | None] = mapped_column(Enum(SystemRecommendation), nullable=True)
@@ -64,7 +64,7 @@ class Case(Base):
     assigned_relationship_manager_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     assigned_credit_analyst_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     assigned_sanctioning_authority_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    requested_product: Mapped[ProductType | None] = mapped_column(Enum(ProductType), nullable=True)
+    requested_product: Mapped[ProductType] = mapped_column(Enum(ProductType), nullable=False)
 
     # Financial aggregate cache (calculated from features)
     monthly_revenue_inr = mapped_column(Numeric(20, 2, asdecimal=True), nullable=True)
