@@ -10,7 +10,7 @@
 - **main commit SHA**: `b9987df94781e5ee81c6dae0e80272afa39caaf6`
 - **phase-1-baseline tag target SHA**: `5e72e8ca744401d4e344c53793b12780e4d35fc8`
 - **Tag Type**: Annotated
-- **Latest Pushed Commit**: `dba9ee6e5c048f75bcb4ceb81352307ea8cf220c` (fix(phase-1-1-3): finalize migration constraints, API 409 idempotency contract, and safe migration tests)
+- **Latest Pushed Commit**: `6f5af18` (fix(deps): add email-validator for pydantic EmailStr)
 
 ## Continuous Integration Status
 - **Latest GitHub Actions Run URL**: https://github.com/Sauravssoni/IDBI-INNOVATE-2026/actions/runs/28730636964
