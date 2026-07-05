@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.db.base import Base
 from app.db.orm.users import User, SessionStore
 from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord
+from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate
 from app.db.orm.consents import Consent, DataConnection
 from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation
 from dotenv import load_dotenv
@@ -35,11 +36,12 @@ if os.getenv("DATABASE_URL"):
     url = os.getenv("DATABASE_URL").replace("postgres://", "postgresql://")
     config.set_main_option("sqlalchemy.url", url)
 else:
-    # Use fallback if not found in .env
     db_user = os.getenv("POSTGRES_USER", "vyapar_local")
     db_pass = os.getenv("POSTGRES_PASSWORD", "change-this-local-development-password")
     db_name = os.getenv("POSTGRES_DB", "vyapar_pulse")
     config.set_main_option("sqlalchemy.url", f"postgresql://{db_user}:{db_pass}@127.0.0.1:5433/{db_name}")
+
+print(f"ALEMBIC ENV.PY CONNECTING TO: {config.get_main_option('sqlalchemy.url')}")
 
 target_metadata = Base.metadata
 
