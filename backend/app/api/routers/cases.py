@@ -80,7 +80,16 @@ def reserve_idempotency_key(db: Session, key: str, req_hash: str, user_id: str, 
             return None, record.id
             
         if record.status == IdempotencyStatus.IN_PROGRESS:
-            raise HTTPException(status_code=409, detail="FAILED_RETRYABLE", headers={"Retry-After": "5"})
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "IDEMPOTENCY_IN_PROGRESS",
+                    "message": "An identical request is currently being processed.",
+                    "retryable": True,
+                    "retry_after_seconds": 5
+                },
+                headers={"Retry-After": "5"}
+            )
             
         raise HTTPException(status_code=500, detail="Unknown idempotency state")
 

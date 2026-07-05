@@ -23,7 +23,10 @@ def test_migration_upgrade_downgrade():
     
     # 1. Clean up and create empty db
     with engine.connect() as conn:
-        conn.execute(text(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{datname}' AND pid <> pg_backend_pid();"))
+        conn.execute(
+            text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :datname AND pid <> pg_backend_pid();"),
+            {"datname": datname}
+        )
         conn.execute(text("DROP SCHEMA public CASCADE;"))
         conn.execute(text("CREATE SCHEMA public;"))
         conn.commit()

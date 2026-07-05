@@ -16,9 +16,12 @@ import subprocess
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_shakti_db():
-    db_url = str(engine.url)
-    if "test" not in db_url.lower():
-        raise RuntimeError(f"Refusing to run tests against non-test database: {db_url}")
+    import urllib.parse
+    db_url = os.environ.get("DATABASE_URL", str(engine.url))
+    parsed_url = urllib.parse.urlparse(db_url)
+    datname = parsed_url.path.lstrip("/")
+    if "test" not in datname.lower():
+        raise RuntimeError(f"Refusing to run tests against non-test database name: '{datname}'")
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Refusing to run tests in production environment")
         
@@ -231,7 +234,8 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
     else:
         assert 409 in status_codes
         error_res = res1 if res1.status_code == 409 else res2
-        assert error_res.json()["detail"] == "FAILED_RETRYABLE"
+        assert error_res.json()["detail"]["code"] == "IDEMPOTENCY_IN_PROGRESS"
+        assert error_res.headers.get("retry-after") == "5"
         
     db.expire_all()
     # Afterward assert exact increments
