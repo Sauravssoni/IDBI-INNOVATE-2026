@@ -64,7 +64,10 @@ def setup_bola_data(db_session):
     # Risk Admin gets scope to Branch 1
     scope = UserBranchScope(
         user_id=users[UserRole.RISK_ADMIN].id,
-        branch_id=b1.id
+        branch_id=b1.id,
+        scope_role="RISK",
+        can_read=True,
+        active=True
     )
     db_session.add(scope)
     

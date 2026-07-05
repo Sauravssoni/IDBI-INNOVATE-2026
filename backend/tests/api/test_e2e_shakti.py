@@ -22,6 +22,7 @@ def setup_shakti_db():
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Refusing to run tests in production environment")
         
+    engine.dispose()
     Base.metadata.drop_all(bind=engine)
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
@@ -132,7 +133,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     
     dec_req = {
         "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-        "approved_amount": "3570000.00",
+        "approved_amount": str(eval_data["decision"]["binding_limit"]),
         "reason": "Approved alternative structure.",
         "expected_version": current_version
     }
