@@ -4,4 +4,6 @@ services:
     ports:
       - "8000:8000"
     environment:
-      APP_ENV: local
+      APP_ENV: development
+      ALLOWED_ORIGINS: http://localhost:3005
+      COOKIE_SECURE: false
