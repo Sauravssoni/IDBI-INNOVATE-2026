@@ -4,17 +4,27 @@ from app.core.decision.policy import DecisionPolicy
 from app.db.orm.cases import SystemRecommendation
 from app.db.orm.org import ProductType
 
+
 @given(
-    revenue=st.decimals(min_value=Decimal("100000.00"), max_value=Decimal("100000000.00"), places=2),
-    expenses=st.decimals(min_value=Decimal("50000.00"), max_value=Decimal("50000000.00"), places=2),
-    requested_amount=st.decimals(min_value=Decimal("10000.00"), max_value=Decimal("5000000.00"), places=2),
-    evidence_score=st.floats(min_value=50.0, max_value=100.0)
+    revenue=st.decimals(
+        min_value=Decimal("100000.00"), max_value=Decimal("100000000.00"), places=2
+    ),
+    expenses=st.decimals(
+        min_value=Decimal("50000.00"), max_value=Decimal("50000000.00"), places=2
+    ),
+    requested_amount=st.decimals(
+        min_value=Decimal("10000.00"), max_value=Decimal("5000000.00"), places=2
+    ),
+    evidence_score=st.floats(min_value=50.0, max_value=100.0),
 )
 def test_monotonicity_higher_revenue_yields_higher_or_equal_limit(
-    revenue: Decimal, expenses: Decimal, requested_amount: Decimal, evidence_score: float
+    revenue: Decimal,
+    expenses: Decimal,
+    requested_amount: Decimal,
+    evidence_score: float,
 ):
     """
-    Test that increasing revenue (while holding other factors constant) 
+    Test that increasing revenue (while holding other factors constant)
     never decreases the calculated binding limit.
     """
     features_base = {
@@ -24,32 +34,39 @@ def test_monotonicity_higher_revenue_yields_higher_or_equal_limit(
         "monthly_expenses_inr": str(expenses),
         "banking_inflow_inr": str(revenue),
         "banking_outflow_inr": str(expenses),
-        "average_bank_balance": "500000.00"
+        "average_bank_balance": "500000.00",
     }
-    
+
     scores = {
         "evidence_confidence_score": evidence_score,
-        "financial_health_score": 80.0
+        "financial_health_score": 80.0,
     }
-    
-    policy_base = DecisionPolicy(features_base, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
+
+    policy_base = DecisionPolicy(
+        features_base, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE
+    )
     decision_base = policy_base.evaluate()
     limit_base = decision_base["binding_limit"]
-    
+
     # Increase revenue
     features_increased = features_base.copy()
     features_increased["monthly_revenue_inr"] = str(revenue * Decimal("1.5"))
     features_increased["banking_inflow_inr"] = str(revenue * Decimal("1.5"))
-    
-    policy_increased = DecisionPolicy(features_increased, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
+
+    policy_increased = DecisionPolicy(
+        features_increased, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE
+    )
     decision_increased = policy_increased.evaluate()
     limit_increased = decision_increased["binding_limit"]
-    
+
     # Monotonicity property: Higher or equal revenue should yield higher or equal limit
     assert limit_increased >= limit_base
 
+
 @given(
-    requested_amount=st.decimals(min_value=Decimal("10000.00"), max_value=Decimal("5000000.00"), places=2)
+    requested_amount=st.decimals(
+        min_value=Decimal("10000.00"), max_value=Decimal("5000000.00"), places=2
+    )
 )
 def test_decision_bounds_offers_never_exceed_binding_limit(requested_amount: Decimal):
     """
@@ -62,24 +79,26 @@ def test_decision_bounds_offers_never_exceed_binding_limit(requested_amount: Dec
         "monthly_expenses_inr": "3000000.00",
         "banking_inflow_inr": "5000000.00",
         "banking_outflow_inr": "3000000.00",
-        "average_bank_balance": "1000000.00"
+        "average_bank_balance": "1000000.00",
     }
-    scores = {
-        "evidence_confidence_score": 85.0,
-        "financial_health_score": 90.0
-    }
-    
-    policy = DecisionPolicy(features, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
+    scores = {"evidence_confidence_score": 85.0, "financial_health_score": 90.0}
+
+    policy = DecisionPolicy(
+        features, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE
+    )
     decision = policy.evaluate()
-    
+
     binding_limit = decision["binding_limit"]
-    
+
     for offer in decision["offers"]:
         offer_amount = Decimal(offer["amount"])
         assert offer_amount <= binding_limit
 
+
 @given(
-    requested_amount=st.decimals(min_value=Decimal("10000000.00"), max_value=Decimal("50000000.00"), places=2)
+    requested_amount=st.decimals(
+        min_value=Decimal("10000000.00"), max_value=Decimal("50000000.00"), places=2
+    )
 )
 def test_conditional_offer_when_requested_exceeds_limit(requested_amount: Decimal):
     """
@@ -93,18 +112,17 @@ def test_conditional_offer_when_requested_exceeds_limit(requested_amount: Decima
         "monthly_expenses_inr": "800000.00",
         "banking_inflow_inr": "1000000.00",
         "banking_outflow_inr": "800000.00",
-        "average_bank_balance": "50000.00"
+        "average_bank_balance": "50000.00",
     }
-    scores = {
-        "evidence_confidence_score": 80.0,
-        "financial_health_score": 70.0
-    }
-    
-    policy = DecisionPolicy(features, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE)
+    scores = {"evidence_confidence_score": 80.0, "financial_health_score": 70.0}
+
+    policy = DecisionPolicy(
+        features, scores, requested_amount, ProductType.WORKING_CAPITAL_LINE
+    )
     decision = policy.evaluate()
-    
+
     binding_limit = decision["binding_limit"]
-    
+
     if binding_limit > 0:
         assert binding_limit < requested_amount
         assert decision["decision"] == SystemRecommendation.CONDITIONAL_OFFER.value

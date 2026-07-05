@@ -135,7 +135,10 @@ def test_logout_deletion_uses_matching_cookie_settings(monkeypatch, test_user):
 
     logout_res = client.post(
         "/api/auth/logout",
-        cookies={"vyapar_session_token": session_token, "vyapar_csrf_token": csrf_token},
+        cookies={
+            "vyapar_session_token": session_token,
+            "vyapar_csrf_token": csrf_token,
+        },
         headers={"x-csrf-token": csrf_token},
     )
     assert logout_res.status_code == 200
@@ -159,3 +162,45 @@ def test_logout_deletion_uses_matching_cookie_settings(monkeypatch, test_user):
 
     assert session_cookie_found
     assert csrf_cookie_found
+
+
+def test_production_wildcard_rejected(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "*")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    with pytest.raises(RuntimeError) as excinfo:
+        get_settings()
+    assert "wildcard origins are not permitted" in str(excinfo.value)
+
+
+def test_production_http_origin_rejected(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "http://vyaparpulse.example.com")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    with pytest.raises(RuntimeError) as excinfo:
+        get_settings()
+    assert "explicit HTTPS origins required" in str(excinfo.value)
+
+
+def test_production_localhost_rejected(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    for origin in (
+        "https://localhost:3000",
+        "https://127.0.0.1:3000",
+        "https://[::1]:3000",
+        "https://0.0.0.0:3000",
+    ):
+        monkeypatch.setenv("ALLOWED_ORIGINS", origin)
+        with pytest.raises(RuntimeError) as excinfo:
+            get_settings()
+        assert "localhost origins are not permitted" in str(excinfo.value)
+
+
+def test_production_https_origin_accepted(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://vyaparpulse.example.com")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    settings = get_settings()
+    assert settings.ALLOWED_ORIGINS == ["https://vyaparpulse.example.com"]
+    assert settings.COOKIE_SECURE is True

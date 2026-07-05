@@ -47,8 +47,20 @@ class Settings:
         else:
             self.COOKIE_SECURE: bool = self.APP_ENV != "development"
 
-        if self.APP_ENV == "production" and not self.COOKIE_SECURE:
-            raise RuntimeError("In production, COOKIE_SECURE=true required")
+        if self.APP_ENV == "production":
+            if not self.COOKIE_SECURE:
+                raise RuntimeError("In production, COOKIE_SECURE=true required")
+            for origin in self.ALLOWED_ORIGINS:
+                if origin == "*" or "*" in origin:
+                    raise RuntimeError(
+                        "In production, wildcard origins are not permitted"
+                    )
+                if not origin.strip().lower().startswith("https://"):
+                    raise RuntimeError("In production, explicit HTTPS origins required")
+                if is_localhost_origin(origin):
+                    raise RuntimeError(
+                        "In production, localhost origins are not permitted"
+                    )
 
         if not self.COOKIE_SECURE:
             if self.APP_ENV != "development":

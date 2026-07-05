@@ -44,8 +44,6 @@ jobs:
         source .venv/bin/activate
         pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-        pip install pip-audit pytest-cov ruff
         
     - name: Run Ruff (Formatting and Linting)
       run: |
@@ -78,7 +76,7 @@ jobs:
       run: |
         cd backend
         source .venv/bin/activate
-        pip-audit
+        pip-audit -r requirements.txt
         
     - name: Run Database Migrations Test
       env:
