@@ -9,7 +9,6 @@ from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePaym
 from app.db.orm.users import User, UserRole
 from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate, ProductType
 from app.api.auth import get_password_hash
-from app.db.orm.cases import utc_now
 
 import os
 import sys

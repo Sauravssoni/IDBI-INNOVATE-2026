@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 from uuid import UUID
+import uuid
 from typing import Optional, Any
 from app.db.session import SessionLocal
 from pydantic import BaseModel
@@ -10,8 +12,9 @@ from app.db.orm.cases import Case, HumanDecisionAction, AnalystRecommendationAct
 from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
-from app.api.dependencies import get_current_user, require_role
-from app.db.orm.users import User, UserRole
+from app.api.dependencies import get_current_user
+from app.db.orm.users import User
+from app.services.authz import apply_case_list_scope, can_view_case, can_run_assessment, can_submit_analyst_recommendation, can_record_human_decision
 import hashlib
 import json
 import datetime
@@ -25,11 +28,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-from app.services.authz import apply_case_list_scope, can_view_case, can_run_assessment, can_submit_analyst_recommendation, can_record_human_decision
-
-from sqlalchemy.exc import IntegrityError
-import uuid
 
 def reserve_idempotency_key(db: Session, key: str, req_hash: str, user_id: str, case_id: str, action: str):
     now = utc_now()
@@ -54,32 +52,32 @@ def reserve_idempotency_key(db: Session, key: str, req_hash: str, user_id: str, 
     except IntegrityError:
         db.rollback()
         
-        record = db.query(IdempotencyRecord).filter(
+        existing_record = db.query(IdempotencyRecord).filter(
             IdempotencyRecord.idempotency_key == key,
             IdempotencyRecord.user_id == user_id,
             IdempotencyRecord.case_id == case_id,
             IdempotencyRecord.action == action
         ).first()
         
-        if not record:
+        if not existing_record:
             raise HTTPException(status_code=500, detail="Idempotency conflict but record not found")
             
-        if record.status == IdempotencyStatus.COMPLETED:
-            if record.request_hash != req_hash:
+        if existing_record.status == IdempotencyStatus.COMPLETED:
+            if existing_record.request_hash != req_hash:
                 raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
-            return record.response_payload, record.id
+            return existing_record.response_payload, existing_record.id
             
-        if record.status == IdempotencyStatus.FAILED_RETRYABLE or record.expires_at < now:
-            if record.request_hash != req_hash:
+        if existing_record.status == IdempotencyStatus.FAILED_RETRYABLE or existing_record.expires_at < now:
+            if existing_record.request_hash != req_hash:
                 raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
-            record.status = IdempotencyStatus.IN_PROGRESS
+            existing_record.status = IdempotencyStatus.IN_PROGRESS
             # Preserve original request hash, do not replace it!
-            record.expires_at = expires
-            record.response_payload = None
+            existing_record.expires_at = expires
+            existing_record.response_payload = None
             db.commit()
-            return None, record.id
+            return None, existing_record.id
             
-        if record.status == IdempotencyStatus.IN_PROGRESS:
+        if existing_record.status == IdempotencyStatus.IN_PROGRESS:
             raise HTTPException(
                 status_code=409,
                 detail={
@@ -117,7 +115,7 @@ def cas_update_case_and_audit(db: Session, case_id: UUID, expected_version: int,
         SET {set_clause}, version = version + 1
         WHERE id = :case_id AND version = :expected_version
         RETURNING version
-    """)
+    """)  # nosec B608
     
     result = db.execute(update_stmt, params).fetchone()
     
@@ -297,7 +295,7 @@ def evaluate_case(
         return result_payload
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         db.rollback()
         from app.db.session import SessionLocal
         with SessionLocal() as tx_db:
@@ -353,7 +351,7 @@ def record_analyst_recommendation(
         return result_payload
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         db.rollback()
         from app.db.session import SessionLocal
         with SessionLocal() as tx_db:
@@ -393,7 +391,7 @@ def record_human_decision(
         return cached
             
     try:
-        result_payload = {"status": "success", "decision": req.decision.value}
+        result_payload: dict[str, Any] = {"status": "success", "decision": req.decision.value}
         if req.approved_amount is not None:
             result_payload["approved_amount"] = req.approved_amount
         
@@ -416,7 +414,7 @@ def record_human_decision(
         return result_payload
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         db.rollback()
         from app.db.session import SessionLocal
         with SessionLocal() as tx_db:

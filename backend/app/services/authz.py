@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_
-from sqlalchemy.sql.expression import true, false
+from sqlalchemy.sql.expression import false
 from app.db.orm.users import User, UserRole
 from app.db.orm.cases import Case, HumanDecisionAction
 from app.db.orm.org import UserBranchScope, SanctioningMandate, Branch
@@ -23,10 +23,10 @@ def apply_case_list_scope(db: Session, query, user: User, now: datetime):
             for scope in db.query(UserBranchScope).filter(
                 UserBranchScope.user_id == user.id,
                 UserBranchScope.scope_role == "AUDIT",
-                UserBranchScope.can_read == True,
-                UserBranchScope.active == True,
-                or_(UserBranchScope.valid_from == None, UserBranchScope.valid_from <= now),
-                or_(UserBranchScope.valid_until == None, UserBranchScope.valid_until >= now)
+                UserBranchScope.can_read.is_(True),
+                UserBranchScope.active.is_(True),
+                or_(UserBranchScope.valid_from.is_(None), UserBranchScope.valid_from <= now),
+                or_(UserBranchScope.valid_until.is_(None), UserBranchScope.valid_until >= now)
             )
         ]
         if not user_branch_ids:
@@ -40,10 +40,10 @@ def apply_case_list_scope(db: Session, query, user: User, now: datetime):
             for scope in db.query(UserBranchScope).filter(
                 UserBranchScope.user_id == user.id,
                 UserBranchScope.scope_role == "RISK",
-                UserBranchScope.can_read == True,
-                UserBranchScope.active == True,
-                or_(UserBranchScope.valid_from == None, UserBranchScope.valid_from <= now),
-                or_(UserBranchScope.valid_until == None, UserBranchScope.valid_until >= now)
+                UserBranchScope.can_read.is_(True),
+                UserBranchScope.active.is_(True),
+                or_(UserBranchScope.valid_from.is_(None), UserBranchScope.valid_from <= now),
+                or_(UserBranchScope.valid_until.is_(None), UserBranchScope.valid_until >= now)
             )
         ]
         if not user_branch_ids:
@@ -60,9 +60,9 @@ def apply_case_list_scope(db: Session, query, user: User, now: datetime):
         # Visibility by explicit assignment or active valid review scope
         mandates = db.query(SanctioningMandate).filter(
             SanctioningMandate.user_id == user.id,
-            SanctioningMandate.active == True,
-            or_(SanctioningMandate.valid_from == None, SanctioningMandate.valid_from <= now),
-            or_(SanctioningMandate.valid_until == None, SanctioningMandate.valid_until >= now)
+            SanctioningMandate.active.is_(True),
+            or_(SanctioningMandate.valid_from.is_(None), SanctioningMandate.valid_from <= now),
+            or_(SanctioningMandate.valid_until.is_(None), SanctioningMandate.valid_until >= now)
         ).all()
         
         mandate_conditions = []
@@ -92,7 +92,7 @@ def apply_case_list_scope(db: Session, query, user: User, now: datetime):
     return query.filter(false())
 
 
-def can_view_case(db: Session, user: User, case_id: UUID, now: datetime = None) -> Case:
+def can_view_case(db: Session, user: User, case_id: UUID, now: Optional[datetime] = None) -> Case:
     """Retrieve a case, enforcing BOLA."""
     if now is None:
         now = datetime.now(timezone.utc)
@@ -115,7 +115,7 @@ def can_submit_analyst_recommendation(db: Session, case: Case, user: User):
     if case.assigned_credit_analyst_id != user.id:
         raise HTTPException(status_code=403, detail="You are not the assigned credit analyst for this case")
 
-def can_record_human_decision(db: Session, case: Case, user: User, action: HumanDecisionAction, approved_amount: Optional[Decimal] = None, now: datetime = None):
+def can_record_human_decision(db: Session, case: Case, user: User, action: HumanDecisionAction, approved_amount: Optional[Decimal] = None, now: Optional[datetime] = None):
     if user.role != UserRole.SANCTIONING_AUTHORITY:
         raise HTTPException(status_code=403, detail="Only sanctioning authorities can record decisions")
     
@@ -124,9 +124,9 @@ def can_record_human_decision(db: Session, case: Case, user: User, action: Human
     
     mandates = db.query(SanctioningMandate).filter(
         SanctioningMandate.user_id == user.id,
-        SanctioningMandate.active == True,
-        or_(SanctioningMandate.valid_from == None, SanctioningMandate.valid_from <= now),
-        or_(SanctioningMandate.valid_until == None, SanctioningMandate.valid_until >= now)
+        SanctioningMandate.active.is_(True),
+        or_(SanctioningMandate.valid_from.is_(None), SanctioningMandate.valid_from <= now),
+        or_(SanctioningMandate.valid_until.is_(None), SanctioningMandate.valid_until >= now)
     ).all()
     
     case_branch = db.query(Branch).filter(Branch.id == case.originating_branch_id).first()
@@ -156,7 +156,7 @@ def can_record_human_decision(db: Session, case: Case, user: User, action: Human
     if not has_mandate:
         raise HTTPException(status_code=403, detail="Case exceeds your sanctioning mandate or branch scope for this action")
 
-def can_view_audit(db: Session, case: Case, user: User, now: datetime = None):
+def can_view_audit(db: Session, case: Case, user: User, now: Optional[datetime] = None):
     if user.role == UserRole.SYSTEM_ADMIN:
         raise HTTPException(status_code=403, detail="System administrators cannot view case audit trails")
     if user.role == UserRole.AUDITOR:

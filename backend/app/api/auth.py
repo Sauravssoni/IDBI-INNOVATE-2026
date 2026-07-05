@@ -7,6 +7,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from app.db.session import SessionLocal
 from app.db.orm.users import User, SessionStore
+from app.core.config import get_settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -77,7 +78,11 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Account is disabled")
 
-    # Session rotation: Optional: delete old sessions for this user, but we'll allow multiple for now
+    settings = get_settings()
+
+    # Revoke all prior login sessions for this user upon new login (session rotation policy)
+    db.query(SessionStore).filter(SessionStore.user_id == str(user.id)).delete()
+    db.commit()
     
     session_token, csrf_token = create_session(db, str(user.id))
     
@@ -86,8 +91,9 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
         key=SESSION_COOKIE_NAME,
         value=session_token,
         httponly=True,
-        secure=True, 
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
+        path="/",
         max_age=SESSION_EXPIRE_HOURS * 3600
     )
     
@@ -96,8 +102,9 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
         key=CSRF_COOKIE_NAME,
         value=csrf_token,
         httponly=False,
-        secure=True,
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
+        path="/",
         max_age=SESSION_EXPIRE_HOURS * 3600
     )
     
@@ -110,12 +117,25 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
 
 @router.post("/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    settings = get_settings()
     token = request.cookies.get(SESSION_COOKIE_NAME)
     if token:
         token_hash = hash_token(token)
         db.query(SessionStore).filter(SessionStore.session_token == token_hash).delete()
         db.commit()
         
-    response.delete_cookie(SESSION_COOKIE_NAME)
-    response.delete_cookie(CSRF_COOKIE_NAME)
+    response.delete_cookie(
+        key=SESSION_COOKIE_NAME,
+        path="/",
+        secure=settings.COOKIE_SECURE,
+        httponly=True,
+        samesite="lax"
+    )
+    response.delete_cookie(
+        key=CSRF_COOKIE_NAME,
+        path="/",
+        secure=settings.COOKIE_SECURE,
+        httponly=False,
+        samesite="lax"
+    )
     return {"status": "logged_out"}

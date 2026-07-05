@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import hashlib
+import secrets
 from app.api.routers import cases
 from app.api import auth
+from app.core.config import get_settings
 
-import os
 
 app = FastAPI(
     title="VYAPAR PULSE AI API",
@@ -11,21 +14,18 @@ app = FastAPI(
     description="Evidence-First Financial Health Card and Credit-Twin for MSMEs.",
 )
 
-# Configuration-driven origins
-frontend_port = os.getenv("FRONTEND_HOST_PORT", "3000")
-FRONTEND_URL = f"http://localhost:{frontend_port}"
+try:
+    settings = get_settings()
+except Exception as e:
+    raise RuntimeError(f"Startup configuration error: {e}") from e
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from fastapi.responses import JSONResponse
-import hashlib
-import secrets
 
 @app.middleware("http")
 async def csrf_middleware(request: Request, call_next):

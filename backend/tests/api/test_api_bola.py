@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal
 from app.db.orm.users import User, UserRole
-from app.db.orm.org import UserBranchScope, SanctioningMandate, Region, Branch
+from app.db.orm.org import UserBranchScope, Region, Branch
 from app.db.orm.cases import Case, CaseStatus, Business, ProductType
 from app.api.auth import get_password_hash
 

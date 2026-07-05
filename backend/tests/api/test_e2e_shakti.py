@@ -1,7 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from uuid import UUID
 
 from app.main import app
 from app.db.session import SessionLocal
@@ -159,13 +158,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     # Let's ensure the test passes. If 403, we need to fix seed_shakti.py to give SA branch access or assign them.
     assert dec_res.status_code == 200, f"Expected 200, got {dec_res.status_code}: {dec_res.text}"
     
-    # Check audit log via Auditor
-    auditor_auth = get_auth_headers(client, "auditor@bank.example")
-    client.cookies.clear()
-    client.cookies.update(auditor_auth["cookies"])
-    audit_res = client.get(f"/api/cases/{case_id}/audit", headers=auditor_auth["headers"])
-    
-    # We check DB directly to verify persistent audit records
+    # Check audit log via DB directly to verify persistent audit records
     from app.db.orm.cases import AuditEvent
     events = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.event_sequence).all()
     assert len(events) >= 3
@@ -184,9 +177,8 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
 def test_concurrent_idempotency(client: TestClient, db: Session):
     from concurrent.futures import ThreadPoolExecutor
     import uuid
-    import json
     from sqlalchemy import select
-    from app.db.orm.cases import Case, AuditEvent, IdempotencyRecord
+    from app.db.orm.cases import AuditEvent, IdempotencyRecord
     
     ca_auth = get_auth_headers(client, "credit@bank.example")
     

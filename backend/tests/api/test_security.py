@@ -73,7 +73,6 @@ def test_users(db_session):
     db_session.delete(b)
     db_session.commit() # Commit deletions before users
     
-    from app.db.orm.users import SessionStore
     for u in users:
         db_session.query(SessionStore).filter(SessionStore.user_id == u.id).delete()
         db_session.delete(u)
