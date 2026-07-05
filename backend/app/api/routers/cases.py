@@ -69,9 +69,12 @@ def reserve_idempotency_key(db: Session, key: str, req_hash: str, user_id: str, 
                 raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
             return record.response_payload, record.id
             
-        if record.status == IdempotencyStatus.FAILED_RETRYABLE or record.expires_at < now:
+        exp = record.expires_at.replace(tzinfo=datetime.timezone.utc) if record.expires_at.tzinfo is None else record.expires_at
+        if record.status == IdempotencyStatus.FAILED_RETRYABLE or exp < now:
+            if record.request_hash != req_hash:
+                raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
             record.status = IdempotencyStatus.IN_PROGRESS
-            record.request_hash = req_hash
+            # Preserve original request hash, do not replace it!
             record.expires_at = expires
             record.response_payload = None
             db.commit()
@@ -186,12 +189,7 @@ def cas_update_case_and_audit(db: Session, case_id: UUID, expected_version: int,
     
     fulfill_idempotency(db, idempotency_record_id, 200, metadata_enc)
     
-    try:
-        db.commit()
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to commit transaction")
-
+    db.commit()
 
 @router.get("/")
 def list_cases(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
@@ -251,43 +249,53 @@ def evaluate_case(
     if cached is not None:
         return cached
     
-    # 1. Derive Features
-    feature_engine = FeatureEngine(db, str(case.business_id_fk))
-    features = feature_engine.derive_all_features()
-    
-    # 2. Score
-    scorer = ScoringEngine(features)
-    scores = scorer.compute_all_scores()
-    
-    # 3. Decision
-    policy = DecisionPolicy(features, scores, Decimal(str(case.requested_amount)), case.requested_product.value)
-    decision = policy.evaluate()
-    
-    result_payload = {
-        "case_id": str(case.id),
-        "business_name": case.business.legal_name,
-        "features": features,
-        "scores": scores,
-        "decision": decision
-    }
-    
-    update_values = {
-        "recommendation": decision["decision"]
-    }
-    
-    cas_update_case_and_audit(
-        db=db, 
-        case_id=case_id, 
-        expected_version=req.expected_version, 
-        update_values=update_values, 
-        user=user, 
-        action="evaluate", 
-        reason="System Evaluation", 
-        metadata=result_payload, 
-        idempotency_record_id=record_id
-    )
-    
-    return result_payload
+    try:
+        # 1. Derive Features
+        feature_engine = FeatureEngine(db, str(case.business_id_fk))
+        features = feature_engine.derive_all_features()
+        
+        # 2. Score
+        scorer = ScoringEngine(features)
+        scores = scorer.compute_all_scores()
+        
+        # 3. Decision
+        policy = DecisionPolicy(features, scores, Decimal(str(case.requested_amount)), case.requested_product.value)
+        decision = policy.evaluate()
+        
+        result_payload = {
+            "case_id": str(case.id),
+            "business_name": case.business.legal_name,
+            "features": features,
+            "scores": scores,
+            "decision": decision
+        }
+        
+        update_values = {
+            "recommendation": decision["decision"]
+        }
+        
+        cas_update_case_and_audit(
+            db=db, 
+            case_id=case_id, 
+            expected_version=req.expected_version, 
+            update_values=update_values, 
+            user=user, 
+            action="evaluate", 
+            reason="System Evaluation", 
+            metadata=result_payload, 
+            idempotency_record_id=record_id
+        )
+        
+        return result_payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        from app.db.session import SessionLocal
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(IdempotencyRecord.id == record_id).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(status_code=500, detail="Internal processing error")
 
 class AnalystRecommendationRequest(BaseModel):
     recommendation: AnalystRecommendationAction
@@ -315,25 +323,35 @@ def record_analyst_recommendation(
     if cached is not None:
         return cached
             
-    result_payload = {"status": "success", "recommendation": req.recommendation.value}
-    
-    update_values = {
-        "analyst_recommendation": req.recommendation.value
-    }
-    
-    cas_update_case_and_audit(
-        db=db, 
-        case_id=case_id, 
-        expected_version=req.expected_version, 
-        update_values=update_values, 
-        user=user, 
-        action="analyst_recommendation", 
-        reason=req.reason, 
-        metadata=result_payload, 
-        idempotency_record_id=record_id
-    )
+    try:
+        result_payload = {"status": "success", "recommendation": req.recommendation.value}
         
-    return result_payload
+        update_values = {
+            "analyst_recommendation": req.recommendation.value
+        }
+        
+        cas_update_case_and_audit(
+            db=db, 
+            case_id=case_id, 
+            expected_version=req.expected_version, 
+            update_values=update_values, 
+            user=user, 
+            action="analyst_recommendation", 
+            reason=req.reason, 
+            metadata=result_payload, 
+            idempotency_record_id=record_id
+        )
+            
+        return result_payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        from app.db.session import SessionLocal
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(IdempotencyRecord.id == record_id).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(status_code=500, detail="Internal processing error")
 
 
 class HumanDecisionRequest(BaseModel):
@@ -366,24 +384,34 @@ def record_human_decision(
     if cached is not None:
         return cached
             
-    result_payload = {"status": "success", "decision": req.decision.value}
-    if req.approved_amount is not None:
-        result_payload["approved_amount"] = req.approved_amount
-    
-    update_values = {
-        "human_decision": req.decision.value
-    }
-    
-    cas_update_case_and_audit(
-        db=db, 
-        case_id=case_id, 
-        expected_version=req.expected_version, 
-        update_values=update_values, 
-        user=user, 
-        action="human_decision", 
-        reason=req.reason, 
-        metadata=result_payload, 
-        idempotency_record_id=record_id
-    )
+    try:
+        result_payload = {"status": "success", "decision": req.decision.value}
+        if req.approved_amount is not None:
+            result_payload["approved_amount"] = req.approved_amount
         
-    return result_payload
+        update_values = {
+            "human_decision": req.decision.value
+        }
+        
+        cas_update_case_and_audit(
+            db=db, 
+            case_id=case_id, 
+            expected_version=req.expected_version, 
+            update_values=update_values, 
+            user=user, 
+            action="human_decision", 
+            reason=req.reason, 
+            metadata=result_payload, 
+            idempotency_record_id=record_id
+        )
+            
+        return result_payload
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        from app.db.session import SessionLocal
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(IdempotencyRecord.id == record_id).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(status_code=500, detail="Internal processing error")

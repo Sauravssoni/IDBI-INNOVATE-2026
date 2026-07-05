@@ -10,11 +10,23 @@ from app.db.orm.cases import Case
 
 from app.db.session import engine
 from app.db.orm.cases import Base
+from sqlalchemy import text
+import os
+import subprocess
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_shakti_db():
+    db_url = str(engine.url)
+    if "test" not in db_url.lower():
+        raise RuntimeError(f"Refusing to run tests against non-test database: {db_url}")
+    if os.environ.get("APP_ENV") == "production":
+        raise RuntimeError("Refusing to run tests in production environment")
+        
     Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+        conn.commit()
+    subprocess.run(["alembic", "upgrade", "head"], check=True)
     seed_shakti()
     yield
 
@@ -34,9 +46,10 @@ def get_cookie_from_response(response, cookie_name):
     return response.cookies.get(cookie_name) or ""
 
 def get_auth_headers(client: TestClient, email: str):
+    import os
     response = client.post("/api/auth/login", json={
         "email": email,
-        "password": "password123"
+        "password": os.environ.get("DEMO_USER_PASSWORD", "demo_dev_only_123")
     })
     assert response.status_code == 200, f"Failed to login {email}: {response.text}"
     session_token = get_cookie_from_response(response, "vyapar_session_token")
@@ -79,6 +92,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     )
     assert eval_res.status_code == 200
     eval_data = eval_res.json()
+    assert eval_data["decision"]["decision"] == "CONDITIONAL_OFFER"
     
     # Ensure idempotency cache works
     eval_res_2 = client.post(
@@ -95,8 +109,8 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     current_version = res.json()["version"]
     
     rec_req = {
-        "recommendation": "RECOMMEND_AS_REQUESTED",
-        "reason": "Strong financials and good GST compliance.",
+        "recommendation": "RECOMMEND_ALTERNATIVE_STRUCTURE",
+        "reason": "Strong financials and good GST compliance, but request exceeds binding limit.",
         "expected_version": current_version
     }
     idempotency_key_rec = "shakti-rec-12345"
@@ -117,8 +131,9 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     current_version = res.json()["version"]
     
     dec_req = {
-        "decision": "APPROVE_AS_REQUESTED",
-        "reason": "Mandate sufficient, financials robust. Approved as requested.",
+        "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
+        "approved_amount": "3570000.00",
+        "reason": "Approved alternative structure.",
         "expected_version": current_version
     }
     idempotency_key_dec = "shakti-dec-12345"
@@ -140,14 +155,73 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     client.cookies.update(auditor_auth["cookies"])
     audit_res = client.get(f"/api/cases/{case_id}/audit", headers=auditor_auth["headers"])
     
-    # The /audit endpoint might not exist yet? If not, we check DB directly
-    if audit_res.status_code == 404:
-        from app.db.orm.cases import AuditEvent
-        events = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.event_sequence).all()
-        assert len(events) >= 3
-        # Check sequence
-        seqs = [e.event_sequence for e in events]
-        assert seqs == sorted(seqs)
-        # Check hashes
-        for i in range(1, len(events)):
-            assert events[i].prior_event_hash == events[i-1].event_hash
+    # We check DB directly to verify persistent audit records
+    from app.db.orm.cases import AuditEvent
+    events = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.event_sequence).all()
+    assert len(events) >= 3
+    # Check sequence
+    seqs = [e.event_sequence for e in events]
+    assert seqs == sorted(seqs)
+    # Check hashes and prior versions
+    for i in range(1, len(events)):
+        assert events[i].prior_event_hash == events[i-1].event_hash
+        assert events[i].prior_case_version == events[i-1].resulting_case_version
+        
+    assert events[-1].actor_role == "SANCTIONING_AUTHORITY"
+    assert events[-1].correlation_id is not None
+    assert events[-1].idempotency_record_id is not None
+
+def test_concurrent_idempotency(client: TestClient, db: Session):
+    from concurrent.futures import ThreadPoolExecutor
+    import uuid
+    import json
+    
+    ca_auth = get_auth_headers(client, "credit@bank.example")
+    
+    # Get the case
+    client.cookies.clear()
+    client.cookies.update(ca_auth["cookies"])
+    cases_res = client.get("/api/cases", headers=ca_auth["headers"])
+    cases = cases_res.json()
+    assert len(cases) > 0
+    case_id = cases[0]["id"]
+    
+    # We will submit concurrent analyst recommendations instead of evaluate to test it nicely, or evaluate.
+    # Actually, evaluate is easiest: POST /api/cases/{case_id}/evaluate
+    # We need the current expected_version
+    case_detail = client.get(f"/api/cases/{case_id}", headers=ca_auth["headers"]).json()
+    version = case_detail["version"]
+    
+    idemp_key = str(uuid.uuid4())
+    req_body = {"expected_version": version}
+    
+    def send_req():
+        # A new client for each thread to avoid cookie conflicts (if any), though headers override
+        thread_client = TestClient(app)
+        thread_client.cookies.update(ca_auth["cookies"])
+        return thread_client.post(
+            f"/api/cases/{case_id}/evaluate",
+            json=req_body,
+            headers={**ca_auth["headers"], "Idempotency-Key": idemp_key}
+        )
+        
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future1 = executor.submit(send_req)
+        future2 = executor.submit(send_req)
+        
+        res1 = future1.result()
+        res2 = future2.result()
+        
+    status_codes = {res1.status_code, res2.status_code}
+    # One must succeed with 200, the other could be 200 (identical fulfillment cached) 
+    # or 409 (if hit IN_PROGRESS constraint before fulfillment)
+    assert 200 in status_codes, f"Neither request succeeded. Statuses: {res1.status_code}, {res2.status_code}. Responses: {res1.text}, {res2.text}"
+    
+    # Either they are both 200 (if one finished before the other's transaction started, 
+    # and the second fetched from cache), or one is 409 FAILED_RETRYABLE / IN_PROGRESS
+    if res1.status_code == 200 and res2.status_code == 200:
+        assert res1.json() == res2.json()
+    else:
+        assert 409 in status_codes
+        error_res = res1 if res1.status_code == 409 else res2
+        assert error_res.json()["detail"] == "FAILED_RETRYABLE"

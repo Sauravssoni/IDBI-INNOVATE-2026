@@ -140,9 +140,7 @@ def upgrade() -> None:
     op.execute("UPDATE idempotency_records SET status = 'FAILED_RETRYABLE'::idempotencystatus WHERE status IS NULL")
     op.alter_column('idempotency_records', 'status', existing_type=idempotency_status_enum, nullable=False)
     
-    op.add_column('idempotency_records', sa.Column('updated_at', sa.DateTime(), nullable=True))
-    op.execute("UPDATE idempotency_records SET updated_at = created_at")
-    op.alter_column('idempotency_records', 'updated_at', existing_type=sa.DateTime(), nullable=False)
+    # idempotency_records.updated_at already exists from 05f0b4de641c
     
     op.drop_index('ix_idempotency_records_idempotency_key', table_name='idempotency_records')
     op.create_index(op.f('ix_idempotency_records_idempotency_key'), 'idempotency_records', ['idempotency_key'], unique=False)
@@ -208,7 +206,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_idempotency_records_idempotency_key'), table_name='idempotency_records')
     op.create_index('ix_idempotency_records_idempotency_key', 'idempotency_records', ['idempotency_key'], unique=True)
     
-    op.drop_column('idempotency_records', 'updated_at')
+    # updated_at was not added here
     op.drop_column('idempotency_records', 'status')
     op.execute("DROP TYPE idempotencystatus")
     

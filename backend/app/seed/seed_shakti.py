@@ -11,7 +11,14 @@ from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate, 
 from app.api.auth import get_password_hash
 from app.db.orm.cases import utc_now
 
+import os
+import sys
+
 def seed_shakti():
+    if os.environ.get("APP_ENV") == "production":
+        print("Demo seeding is refused in production.")
+        sys.exit(1)
+        
     db = SessionLocal()
     
     # Clean previous data to be idempotent
@@ -59,13 +66,14 @@ def seed_shakti():
 
     # Seed users
     print("Seeding users and scopes...")
+    default_pw = os.environ.get("DEMO_USER_PASSWORD", "demo_dev_only_123")
     users_to_seed = [
-        {"email": "rm@bank.example", "password": "password123", "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},
-        {"email": "credit@bank.example", "password": "password123", "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},
-        {"email": "sa@bank.example", "password": "password123", "full_name": "Sanctioning Authority", "role": UserRole.SANCTIONING_AUTHORITY},
-        {"email": "admin@bank.example", "password": "password123", "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN},
-        {"email": "auditor@bank.example", "password": "password123", "full_name": "Auditor", "role": UserRole.AUDITOR},
-        {"email": "system@bank.example", "password": "password123", "full_name": "System Admin", "role": UserRole.SYSTEM_ADMIN}
+        {"email": "rm@bank.example", "password": default_pw, "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},
+        {"email": "credit@bank.example", "password": default_pw, "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},
+        {"email": "sa@bank.example", "password": default_pw, "full_name": "Sanctioning Authority", "role": UserRole.SANCTIONING_AUTHORITY},
+        {"email": "admin@bank.example", "password": default_pw, "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN},
+        {"email": "auditor@bank.example", "password": default_pw, "full_name": "Auditor", "role": UserRole.AUDITOR},
+        {"email": "system@bank.example", "password": default_pw, "full_name": "System Admin", "role": UserRole.SYSTEM_ADMIN}
     ]
     
     seeded_users = {}
@@ -83,8 +91,14 @@ def seed_shakti():
             db.refresh(user)
         seeded_users[user.role] = user
         
-        # Add branch scope for non-System Admins
-        if user.role != UserRole.SYSTEM_ADMIN:
+        # Add branch scope ONLY for roles that need it (not RM, Analyst, or SysAdmin)
+        scope_role_map = {
+            UserRole.RISK_ADMIN: "RISK",
+            UserRole.AUDITOR: "AUDIT",
+            UserRole.SANCTIONING_AUTHORITY: "REVIEW"
+        }
+        
+        if user.role in scope_role_map:
             scope = db.query(UserBranchScope).filter(
                 UserBranchScope.user_id == user.id, 
                 UserBranchScope.branch_id == malviya_nagar_branch.id
@@ -94,7 +108,7 @@ def seed_shakti():
                     user_id=user.id,
                     branch_id=malviya_nagar_branch.id,
                     active=True,
-                    scope_role="PRIMARY"
+                    scope_role=scope_role_map[user.role]
                 )
                 db.add(scope)
     db.commit()
