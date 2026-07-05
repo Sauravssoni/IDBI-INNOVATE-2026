@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app.db.base import Base
 from app.db.orm.users import User, SessionStore
 from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord
+from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate
 from app.db.orm.consents import Consent, DataConnection
 from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation
 from dotenv import load_dotenv

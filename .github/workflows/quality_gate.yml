@@ -9,6 +9,21 @@ on:
 jobs:
   backend-quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: vyapar_pulse
+          POSTGRES_USER: vyapar_local
+          POSTGRES_PASSWORD: change-this-local-development-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
     - uses: actions/checkout@v4
     
@@ -27,6 +42,7 @@ jobs:
         pip install --upgrade pip
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
+        pip install pip-audit pytest-cov
         
     - name: Run Typecheck
       run: |
@@ -48,11 +64,27 @@ jobs:
           exit 1
         fi
         
-    - name: Run Tests
+    - name: Run Dependency Audit
       run: |
         cd backend
         source .venv/bin/activate
-        pytest -v
+        pip-audit
+        
+    - name: Run Database Migrations
+      env:
+        DATABASE_URL: postgresql+psycopg2://vyapar_local:change-this-local-development-password@localhost:5432/vyapar_pulse
+      run: |
+        cd backend
+        source .venv/bin/activate
+        alembic upgrade head
+
+    - name: Run Tests with Coverage
+      env:
+        DATABASE_URL: postgresql+psycopg2://vyapar_local:change-this-local-development-password@localhost:5432/vyapar_pulse
+      run: |
+        cd backend
+        source .venv/bin/activate
+        pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
 
   frontend-quality:
     runs-on: ubuntu-latest

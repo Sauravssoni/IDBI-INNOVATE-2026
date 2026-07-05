@@ -6,6 +6,7 @@ from sqlalchemy.orm import relationship
 from ..base import Base
 import enum
 from datetime import datetime, timezone
+from .org import ProductType
 
 def utc_now():
     return datetime.now(timezone.utc)
@@ -59,8 +60,12 @@ class Case(Base):
     human_decision: Mapped[HumanDecisionAction | None] = mapped_column(Enum(HumanDecisionAction), nullable=True)
     
     # BOLA / Access Control
+    originating_branch_id = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"), nullable=True)
     assigned_relationship_manager_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     assigned_credit_analyst_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    assigned_sanctioning_authority_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    requested_product: Mapped[ProductType | None] = mapped_column(Enum(ProductType), nullable=True)
+
     # Financial aggregate cache (calculated from features)
     monthly_revenue_inr = mapped_column(Numeric(20, 2, asdecimal=True), nullable=True)
     dscr = mapped_column(Numeric(12, 6, asdecimal=True), nullable=True)
@@ -76,6 +81,7 @@ class Case(Base):
 
     business = relationship("Business", back_populates="cases")
     audit_events = relationship("AuditEvent", back_populates="case")
+    originating_branch = relationship("Branch", back_populates="cases")
 
 class AuditEvent(Base):
     __tablename__ = "audit_events"

@@ -2,8 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal
-from app.db.orm.users import User, UserRole
+from app.db.orm.users import User, UserRole, SessionStore
 from app.db.orm.cases import Case, CaseStatus, Business
+from app.db.orm.org import Region, Branch, ProductType
 from app.api.auth import get_password_hash
 import uuid
 
@@ -43,14 +44,24 @@ def test_users(db_session):
         sector="Retail"
     )
     db_session.add(b)
-    db_session.commit()
-    
+    db_session.flush()
+
+    reg = Region(code=f"REG_{unique_suffix}", name="Test Region")
+    db_session.add(reg)
+    db_session.flush()
+
+    branch = Branch(code=f"BR_{unique_suffix}", name="Test Branch", region_id=reg.id)
+    db_session.add(branch)
+    db_session.flush()
+
     c = Case(
         business_id_fk=b.id,
         requested_facility_type="WORKING_CAPITAL",
         requested_amount=100000,
         status=CaseStatus.INITIATED,
         assigned_credit_analyst_id=user_dict[UserRole.CREDIT_ANALYST].id,
+        originating_branch_id=branch.id,
+        requested_product=ProductType.WORKING_CAPITAL,
         version=1
     )
     db_session.add(c)
@@ -100,8 +111,8 @@ def test_vertical_escalation_system_admin_cannot_evaluate(test_users):
         cookies=cookies,
         headers={"x-csrf-token": csrf_token}
     )
-    assert resp.status_code == 403
-    assert "Insufficient role" in resp.json()["detail"]
+    assert resp.status_code == 404
+    assert "Case not found or access denied" in resp.json()["detail"]
 
 def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
     login_resp = login(test_users["users"][UserRole.CREDIT_ANALYST].email, "securepass123")
