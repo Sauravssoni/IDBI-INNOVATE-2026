@@ -12,3 +12,4 @@ bandit>=1.7.8
 python-dateutil>=2.9.0
 hypothesis==6.124.0
 argon2-cffi>=23.1.0
+passlib==1.7.4
