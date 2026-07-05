@@ -56,10 +56,10 @@ def upgrade() -> None:
     sa.Column('region_id', sa.UUID(), nullable=True),
     sa.Column('product_type', product_type_enum, nullable=False),
     sa.Column('currency', sa.String(), nullable=False),
-    sa.Column('maximum_amount', sa.Numeric(precision=18, scale=2), nullable=False),
+    sa.Column('maximum_amount', sa.Numeric(precision=20, scale=2), nullable=False),
     sa.Column('active', sa.Boolean(), nullable=False, default=True),
-    sa.Column('valid_from', sa.DateTime(), nullable=True),
-    sa.Column('valid_until', sa.DateTime(), nullable=True),
+    sa.Column('valid_from', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('valid_until', sa.DateTime(timezone=True), nullable=True),
     sa.Column('mandate_version', sa.Integer(), nullable=False, default=1),
     sa.Column('created_by', sa.UUID(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
@@ -67,6 +67,7 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='fk_sanctioning_mandates_user_id'),
     sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], name='fk_sanctioning_mandates_branch_id'),
     sa.ForeignKeyConstraint(['region_id'], ['regions.id'], name='fk_sanctioning_mandates_region_id'),
+    sa.ForeignKeyConstraint(['created_by'], ['users.id'], name='fk_sanctioning_mandates_created_by'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('user_branch_scopes',
@@ -77,8 +78,8 @@ def upgrade() -> None:
     sa.Column('can_read', sa.Boolean(), nullable=False, default=True),
     sa.Column('can_recommend', sa.Boolean(), nullable=False, default=False),
     sa.Column('active', sa.Boolean(), nullable=False, default=True),
-    sa.Column('valid_from', sa.DateTime(), nullable=True),
-    sa.Column('valid_until', sa.DateTime(), nullable=True),
+    sa.Column('valid_from', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('valid_until', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['branch_id'], ['branches.id'], name='fk_user_branch_scopes_branch_id'),
@@ -141,6 +142,8 @@ def upgrade() -> None:
     op.alter_column('idempotency_records', 'status', existing_type=idempotency_status_enum, nullable=False)
     
     # idempotency_records.updated_at already exists from 05f0b4de641c
+    op.alter_column('idempotency_records', 'created_at', type_=sa.DateTime(timezone=True), existing_type=sa.DateTime())
+    op.alter_column('idempotency_records', 'expires_at', type_=sa.DateTime(timezone=True), existing_type=sa.DateTime())
     
     op.drop_index('ix_idempotency_records_idempotency_key', table_name='idempotency_records')
     op.create_index(op.f('ix_idempotency_records_idempotency_key'), 'idempotency_records', ['idempotency_key'], unique=False)
@@ -175,6 +178,7 @@ def upgrade() -> None:
     op.drop_constraint('audit_events_idempotency_key_key', 'audit_events', type_='unique')
     op.drop_column('audit_events', 'idempotency_key')
     op.drop_column('audit_events', 'case_version')
+    op.alter_column('audit_events', 'created_at', type_=sa.DateTime(timezone=True), existing_type=sa.DateTime())
     op.create_foreign_key('fk_audit_events_idempotency_record_id', 'audit_events', 'idempotency_records', ['idempotency_record_id'], ['id'])
     
     # ### end Alembic commands ###
@@ -197,6 +201,7 @@ def downgrade() -> None:
     op.drop_column('audit_events', 'resulting_case_version')
     op.drop_column('audit_events', 'prior_case_version')
     op.drop_column('audit_events', 'idempotency_record_id')
+    op.alter_column('audit_events', 'created_at', type_=sa.DateTime(), existing_type=sa.DateTime(timezone=True))
     
     op.drop_constraint('uq_audit_case_sequence', 'audit_events', type_='unique')
     op.drop_column('audit_events', 'event_sequence')
@@ -207,6 +212,8 @@ def downgrade() -> None:
     op.create_index('ix_idempotency_records_idempotency_key', 'idempotency_records', ['idempotency_key'], unique=True)
     
     # updated_at was not added here
+    op.alter_column('idempotency_records', 'expires_at', type_=sa.DateTime(), existing_type=sa.DateTime(timezone=True))
+    op.alter_column('idempotency_records', 'created_at', type_=sa.DateTime(), existing_type=sa.DateTime(timezone=True))
     op.drop_column('idempotency_records', 'status')
     op.execute("DROP TYPE idempotencystatus")
     

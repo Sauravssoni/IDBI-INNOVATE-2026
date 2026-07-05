@@ -150,10 +150,10 @@ def test_idempotency_mismatched_payload_fails(setup_idemp_data):
         cookies=cookies,
         headers=headers
     )
-    assert resp2.status_code == 400
+    assert resp2.status_code == 409
     assert "Idempotency key mismatch with payload" in resp2.json()["detail"]
 
-def test_concurrency_conflict_returns_409(setup_idemp_data):
+def test_stale_case_version_returns_structured_409(setup_idemp_data):
     login_resp = login(setup_idemp_data["user"].email, "securepass123")
     cookies = {"vyapar_session_token": get_cookie_from_response(login_resp, "vyapar_session_token")}
     csrf = get_cookie_from_response(login_resp, "vyapar_csrf_token")
@@ -171,4 +171,8 @@ def test_concurrency_conflict_returns_409(setup_idemp_data):
     )
     
     assert resp.status_code == 409
-    assert "Concurrency conflict" in resp.json()["detail"]
+    data = resp.json()["detail"]
+    assert data["code"] == "STALE_VERSION"
+    assert "current_version" in data
+    assert "message" in data
+    assert "retryable" in data

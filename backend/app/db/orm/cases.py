@@ -68,7 +68,7 @@ class Case(Base):
     human_decision: Mapped[HumanDecisionAction | None] = mapped_column(Enum(HumanDecisionAction), nullable=True)
     
     # BOLA / Access Control
-    originating_branch_id = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"), nullable=True)
+    originating_branch_id = mapped_column(UUID(as_uuid=True), ForeignKey("branches.id"), nullable=False)
     assigned_relationship_manager_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     assigned_credit_analyst_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     assigned_sanctioning_authority_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
@@ -117,7 +117,7 @@ class AuditEvent(Base):
     model_version = mapped_column(String, nullable=True)
     policy_version = mapped_column(String, nullable=True)
     
-    created_at = mapped_column(DateTime, nullable=False, default=utc_now)
+    created_at = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     
     case = relationship("Case", back_populates="audit_events")
 
@@ -139,9 +139,9 @@ class IdempotencyRecord(Base):
     status = mapped_column(Enum(IdempotencyStatus), nullable=False, default=IdempotencyStatus.IN_PROGRESS)
     response_status = mapped_column(Integer, nullable=True)
     response_payload = mapped_column(JSON, nullable=True)
-    created_at = mapped_column(DateTime, default=utc_now, nullable=False)
-    updated_at = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
-    expires_at = mapped_column(DateTime, nullable=False)
+    created_at = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    updated_at = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    expires_at = mapped_column(DateTime(timezone=True), nullable=False)
 
     __table_args__ = (
         UniqueConstraint('user_id', 'case_id', 'action', 'idempotency_key', name='uq_idempotency_scoped'),

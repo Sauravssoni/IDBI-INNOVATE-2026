@@ -69,8 +69,7 @@ def reserve_idempotency_key(db: Session, key: str, req_hash: str, user_id: str, 
                 raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
             return record.response_payload, record.id
             
-        exp = record.expires_at.replace(tzinfo=datetime.timezone.utc) if record.expires_at.tzinfo is None else record.expires_at
-        if record.status == IdempotencyStatus.FAILED_RETRYABLE or exp < now:
+        if record.status == IdempotencyStatus.FAILED_RETRYABLE or record.expires_at < now:
             if record.request_hash != req_hash:
                 raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
             record.status = IdempotencyStatus.IN_PROGRESS

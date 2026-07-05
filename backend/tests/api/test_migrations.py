@@ -2,6 +2,7 @@ import os
 import pytest
 import subprocess
 import uuid
+import urllib.parse
 from sqlalchemy import create_engine, text
 
 def test_migration_upgrade_downgrade():
@@ -9,7 +10,12 @@ def test_migration_upgrade_downgrade():
         pytest.skip("Refusing to run migration test in production")
         
     db_url = os.environ.get("DATABASE_URL", "postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_test")
+    parsed_url = urllib.parse.urlparse(db_url)
+    datname = parsed_url.path.lstrip("/")
     
+    if "test" not in datname:
+        pytest.fail(f"Refusing to drop public schema on database '{datname}' - must contain 'test'")
+        
     from app.db.session import engine as global_engine
     global_engine.dispose()
     
@@ -17,7 +23,7 @@ def test_migration_upgrade_downgrade():
     
     # 1. Clean up and create empty db
     with engine.connect() as conn:
-        conn.execute(text("SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'vyapar_test' AND pid <> pg_backend_pid();"))
+        conn.execute(text(f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{datname}' AND pid <> pg_backend_pid();"))
         conn.execute(text("DROP SCHEMA public CASCADE;"))
         conn.execute(text("CREATE SCHEMA public;"))
         conn.commit()
@@ -26,9 +32,9 @@ def test_migration_upgrade_downgrade():
     env = os.environ.copy()
     env["DATABASE_URL"] = db_url
     proc = subprocess.run(["alembic", "upgrade", "05f0b4de641c"], capture_output=True, text=True, env=env)
-    print("Alembic upgrade stdout:", proc.stdout)
-    print("Alembic upgrade stderr:", proc.stderr)
     if proc.returncode != 0:
+        print("Alembic upgrade stdout:", proc.stdout)
+        print("Alembic upgrade stderr:", proc.stderr)
         proc.check_returncode()
     
     # 3. Insert representative legacy rows
@@ -67,26 +73,41 @@ def test_migration_upgrade_downgrade():
         
     # 4. Run alembic upgrade to phase 1.1.3
     proc = subprocess.run(["alembic", "upgrade", "7c35182cf1b8"], capture_output=True, text=True, env=env)
-    print("Alembic upgrade 7c35 stdout:", proc.stdout)
-    print("Alembic upgrade 7c35 stderr:", proc.stderr)
     if proc.returncode != 0:
+        print("Alembic upgrade 7c35 stdout:", proc.stdout)
+        print("Alembic upgrade 7c35 stderr:", proc.stderr)
         proc.check_returncode()
     
     # 5. Verify data and constraints
     with engine.connect() as conn:
-        res = conn.execute(text("SELECT requested_product, currency FROM cases WHERE id = :case_id"), {"case_id": case_id}).fetchone()
+        res = conn.execute(text("SELECT requested_product, currency, originating_branch_id FROM cases WHERE id = :case_id"), {"case_id": case_id}).fetchone()
         assert res[0] == "WORKING_CAPITAL_LINE", "requested_product didn't default correctly"
         assert res[1] == "INR", "currency didn't default correctly"
+        assert str(res[2]) == "00000000-0000-0000-0000-000000000002", "originating_branch_id didn't map backfill correctly for legacy data"
         
-        idem_res = conn.execute(text("SELECT updated_at FROM idempotency_records WHERE id = :idem_id"), {"idem_id": idem_id}).fetchone()
-        assert idem_res[0] is not None, "idempotency_records updated_at missing"
+        idem_res = conn.execute(text("SELECT status FROM idempotency_records WHERE id = :idem_id"), {"idem_id": idem_id}).fetchone()
+        assert idem_res[0] == "FAILED_RETRYABLE", "idempotency row status not mapped correctly"
         
-        audit_res = conn.execute(text("SELECT created_at FROM audit_events WHERE id = :audit_id"), {"audit_id": audit_id}).fetchone()
-        assert audit_res[0] is not None, "audit_events created_at missing"
+        audit_res = conn.execute(text("SELECT event_sequence, audit_schema_version, hash_algorithm FROM audit_events WHERE id = :audit_id"), {"audit_id": audit_id}).fetchone()
+        assert audit_res[0] == 1, "audit_events sequence missing"
+        assert audit_res[1] == 1, "audit_events schema version missing"
+        assert audit_res[2] == "sha256", "audit_events hash algorithm missing"
         
-        # Check constraints exist (for example, foreign keys added)
-        # We can check that branch constraint exists on cases
-        # We inserted a case with no originating_branch_id, it is nullable, so it should be fine.
+        # Verify constraints exist by querying information_schema and pg_constraint
+        uq_idemp = conn.execute(text("SELECT conname FROM pg_constraint WHERE conname = 'uq_idempotency_scoped'")).fetchone()
+        assert uq_idemp is not None, "uq_idempotency_scoped unique constraint missing"
+        
+        uq_audit = conn.execute(text("SELECT conname FROM pg_constraint WHERE conname = 'uq_audit_case_sequence'")).fetchone()
+        assert uq_audit is not None, "uq_audit_case_sequence unique constraint missing"
+        
+        ck_max_amount = conn.execute(text("SELECT conname FROM pg_constraint WHERE conname = 'ck_sanctioning_mandates_max_amount'")).fetchone()
+        assert ck_max_amount is not None, "ck_sanctioning_mandates_max_amount check constraint missing"
+
+        fk_audit = conn.execute(text("SELECT conname FROM pg_constraint WHERE conname = 'fk_audit_events_idempotency_record_id'")).fetchone()
+        assert fk_audit is not None, "fk_audit_events_idempotency_record_id foreign key missing"
+        
+        fk_created = conn.execute(text("SELECT conname FROM pg_constraint WHERE conname = 'fk_sanctioning_mandates_created_by'")).fetchone()
+        assert fk_created is not None, "fk_sanctioning_mandates_created_by foreign key missing"
         
     # 6. Run alembic downgrade to 05f0b4de641c
     proc = subprocess.run(["alembic", "downgrade", "05f0b4de641c"], capture_output=True, text=True, env=env)
@@ -95,7 +116,7 @@ def test_migration_upgrade_downgrade():
         print(proc.stderr)
         proc.check_returncode()
     
-    # 7. Verify downgrade schema
+    # 7. Verify downgrade schema restored
     with engine.connect() as conn:
         import sqlalchemy.exc
         try:
@@ -104,6 +125,11 @@ def test_migration_upgrade_downgrade():
         except sqlalchemy.exc.ProgrammingError:
             pass # Expected
         conn.rollback() # Rollback the failed transaction
+        
+        # Verify idempotency key index is back to unique constraint (or old index)
+        # Verify older columns
+        res = conn.execute(text("SELECT requested_facility_type FROM cases WHERE id = :case_id"), {"case_id": case_id}).fetchone()
+        assert res[0] == "WORKING_CAPITAL", "requested_facility_type not restored properly"
         
     # 8. Run alembic upgrade head
     proc = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True, env=env)

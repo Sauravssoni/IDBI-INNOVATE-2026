@@ -41,8 +41,8 @@ class UserBranchScope(Base):
     can_read = mapped_column(Boolean, nullable=False, default=True)
     can_recommend = mapped_column(Boolean, nullable=False, default=False)
     active = mapped_column(Boolean, nullable=False, default=True)
-    valid_from = mapped_column(DateTime, nullable=True)
-    valid_until = mapped_column(DateTime, nullable=True)
+    valid_from = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until = mapped_column(DateTime(timezone=True), nullable=True)
 
 class SanctioningMandate(Base):
     __tablename__ = "sanctioning_mandates"
@@ -52,10 +52,10 @@ class SanctioningMandate(Base):
     region_id = mapped_column(UUID(as_uuid=True), ForeignKey("regions.id"), nullable=True)
     product_type: Mapped[ProductType] = mapped_column(Enum(ProductType), nullable=False)
     currency = mapped_column(String, default="INR", nullable=False)
-    maximum_amount = mapped_column(Numeric(18, 2), nullable=False)
+    maximum_amount = mapped_column(Numeric(20, 2), nullable=False)
     active = mapped_column(Boolean, nullable=False, default=True)
-    valid_from = mapped_column(DateTime, nullable=True)
-    valid_until = mapped_column(DateTime, nullable=True)
+    valid_from = mapped_column(DateTime(timezone=True), nullable=True)
+    valid_until = mapped_column(DateTime(timezone=True), nullable=True)
     mandate_version = mapped_column(Integer, nullable=False, default=1)
-    created_by = mapped_column(UUID(as_uuid=True), nullable=True)
-    created_at = mapped_column(DateTime, nullable=False, default=utc_now)
+    created_by = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_at = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
