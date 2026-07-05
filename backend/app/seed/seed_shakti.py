@@ -161,7 +161,7 @@ def seed_shakti():
 
     # 4. Generate 18 months of deterministic data
     start_date = today - relativedelta(months=18)
-    base_revenue = Decimal("1850000.00")
+    base_revenue = Decimal("1477000.00")
     
     for m in range(18):
         current_month = start_date + relativedelta(months=m)

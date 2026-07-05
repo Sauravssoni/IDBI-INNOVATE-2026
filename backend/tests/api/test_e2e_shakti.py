@@ -95,6 +95,12 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     eval_data = eval_res.json()
     assert eval_data["decision"]["decision"] == "CONDITIONAL_OFFER"
     
+    # Validate Shakti winning outcome
+    assert case_data["requested_amount"] == 5000000.00
+    import math
+    binding_limit = eval_data["decision"]["binding_limit"]
+    assert math.isclose(binding_limit, 3570000.00, abs_tol=2000.0), f"Binding limit {binding_limit} is not approx 3570000"
+    
     # Ensure idempotency cache works
     eval_res_2 = client.post(
         f"/api/cases/{case_id}/evaluate", 
@@ -133,7 +139,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     
     dec_req = {
         "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-        "approved_amount": str(eval_data["decision"]["binding_limit"]),
+        "approved_amount": str(binding_limit),
         "reason": "Approved alternative structure.",
         "expected_version": current_version
     }
@@ -176,6 +182,8 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
     from concurrent.futures import ThreadPoolExecutor
     import uuid
     import json
+    from sqlalchemy import select
+    from app.db.orm.cases import Case, AuditEvent, IdempotencyRecord
     
     ca_auth = get_auth_headers(client, "credit@bank.example")
     
@@ -187,17 +195,19 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
     assert len(cases) > 0
     case_id = cases[0]["id"]
     
-    # We will submit concurrent analyst recommendations instead of evaluate to test it nicely, or evaluate.
-    # Actually, evaluate is easiest: POST /api/cases/{case_id}/evaluate
-    # We need the current expected_version
     case_detail = client.get(f"/api/cases/{case_id}", headers=ca_auth["headers"]).json()
     version = case_detail["version"]
+    
+    # Record before concurrent requests
+    before_case = db.execute(select(Case).where(Case.id == case_id)).scalar_one()
+    before_version = before_case.version
+    before_audit_count = len(db.execute(select(AuditEvent).where(AuditEvent.case_id == case_id)).scalars().all())
+    before_idemp_count = len(db.execute(select(IdempotencyRecord).where(IdempotencyRecord.case_id == case_id)).scalars().all())
     
     idemp_key = str(uuid.uuid4())
     req_body = {"expected_version": version}
     
     def send_req():
-        # A new client for each thread to avoid cookie conflicts (if any), though headers override
         thread_client = TestClient(app)
         thread_client.cookies.update(ca_auth["cookies"])
         return thread_client.post(
@@ -214,15 +224,25 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
         res2 = future2.result()
         
     status_codes = {res1.status_code, res2.status_code}
-    # One must succeed with 200, the other could be 200 (identical fulfillment cached) 
-    # or 409 (if hit IN_PROGRESS constraint before fulfillment)
     assert 200 in status_codes, f"Neither request succeeded. Statuses: {res1.status_code}, {res2.status_code}. Responses: {res1.text}, {res2.text}"
     
-    # Either they are both 200 (if one finished before the other's transaction started, 
-    # and the second fetched from cache), or one is 409 FAILED_RETRYABLE / IN_PROGRESS
     if res1.status_code == 200 and res2.status_code == 200:
         assert res1.json() == res2.json()
     else:
         assert 409 in status_codes
         error_res = res1 if res1.status_code == 409 else res2
         assert error_res.json()["detail"] == "FAILED_RETRYABLE"
+        
+    db.expire_all()
+    # Afterward assert exact increments
+    after_case = db.execute(select(Case).where(Case.id == case_id)).scalar_one()
+    assert after_case.version == before_version + 1, "case version increased exactly once"
+    
+    after_audit_count = len(db.execute(select(AuditEvent).where(AuditEvent.case_id == case_id)).scalars().all())
+    assert after_audit_count == before_audit_count + 1, "exactly one new audit event"
+    
+    idemp_records = db.execute(select(IdempotencyRecord).where(IdempotencyRecord.case_id == case_id)).scalars().all()
+    assert len(idemp_records) == before_idemp_count + 1, "exactly one scoped idempotency record"
+    
+    new_record = [r for r in idemp_records if r.idempotency_key == idemp_key][0]
+    assert new_record.status.value == "COMPLETED", "record status is COMPLETED"
