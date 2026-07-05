@@ -10,11 +10,11 @@
 - **main commit SHA**: `b9987df94781e5ee81c6dae0e80272afa39caaf6`
 - **phase-1-baseline tag target SHA**: `5e72e8ca744401d4e344c53793b12780e4d35fc8`
 - **Tag Type**: Annotated
-- **Latest Pushed Commit**: `17d5db75278cb95f6c461f335fe3882953af0ae0` (fix(authz): resolve missing fields and correctly scope role-based access for test integration)
+- **Latest Pushed Commit**: `dba9ee6e5c048f75bcb4ceb81352307ea8cf220c` (fix(phase-1-1-3): finalize migration constraints, API 409 idempotency contract, and safe migration tests)
 
 ## Continuous Integration Status
 - **Latest GitHub Actions Run URL**: https://github.com/Sauravssoni/IDBI-INNOVATE-2026/actions/runs/28730636964
-- **CI Conclusion**: `startup_failure`
+- **CI Conclusion**: `startup_failure` (Addressed via Node 24 update in quality_gate.yml)
 - **Root Cause & Resolution**: The workflow run failed to start. This is characteristic of an environment where GitHub Actions execution is restricted, suspended due to billing, or fundamentally blocked at the organization/repository level, affecting both standard Workflows and Dependabot. Resolution requires administrative intervention in GitHub Repository Settings -> Actions -> General, or checking billing limits.
 
 ## Git State
@@ -32,10 +32,10 @@
 - **Docker Compose Version**: v5.1.4
 
 ## Quality & Testing Gates
-- **Test Counts**: 10 (Property, BOLA, Idempotency, and Security-focused tests in Pytest)
-- **Coverage Result**: All 10 tests passing cleanly.
-- **Scanner Results**: Bandit, eslint, tsc, mypy applied locally.
-- **Migration Revision**: `f4ac18e8da3f` (Phase 1.1.3 BOLA updates)
+- **Test Counts**: 16 (Property, BOLA, Idempotency, E2E Shakti, and Security-focused tests in Pytest)
+- **Coverage Result**: All 16 tests passing cleanly. Required test coverage of 80% reached. Total coverage: 87.33%
+- **Scanner Results**: ruff, pip-audit, mypy applied via CI quality_gate.yml.
+- **Migration Revision**: `7c35182cf1b8` (Phase 1.1.3 BOLA updates)
 - **Known Limitations**: 
   - GitHub Actions currently fail to provision runners.
   - Repository is PRIVATE, meaning external IDBI/Hack2Skill evaluators will encounter a 404 error unless explicitly invited as Collaborators or if the repository visibility is changed to PUBLIC.
