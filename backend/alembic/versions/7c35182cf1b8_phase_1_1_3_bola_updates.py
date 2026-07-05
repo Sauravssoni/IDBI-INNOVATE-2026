@@ -96,9 +96,22 @@ def upgrade() -> None:
     op.create_foreign_key('fk_cases_assigned_sanctioning_authority_id', 'cases', 'users', ['assigned_sanctioning_authority_id'], ['id'])
 
     # 4. Backfill existing data
+    # Create default demo region and branch for existing cases
+    op.execute("""
+        INSERT INTO regions (id, code, name, created_at, updated_at) 
+        VALUES ('00000000-0000-0000-0000-000000000001', 'HQ', 'Default Region', now(), now())
+        ON CONFLICT DO NOTHING
+    """)
+    op.execute("""
+        INSERT INTO branches (id, code, name, region_id, created_at, updated_at) 
+        VALUES ('00000000-0000-0000-0000-000000000002', 'HQ-01', 'Default Branch', '00000000-0000-0000-0000-000000000001', now(), now())
+        ON CONFLICT DO NOTHING
+    """)
+    
     op.execute("""
         UPDATE cases 
         SET currency = 'INR',
+            originating_branch_id = '00000000-0000-0000-0000-000000000002',
             requested_product = CASE 
                 WHEN requested_facility_type = 'WORKING_CAPITAL' THEN 'WORKING_CAPITAL_LINE'::producttype
                 WHEN requested_facility_type = 'TRADE_FINANCE' THEN 'RECEIVABLES_FINANCE'::producttype
@@ -106,18 +119,100 @@ def upgrade() -> None:
             END
     """)
 
-    # 5. Make columns NOT NULL
+    # 5. Make columns NOT NULL and Add Constraints
     op.alter_column('cases', 'currency', existing_type=sa.String(), nullable=False)
     op.alter_column('cases', 'requested_product', existing_type=product_type_enum, nullable=False)
+    op.alter_column('cases', 'originating_branch_id', existing_type=sa.UUID(), nullable=False)
+    
+    op.create_check_constraint('ck_sanctioning_mandates_max_amount', 'sanctioning_mandates', 'maximum_amount > 0')
+    op.create_check_constraint('ck_sanctioning_mandates_validity', 'sanctioning_mandates', 'valid_until IS NULL OR valid_until >= valid_from')
+    op.create_check_constraint('ck_sanctioning_mandates_scope', 'sanctioning_mandates', 'branch_id IS NOT NULL OR region_id IS NOT NULL')
 
     # 6. Drop old column
     op.drop_column('cases', 'requested_facility_type')
+    
+    # 7. Idempotency updates
+    idempotency_status_enum = ENUM('IN_PROGRESS', 'COMPLETED', 'FAILED_RETRYABLE', name='idempotencystatus', create_type=False)
+    op.execute("CREATE TYPE idempotencystatus AS ENUM ('IN_PROGRESS', 'COMPLETED', 'FAILED_RETRYABLE')")
+    
+    op.add_column('idempotency_records', sa.Column('status', idempotency_status_enum, nullable=True))
+    op.execute("UPDATE idempotency_records SET status = 'COMPLETED'::idempotencystatus WHERE response_status IS NOT NULL")
+    op.execute("UPDATE idempotency_records SET status = 'FAILED_RETRYABLE'::idempotencystatus WHERE status IS NULL")
+    op.alter_column('idempotency_records', 'status', existing_type=idempotency_status_enum, nullable=False)
+    
+    op.add_column('idempotency_records', sa.Column('updated_at', sa.DateTime(), nullable=True))
+    op.execute("UPDATE idempotency_records SET updated_at = created_at")
+    op.alter_column('idempotency_records', 'updated_at', existing_type=sa.DateTime(), nullable=False)
+    
+    op.drop_index('ix_idempotency_records_idempotency_key', table_name='idempotency_records')
+    op.create_index(op.f('ix_idempotency_records_idempotency_key'), 'idempotency_records', ['idempotency_key'], unique=False)
+    op.create_unique_constraint('uq_idempotency_scoped', 'idempotency_records', ['user_id', 'case_id', 'action', 'idempotency_key'])
+    
+    # 8. Audit Event updates
+    op.add_column('audit_events', sa.Column('event_sequence', sa.Integer(), nullable=True))
+    # Backfill sequence
+    op.execute("""
+        WITH numbered AS (
+            SELECT id, row_number() OVER (PARTITION BY case_id ORDER BY created_at ASC) as seq
+            FROM audit_events
+        )
+        UPDATE audit_events SET event_sequence = numbered.seq FROM numbered WHERE audit_events.id = numbered.id
+    """)
+    op.alter_column('audit_events', 'event_sequence', existing_type=sa.Integer(), nullable=False)
+    op.create_unique_constraint('uq_audit_case_sequence', 'audit_events', ['case_id', 'event_sequence'])
+    
+    op.add_column('audit_events', sa.Column('idempotency_record_id', sa.UUID(), nullable=True))
+    op.add_column('audit_events', sa.Column('prior_case_version', sa.Integer(), nullable=True))
+    op.add_column('audit_events', sa.Column('resulting_case_version', sa.Integer(), nullable=True))
+    op.add_column('audit_events', sa.Column('audit_schema_version', sa.Integer(), nullable=True))
+    op.execute("UPDATE audit_events SET audit_schema_version = 1")
+    op.alter_column('audit_events', 'audit_schema_version', existing_type=sa.Integer(), nullable=False)
+    op.add_column('audit_events', sa.Column('hash_algorithm', sa.String(), nullable=True))
+    op.execute("UPDATE audit_events SET hash_algorithm = 'sha256'")
+    op.alter_column('audit_events', 'hash_algorithm', existing_type=sa.String(), nullable=False)
+    op.add_column('audit_events', sa.Column('correlation_id', sa.String(), nullable=True))
+    op.add_column('audit_events', sa.Column('model_version', sa.String(), nullable=True))
+    op.add_column('audit_events', sa.Column('policy_version', sa.String(), nullable=True))
+    
+    op.drop_constraint('audit_events_idempotency_key_key', 'audit_events', type_='unique')
+    op.drop_column('audit_events', 'idempotency_key')
+    op.drop_column('audit_events', 'case_version')
+    op.create_foreign_key('fk_audit_events_idempotency_record_id', 'audit_events', 'idempotency_records', ['idempotency_record_id'], ['id'])
+    
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
+    # 8. Audit Event downgrade
+    op.drop_constraint('fk_audit_events_idempotency_record_id', 'audit_events', type_='foreignkey')
+    op.add_column('audit_events', sa.Column('case_version', sa.INTEGER(), autoincrement=False, nullable=True))
+    op.add_column('audit_events', sa.Column('idempotency_key', sa.VARCHAR(), autoincrement=False, nullable=True))
+    op.create_unique_constraint('audit_events_idempotency_key_key', 'audit_events', ['idempotency_key'])
+    
+    op.drop_column('audit_events', 'policy_version')
+    op.drop_column('audit_events', 'model_version')
+    op.drop_column('audit_events', 'correlation_id')
+    op.drop_column('audit_events', 'hash_algorithm')
+    op.drop_column('audit_events', 'audit_schema_version')
+    op.drop_column('audit_events', 'resulting_case_version')
+    op.drop_column('audit_events', 'prior_case_version')
+    op.drop_column('audit_events', 'idempotency_record_id')
+    
+    op.drop_constraint('uq_audit_case_sequence', 'audit_events', type_='unique')
+    op.drop_column('audit_events', 'event_sequence')
+    
+    # 7. Idempotency downgrade
+    op.drop_constraint('uq_idempotency_scoped', 'idempotency_records', type_='unique')
+    op.drop_index(op.f('ix_idempotency_records_idempotency_key'), table_name='idempotency_records')
+    op.create_index('ix_idempotency_records_idempotency_key', 'idempotency_records', ['idempotency_key'], unique=True)
+    
+    op.drop_column('idempotency_records', 'updated_at')
+    op.drop_column('idempotency_records', 'status')
+    op.execute("DROP TYPE idempotencystatus")
+    
+    # 6 & 5 & 4
     op.add_column('cases', sa.Column('requested_facility_type', sa.VARCHAR(), autoincrement=False, nullable=True))
     
     # Reverse backfill
@@ -130,6 +225,10 @@ def downgrade() -> None:
         END
     """)
     op.alter_column('cases', 'requested_facility_type', existing_type=sa.VARCHAR(), nullable=False)
+
+    op.drop_constraint('ck_sanctioning_mandates_scope', 'sanctioning_mandates', type_='check')
+    op.drop_constraint('ck_sanctioning_mandates_validity', 'sanctioning_mandates', type_='check')
+    op.drop_constraint('ck_sanctioning_mandates_max_amount', 'sanctioning_mandates', type_='check')
 
     op.drop_constraint('fk_cases_assigned_sanctioning_authority_id', 'cases', type_='foreignkey')
     op.drop_constraint('fk_cases_originating_branch_id', 'cases', type_='foreignkey')

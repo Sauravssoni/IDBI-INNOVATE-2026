@@ -107,7 +107,8 @@ def seed_shakti():
             product_type=ProductType.WORKING_CAPITAL_LINE,
             currency="INR",
             maximum_amount=Decimal("10000000.00"),
-            active=True
+            active=True,
+            region_id=jaipur_region.id
         )
         db.add(mandate)
         db.commit()

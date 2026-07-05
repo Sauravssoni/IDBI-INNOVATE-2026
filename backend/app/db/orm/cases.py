@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Integer, JSON, ForeignKey, Enum, Numeric, DateTime
+from sqlalchemy import Column, String, Integer, JSON, ForeignKey, Enum, Numeric, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -35,9 +35,17 @@ class HumanDecisionAction(str, enum.Enum):
     DECLINE_AFTER_HUMAN_REVIEW = "DECLINE_AFTER_HUMAN_REVIEW"
 
 class AnalystRecommendationAction(str, enum.Enum):
+    RECOMMEND_AS_REQUESTED = "RECOMMEND_AS_REQUESTED"
     RECOMMEND_ALTERNATIVE_STRUCTURE = "RECOMMEND_ALTERNATIVE_STRUCTURE"
     REQUEST_ADDITIONAL_EVIDENCE = "REQUEST_ADDITIONAL_EVIDENCE"
     RECOMMEND_ENHANCED_DUE_DILIGENCE = "RECOMMEND_ENHANCED_DUE_DILIGENCE"
+    RECOMMEND_DECLINE = "RECOMMEND_DECLINE"
+
+class IdempotencyStatus(str, enum.Enum):
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED_RETRYABLE = "FAILED_RETRYABLE"
+
 
 class Business(Base):
     __tablename__ = "businesss"
@@ -87,22 +95,35 @@ class AuditEvent(Base):
     __tablename__ = "audit_events"
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     case_id = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=False)
+    event_sequence = mapped_column(Integer, nullable=False)
     event_type = mapped_column(String, nullable=False)
     actor = mapped_column(String, nullable=False)
     actor_role = mapped_column(String, nullable=False)
+    
     # Idempotency and Audit
-    idempotency_key = mapped_column(String, unique=True, nullable=True)
-    metadata_json = mapped_column(JSON, default={})
+    idempotency_record_id = mapped_column(UUID(as_uuid=True), ForeignKey("idempotency_records.id"), nullable=True)
+    metadata_json = mapped_column(JSON, default=dict)
     
     # Required for tamper-evident audit chain
-    case_version = mapped_column(Integer, nullable=True)
+    prior_case_version = mapped_column(Integer, nullable=True)
+    resulting_case_version = mapped_column(Integer, nullable=True)
     prior_event_hash = mapped_column(String, nullable=True)
     event_hash = mapped_column(String, nullable=True)
     reason = mapped_column(String, nullable=True)
     
+    audit_schema_version = mapped_column(Integer, default=1, nullable=False)
+    hash_algorithm = mapped_column(String, default="sha256", nullable=False)
+    correlation_id = mapped_column(String, nullable=True)
+    model_version = mapped_column(String, nullable=True)
+    policy_version = mapped_column(String, nullable=True)
+    
     created_at = mapped_column(DateTime, nullable=False, default=utc_now)
     
     case = relationship("Case", back_populates="audit_events")
+
+    __table_args__ = (
+        UniqueConstraint('case_id', 'event_sequence', name='uq_audit_case_sequence'),
+    )
 
 
 class IdempotencyRecord(Base):
@@ -110,12 +131,18 @@ class IdempotencyRecord(Base):
     __tablename__ = "idempotency_records"
     
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    idempotency_key = mapped_column(String, unique=True, index=True, nullable=False)
+    idempotency_key = mapped_column(String, index=True, nullable=False)
     user_id = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     case_id = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id"), nullable=True)
     action = mapped_column(String, nullable=False)
     request_hash = mapped_column(String, nullable=False)
+    status = mapped_column(Enum(IdempotencyStatus), nullable=False, default=IdempotencyStatus.IN_PROGRESS)
     response_status = mapped_column(Integer, nullable=True)
     response_payload = mapped_column(JSON, nullable=True)
     created_at = mapped_column(DateTime, default=utc_now, nullable=False)
+    updated_at = mapped_column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
     expires_at = mapped_column(DateTime, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'case_id', 'action', 'idempotency_key', name='uq_idempotency_scoped'),
+    )

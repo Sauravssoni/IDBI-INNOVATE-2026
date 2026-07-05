@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
+from decimal import Decimal
 from uuid import UUID
 from typing import Optional, Any
 from app.db.session import SessionLocal
 from pydantic import BaseModel
-from app.db.orm.cases import Case, HumanDecisionAction, AnalystRecommendationAction, AuditEvent, IdempotencyRecord, utc_now
+from app.db.orm.cases import Case, HumanDecisionAction, AnalystRecommendationAction, AuditEvent, IdempotencyRecord, IdempotencyStatus, utc_now
 from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
@@ -27,71 +28,74 @@ def get_db():
 
 from app.services.authz import apply_case_list_scope, can_view_case, can_run_assessment, can_submit_analyst_recommendation, can_record_human_decision
 
+from sqlalchemy.exc import IntegrityError
+import uuid
+
 def reserve_idempotency_key(db: Session, key: str, req_hash: str, user_id: str, case_id: str, action: str):
-    """
-    Atomically reserve the idempotency key.
-    If it exists and is done, returns the cached payload.
-    If it exists and is in progress, raises 409 FAILED_RETRYABLE.
-    If it doesn't exist, creates an IN_PROGRESS record and returns None.
-    """
-    # Use postgres INSERT ... ON CONFLICT DO NOTHING to avoid race conditions
-    insert_stmt = text("""
-        INSERT INTO idempotency_records (id, idempotency_key, user_id, case_id, action, request_hash, created_at, updated_at, expires_at)
-        VALUES (gen_random_uuid(), :key, :user_id, :case_id, :action, :req_hash, :now, :now, :expires)
-        ON CONFLICT (idempotency_key) DO NOTHING
-        RETURNING id
-    """)
     now = utc_now()
     expires = now + datetime.timedelta(days=1)
     
-    result = db.execute(insert_stmt, {
-        "key": key,
-        "user_id": user_id,
-        "case_id": case_id,
-        "action": action,
-        "req_hash": req_hash,
-        "now": now,
-        "expires": expires
-    }).fetchone()
-    
-    if result:
-        # Successfully reserved IN_PROGRESS
-        db.commit()
-        return None
-        
-    # If we get here, the key already exists
-    record = db.query(IdempotencyRecord).filter(IdempotencyRecord.idempotency_key == key).first()
-    if not record:
-        raise HTTPException(status_code=500, detail="Idempotency record conflict error")
-        
-    if record.request_hash != req_hash:
-        raise HTTPException(status_code=400, detail="Idempotency key mismatch with payload")
-        
-    if record.response_status is None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="FAILED_RETRYABLE")
-        
-    return record.response_payload
+    if len(key) < 10 or len(key) > 100:
+        raise HTTPException(status_code=400, detail="Invalid Idempotency-Key length")
 
-def fulfill_idempotency(db: Session, key: str, status_code: int, payload: dict):
+    try:
+        record = IdempotencyRecord(
+            idempotency_key=key,
+            user_id=user_id,
+            case_id=case_id,
+            action=action,
+            request_hash=req_hash,
+            status=IdempotencyStatus.IN_PROGRESS,
+            expires_at=expires
+        )
+        db.add(record)
+        db.commit()
+        return None, record.id
+    except IntegrityError:
+        db.rollback()
+        
+        record = db.query(IdempotencyRecord).filter(
+            IdempotencyRecord.idempotency_key == key,
+            IdempotencyRecord.user_id == user_id,
+            IdempotencyRecord.case_id == case_id,
+            IdempotencyRecord.action == action
+        ).first()
+        
+        if not record:
+            raise HTTPException(status_code=500, detail="Idempotency conflict but record not found")
+            
+        if record.status == IdempotencyStatus.COMPLETED:
+            if record.request_hash != req_hash:
+                raise HTTPException(status_code=409, detail="Idempotency key mismatch with payload")
+            return record.response_payload, record.id
+            
+        if record.status == IdempotencyStatus.FAILED_RETRYABLE or record.expires_at < now:
+            record.status = IdempotencyStatus.IN_PROGRESS
+            record.request_hash = req_hash
+            record.expires_at = expires
+            record.response_payload = None
+            db.commit()
+            return None, record.id
+            
+        if record.status == IdempotencyStatus.IN_PROGRESS:
+            raise HTTPException(status_code=409, detail="FAILED_RETRYABLE", headers={"Retry-After": "5"})
+            
+        raise HTTPException(status_code=500, detail="Unknown idempotency state")
+
+def fulfill_idempotency(db: Session, record_id: uuid.UUID, status_code: int, payload: dict):
     db.query(IdempotencyRecord).filter(
-        IdempotencyRecord.idempotency_key == key
+        IdempotencyRecord.id == record_id
     ).update({
+        "status": IdempotencyStatus.COMPLETED,
         "response_status": status_code,
         "response_payload": payload
     })
 
 def cas_update_case_and_audit(db: Session, case_id: UUID, expected_version: int, update_values: dict, 
-                              user: User, action: str, reason: str, metadata: dict, idempotency_key: str):
+                              user: User, action: str, reason: str, metadata: dict, idempotency_record_id: UUID):
     """
     Perform a Compare-And-Swap (CAS) update on the Case, append to AuditEvent, and fulfill idempotency atomically.
     """
-    # 1. Lock the Case row and get current state
-    # Wait, using UPDATE ... RETURNING handles the lock implicitly for the case, but we need prior event for hash chain.
-    
-    # We will execute the UPDATE with RETURNING
-    # But first, we need prior_hash. So we lock the audit chain or rely on the transaction.
-    
-    # UPDATE cases
     set_clause = ", ".join([f"{k} = :{k}" for k in update_values.keys()])
     params = update_values.copy()
     params["case_id"] = str(case_id)
@@ -107,47 +111,80 @@ def cas_update_case_and_audit(db: Session, case_id: UUID, expected_version: int,
     result = db.execute(update_stmt, params).fetchone()
     
     if not result:
-        raise HTTPException(status_code=409, detail="Concurrency conflict")
+        # Fetch current version to return in STALE_VERSION error
+        current_case = db.query(Case.version).filter(Case.id == case_id).first()
+        current_v = current_case.version if current_case else None
+        
+        # Mark as FAILED_RETRYABLE
+        db.query(IdempotencyRecord).filter(IdempotencyRecord.id == idempotency_record_id).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+        db.commit()
+        
+        raise HTTPException(
+            status_code=409, 
+            detail={
+                "code": "STALE_VERSION",
+                "current_version": current_v,
+                "message": "The case has been modified by another request. Please retry with the latest version.",
+                "retryable": True
+            }
+        )
         
     resulting_version = result[0]
     prior_version = resulting_version - 1
     
-    # Fetch previous event for this case to build hash chain
-    prev_event = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.created_at.desc()).first()
+    prev_event = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.event_sequence.desc()).first()
     prior_hash = prev_event.event_hash if prev_event else "GENESIS"
+    event_sequence = (prev_event.event_sequence + 1) if prev_event else 1
     
     metadata_enc = jsonable_encoder(metadata)
+    correlation_id = str(uuid.uuid4())
+    now_utc = utc_now()
     
-    # Deterministic payload for hashing
     hash_payload = {
-        "case_id": str(case_id),
-        "case_version": resulting_version,
-        "event_type": action,
+        "sequence": event_sequence,
         "actor": str(user.id),
-        "prior_hash": prior_hash,
+        "actor_role": user.role.value,
+        "action": action,
+        "rationale": reason,
+        "correlation_id": correlation_id,
+        "prior_version": prior_version,
+        "resulting_version": resulting_version,
+        "idempotency_record_id": str(idempotency_record_id),
+        "model_version": "1.0",
+        "policy_version": "1.0",
+        "timestamp": now_utc.isoformat(),
         "metadata": metadata_enc
     }
     
     payload_str = json.dumps(hash_payload, sort_keys=True)
     event_hash = hashlib.sha256((prior_hash + payload_str).encode('utf-8')).hexdigest()
 
-    # Audit Event
     audit = AuditEvent(
         case_id=case_id,
+        event_sequence=event_sequence,
         event_type=action,
         actor=str(user.id),
         actor_role=user.role.value,
-        idempotency_key=idempotency_key,
-        case_version=resulting_version,
+        idempotency_record_id=idempotency_record_id,
+        prior_case_version=prior_version,
+        resulting_case_version=resulting_version,
         reason=reason,
+        correlation_id=correlation_id,
+        model_version="1.0",
+        policy_version="1.0",
         metadata_json=metadata_enc,
         prior_event_hash=prior_hash,
-        event_hash=event_hash
+        event_hash=event_hash,
+        created_at=now_utc
     )
     db.add(audit)
     
-    # Fulfill Idempotency
-    fulfill_idempotency(db, idempotency_key, 200, metadata_enc)
+    metadata["prior_version"] = prior_version
+    metadata["resulting_version"] = resulting_version
+    metadata_enc["prior_version"] = prior_version
+    metadata_enc["resulting_version"] = resulting_version
+    
+    fulfill_idempotency(db, idempotency_record_id, 200, metadata_enc)
     
     try:
         db.commit()
@@ -210,8 +247,8 @@ def evaluate_case(
         
     req_hash = hashlib.sha256(json.dumps(req.model_dump(), sort_keys=True, default=str).encode()).hexdigest()
     
-    cached = reserve_idempotency_key(db, idempotency_key, req_hash, str(user.id), str(case.id), "evaluate")
-    if cached:
+    cached, record_id = reserve_idempotency_key(db, idempotency_key, req_hash, str(user.id), str(case.id), "evaluate")
+    if cached is not None:
         return cached
     
     # 1. Derive Features
@@ -223,7 +260,6 @@ def evaluate_case(
     scores = scorer.compute_all_scores()
     
     # 3. Decision
-    from decimal import Decimal
     policy = DecisionPolicy(features, scores, Decimal(str(case.requested_amount)), case.requested_product.value)
     decision = policy.evaluate()
     
@@ -248,7 +284,7 @@ def evaluate_case(
         action="evaluate", 
         reason="System Evaluation", 
         metadata=result_payload, 
-        idempotency_key=idempotency_key
+        idempotency_record_id=record_id
     )
     
     return result_payload
@@ -275,8 +311,8 @@ def record_analyst_recommendation(
     
     req_hash = hashlib.sha256(json.dumps(req.model_dump(), sort_keys=True, default=str).encode()).hexdigest()
     
-    cached = reserve_idempotency_key(db, idempotency_key, req_hash, str(user.id), str(case.id), "analyst_recommendation")
-    if cached:
+    cached, record_id = reserve_idempotency_key(db, idempotency_key, req_hash, str(user.id), str(case.id), "analyst_recommendation")
+    if cached is not None:
         return cached
             
     result_payload = {"status": "success", "recommendation": req.recommendation.value}
@@ -294,7 +330,7 @@ def record_analyst_recommendation(
         action="analyst_recommendation", 
         reason=req.reason, 
         metadata=result_payload, 
-        idempotency_key=idempotency_key
+        idempotency_record_id=record_id
     )
         
     return result_payload
@@ -304,6 +340,7 @@ class HumanDecisionRequest(BaseModel):
     decision: HumanDecisionAction
     reason: str
     expected_version: int
+    approved_amount: Optional[Decimal] = None
 
 @router.post("/{case_id}/human-decision")
 def record_human_decision(
@@ -316,17 +353,22 @@ def record_human_decision(
 ):
     if len(req.reason) < 10:
         raise HTTPException(status_code=422, detail="Reason is required and must be at least 10 characters")
+    
+    if req.decision == HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE and req.approved_amount is None:
+        raise HTTPException(status_code=422, detail="approved_amount is required for APPROVE_ALTERNATIVE_STRUCTURE")
         
     case = can_view_case(db, user, case_id)
-    can_record_human_decision(db, case, user)
+    can_record_human_decision(db, case, user, action=req.decision, approved_amount=req.approved_amount)
     
     req_hash = hashlib.sha256(json.dumps(req.model_dump(), sort_keys=True, default=str).encode()).hexdigest()
     
-    cached = reserve_idempotency_key(db, idempotency_key, req_hash, str(user.id), str(case.id), "human_decision")
-    if cached:
+    cached, record_id = reserve_idempotency_key(db, idempotency_key, req_hash, str(user.id), str(case.id), "human_decision")
+    if cached is not None:
         return cached
             
     result_payload = {"status": "success", "decision": req.decision.value}
+    if req.approved_amount is not None:
+        result_payload["approved_amount"] = req.approved_amount
     
     update_values = {
         "human_decision": req.decision.value
@@ -341,7 +383,7 @@ def record_human_decision(
         action="human_decision", 
         reason=req.reason, 
         metadata=result_payload, 
-        idempotency_key=idempotency_key
+        idempotency_record_id=record_id
     )
         
     return result_payload
