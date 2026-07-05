@@ -30,7 +30,9 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-vyapar_local}:${POSTGRES_PASSWORD:-change-this-local-development-password}@db:5432/${POSTGRES_DB:-vyapar_pulse}
-      - ENVIRONMENT=development
+      - APP_ENV=development
+      - ALLOWED_ORIGINS=http://localhost:3005
+      - COOKIE_SECURE=false
     depends_on:
       db:
         condition: service_healthy
