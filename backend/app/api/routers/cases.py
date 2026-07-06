@@ -10,6 +10,7 @@ from app.db.session import SessionLocal
 from pydantic import BaseModel
 from app.db.orm.cases import (
     Case,
+    CaseStatus,
     HumanDecisionAction,
     AnalystRecommendationAction,
     AuditEvent,
@@ -21,7 +22,7 @@ from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
 from app.api.dependencies import get_current_user
-from app.db.orm.users import User
+from app.db.orm.users import User, UserRole
 from app.services.authz import (
     apply_case_list_scope,
     can_view_case,
@@ -249,12 +250,83 @@ def cas_update_case_and_audit(
     db.commit()
 
 
+@router.get("/summary")
+def get_cases_summary(
+    db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    now = utc_now()
+    cases = apply_case_list_scope(db, db.query(Case), user, now).all()
+
+    active_cases = len(cases)
+    total_requested_amount = sum((c.requested_amount or Decimal(0)) for c in cases)
+
+    awaiting_analyst = 0
+    awaiting_human = 0
+    approved_cases = 0
+    approved_amount = Decimal(0)
+
+    for c in cases:
+        if (
+            c.status
+            in [
+                CaseStatus.INITIATED,
+                CaseStatus.EVIDENCE_GATHERING,
+                CaseStatus.ASSESSMENT_COMPLETED,
+            ]
+            and not c.analyst_recommendation
+        ):
+            awaiting_analyst += 1
+        elif (
+            c.status == CaseStatus.DECISION_PENDING or c.analyst_recommendation
+        ) and not c.human_decision:
+            awaiting_human += 1
+        elif c.status == CaseStatus.HUMAN_APPROVED or c.human_decision in [
+            HumanDecisionAction.APPROVE_AS_REQUESTED,
+            HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE,
+        ]:
+            approved_cases += 1
+            latest_dec = (
+                db.query(AuditEvent)
+                .filter(
+                    AuditEvent.case_id == c.id, AuditEvent.event_type == "human_decision"
+                )
+                .order_by(AuditEvent.created_at.desc())
+                .first()
+            )
+            if (
+                latest_dec
+                and latest_dec.metadata_json
+                and "approved_amount" in latest_dec.metadata_json
+            ):
+                approved_amount += Decimal(
+                    str(latest_dec.metadata_json["approved_amount"])
+                )
+            else:
+                approved_amount += c.requested_amount or Decimal(0)
+
+    return {
+        "active_cases": active_cases,
+        "total_requested_amount": float(total_requested_amount),
+        "awaiting_analyst": awaiting_analyst,
+        "awaiting_human_decision": awaiting_human,
+        "approved_cases": approved_cases,
+        "approved_amount": float(approved_amount),
+    }
+
+
 @router.get("/")
 def list_cases(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     now = utc_now()
     cases = apply_case_list_scope(db, db.query(Case), user, now).all()
     results = []
     for c in cases:
+        latest_eval = (
+            db.query(AuditEvent)
+            .filter(AuditEvent.case_id == c.id, AuditEvent.event_type == "evaluate")
+            .order_by(AuditEvent.created_at.desc())
+            .first()
+        )
+        evaluation_result = latest_eval.metadata_json if latest_eval else None
         results.append(
             {
                 "id": str(c.id),
@@ -263,10 +335,13 @@ def list_cases(db: Session = Depends(get_db), user: User = Depends(get_current_u
                 "requested_amount": c.requested_amount,
                 "currency": c.currency,
                 "recommendation": c.recommendation.value if c.recommendation else None,
+                "analyst_recommendation": c.analyst_recommendation.value if c.analyst_recommendation else None,
+                "human_decision": c.human_decision.value if c.human_decision else None,
                 "business_name": c.business.legal_name,
                 "requested_product": c.requested_product.value
                 if c.requested_product
                 else None,
+                "evaluation_result": evaluation_result,
             }
         )
     return results
@@ -304,6 +379,11 @@ def get_case(
         "analyst_recommendation": case.analyst_recommendation.value if case.analyst_recommendation else None,
         "human_decision": case.human_decision.value if case.human_decision else None,
         "evaluation_result": evaluation_result,
+        "allowed_actions": {
+            "run_assessment": user.role == UserRole.CREDIT_ANALYST,
+            "submit_analyst_recommendation": user.role == UserRole.CREDIT_ANALYST,
+            "submit_human_decision": user.role == UserRole.SANCTIONING_AUTHORITY,
+        },
         "version": case.version,
         "created_at": case.created_at,
         "updated_at": case.updated_at,
@@ -362,7 +442,10 @@ def evaluate_case(
             "decision": decision,
         }
 
-        update_values = {"recommendation": decision["decision"]}
+        update_values = {
+            "recommendation": decision["decision"],
+            "status": CaseStatus.ASSESSMENT_COMPLETED.value,
+        }
 
         cas_update_case_and_audit(
             db=db,
@@ -463,7 +546,10 @@ def record_analyst_recommendation(
             "recommendation": rec_enum.value,
         }
 
-        update_values = {"analyst_recommendation": rec_enum.value}
+        update_values = {
+            "analyst_recommendation": rec_enum.value,
+            "status": CaseStatus.DECISION_PENDING.value,
+        }
 
         cas_update_case_and_audit(
             db=db,
@@ -577,7 +663,24 @@ def record_human_decision(
         if req.approved_amount is not None:
             result_payload["approved_amount"] = req.approved_amount
 
-        update_values = {"human_decision": dec_enum.value}
+        status_val = CaseStatus.DECISION_PENDING
+        if dec_enum in [
+            HumanDecisionAction.APPROVE_AS_REQUESTED,
+            HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE,
+        ]:
+            status_val = CaseStatus.HUMAN_APPROVED
+        elif dec_enum == HumanDecisionAction.DECLINE_AFTER_HUMAN_REVIEW:
+            status_val = CaseStatus.HUMAN_DECLINED
+        elif dec_enum in [
+            HumanDecisionAction.DEFER_FOR_EVIDENCE,
+            HumanDecisionAction.ESCALATE_FOR_DUE_DILIGENCE,
+        ]:
+            status_val = CaseStatus.HUMAN_DEFERRED
+
+        update_values = {
+            "human_decision": dec_enum.value,
+            "status": status_val.value,
+        }
 
         cas_update_case_and_audit(
             db=db,

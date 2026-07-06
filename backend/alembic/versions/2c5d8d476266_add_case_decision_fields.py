@@ -22,13 +22,13 @@ def upgrade() -> None:
     """Upgrade schema."""
     from sqlalchemy.dialects import postgresql
     
-    analyst_enum = postgresql.ENUM('RECOMMEND_ALTERNATIVE_STRUCTURE', 'REQUEST_ADDITIONAL_EVIDENCE', 'RECOMMEND_ENHANCED_DUE_DILIGENCE', name='analystrecommendationaction')
+    analyst_enum = postgresql.ENUM('RECOMMEND_AS_REQUESTED', 'RECOMMEND_ALTERNATIVE_STRUCTURE', 'REQUEST_ADDITIONAL_EVIDENCE', 'RECOMMEND_ENHANCED_DUE_DILIGENCE', 'RECOMMEND_DECLINE', name='analystrecommendationaction')
     analyst_enum.create(op.get_bind())
     
     human_enum = postgresql.ENUM('APPROVE_AS_REQUESTED', 'APPROVE_ALTERNATIVE_STRUCTURE', 'DEFER_FOR_EVIDENCE', 'ESCALATE_FOR_DUE_DILIGENCE', 'DECLINE_AFTER_HUMAN_REVIEW', name='humandecisionaction')
     human_enum.create(op.get_bind())
     
-    op.add_column('cases', sa.Column('analyst_recommendation', sa.Enum('RECOMMEND_ALTERNATIVE_STRUCTURE', 'REQUEST_ADDITIONAL_EVIDENCE', 'RECOMMEND_ENHANCED_DUE_DILIGENCE', name='analystrecommendationaction'), nullable=True))
+    op.add_column('cases', sa.Column('analyst_recommendation', sa.Enum('RECOMMEND_AS_REQUESTED', 'RECOMMEND_ALTERNATIVE_STRUCTURE', 'REQUEST_ADDITIONAL_EVIDENCE', 'RECOMMEND_ENHANCED_DUE_DILIGENCE', 'RECOMMEND_DECLINE', name='analystrecommendationaction'), nullable=True))
     op.add_column('cases', sa.Column('human_decision', sa.Enum('APPROVE_AS_REQUESTED', 'APPROVE_ALTERNATIVE_STRUCTURE', 'DEFER_FOR_EVIDENCE', 'ESCALATE_FOR_DUE_DILIGENCE', 'DECLINE_AFTER_HUMAN_REVIEW', name='humandecisionaction'), nullable=True))
 
 

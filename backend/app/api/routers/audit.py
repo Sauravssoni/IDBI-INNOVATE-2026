@@ -54,7 +54,8 @@ def get_case_audit_trail(
 
 @router.get("/api/audit/logs")
 def get_recent_audit_logs(
-    limit: int = Query(50, le=100),
+    limit: int = Query(50, le=100, ge=1),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> List[Dict[str, Any]]:
@@ -70,7 +71,12 @@ def get_recent_audit_logs(
     events = (
         db.query(AuditEvent)
         .filter(AuditEvent.case_id.in_(scoped_cases_query))
-        .order_by(AuditEvent.created_at.desc(), AuditEvent.event_sequence.desc())
+        .order_by(
+            AuditEvent.created_at.desc(),
+            AuditEvent.event_sequence.desc(),
+            AuditEvent.id.desc(),
+        )
+        .offset(offset)
         .limit(limit)
         .all()
     )

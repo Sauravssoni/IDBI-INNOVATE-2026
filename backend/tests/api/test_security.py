@@ -168,22 +168,31 @@ def test_auth_me(test_users):
     # Clear any cookies stored on client from previous tests
     client.cookies.clear()
 
-    # Unauthenticated should return 401
+    # 1. Unauthenticated should return 401
     resp_unauth = client.get("/api/auth/me")
     assert resp_unauth.status_code == 401
 
-    # Authenticated should return current user details
-    user_obj = test_users["users"][UserRole.CREDIT_ANALYST]
-    login_resp = login(user_obj.email, "securepass123")
-    assert login_resp.status_code == 200
-
-    session_token = get_cookie_from_response(login_resp, "vyapar_session_token")
-    resp_auth = client.get(
+    # 2. Invalid session token should return 401
+    resp_invalid = client.get(
         "/api/auth/me",
-        cookies={"vyapar_session_token": session_token},
+        cookies={"vyapar_session_token": "invalid_token_value_12345"},
     )
-    assert resp_auth.status_code == 200
-    data = resp_auth.json()
-    assert data["email"] == user_obj.email
-    assert data["role"] == user_obj.role.value
-    assert "id" in data
+    assert resp_invalid.status_code == 401
+
+    # 3. Test authenticated requests across all roles
+    for role, user_obj in test_users["users"].items():
+        client.cookies.clear()
+        login_resp = login(user_obj.email, "securepass123")
+        assert login_resp.status_code == 200
+
+        session_token = get_cookie_from_response(login_resp, "vyapar_session_token")
+        resp_auth = client.get(
+            "/api/auth/me",
+            cookies={"vyapar_session_token": session_token},
+        )
+        assert resp_auth.status_code == 200
+        data = resp_auth.json()
+        assert data["email"] == user_obj.email
+        assert data["role"] == user_obj.role.value
+        assert data["full_name"] == user_obj.full_name
+        assert "id" in data

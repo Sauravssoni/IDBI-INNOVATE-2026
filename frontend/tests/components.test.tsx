@@ -34,7 +34,12 @@ describe('DashboardPage', () => {
   });
 
   it('renders without fabricated crore amounts or demo fallbacks when cases are empty', async () => {
-    mockApiFetch.mockResolvedValueOnce({ status: 200, data: [] });
+    mockApiFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/cases/summary') {
+        return { status: 200, data: { total_requested_amount: 0, total_supportable_limit: 0, total_cases: 0, status_counts: {} } };
+      }
+      return { status: 200, data: [] };
+    });
 
     render(<DashboardPage />);
 
@@ -50,17 +55,22 @@ describe('DashboardPage', () => {
   });
 
   it('renders live backend values without fabricated metrics', async () => {
-    mockApiFetch.mockResolvedValueOnce({
-      status: 200,
-      data: [
-        {
-          id: 'CASE-101',
-          business_name: 'Live SME Corp',
-          requested_amount: 5000000,
-          status: 'IN_REVIEW',
-          evaluation_result: { supportable_limit: 3500000, recommendation: 'CONDITIONAL_OFFER' },
-        },
-      ],
+    mockApiFetch.mockImplementation(async (url: string) => {
+      if (url === '/api/cases/summary') {
+        return { status: 200, data: { total_requested_amount: 5000000, total_supportable_limit: 3500000, total_cases: 1, status_counts: { IN_REVIEW: 1 } } };
+      }
+      return {
+        status: 200,
+        data: [
+          {
+            id: 'CASE-101',
+            business_name: 'Live SME Corp',
+            requested_amount: 5000000,
+            status: 'IN_REVIEW',
+            evaluation_result: { supportable_limit: 3500000, recommendation: 'CONDITIONAL_OFFER' },
+          },
+        ],
+      };
     });
 
     render(<DashboardPage />);

@@ -80,12 +80,24 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
     highlight?: boolean;
   };
 
-  const navItems: NavItem[] = [
-    { label: "Dashboard", href: "/", icon: LayoutDashboard },
-    { label: "Case Inventory", href: "/cases", icon: FolderKanban },
-    { label: "Policy & Risk Engine", href: "/policy", icon: ShieldAlert, badge: "AI" },
-    { label: "Audit Log & CAS Trail", href: "/audit", icon: History },
-  ];
+  const getNavItemsForRole = (role?: string): NavItem[] => {
+    const allItems: NavItem[] = [
+      { label: "Dashboard", href: "/", icon: LayoutDashboard },
+      { label: "Case Inventory", href: "/cases", icon: FolderKanban },
+      { label: "Policy & Risk Engine", href: "/policy", icon: ShieldAlert, badge: "AI" },
+      { label: "Audit Log & CAS Trail", href: "/audit", icon: History },
+    ];
+
+    if (role === "SYSTEM_ADMIN") {
+      return allItems.filter((item) => item.href === "/");
+    }
+    if (role === "AUDITOR" || role === "RELATIONSHIP_MANAGER") {
+      return allItems.filter((item) => item.href !== "/policy");
+    }
+    return allItems;
+  };
+
+  const navItems = getNavItemsForRole(user?.role);
 
   return (
     <div className="min-h-screen bg-navy-900 text-foreground flex flex-col">

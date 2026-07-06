@@ -35,15 +35,24 @@ const formatCurrency = (val: any) => {
 export default function DashboardPage() {
   const { user } = useAuth();
   const [cases, setCases] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const loadCases = async () => {
     setLoading(true);
-    const { data, status } = await apiFetch<any[]>("/api/cases");
-    if (status === 200 && Array.isArray(data)) {
-      setCases(data);
+    const [casesRes, summaryRes] = await Promise.all([
+      apiFetch<any[]>("/api/cases"),
+      apiFetch<any>("/api/cases/summary"),
+    ]);
+    if (casesRes.status === 200 && Array.isArray(casesRes.data)) {
+      setCases(casesRes.data);
     } else {
       setCases([]);
+    }
+    if (summaryRes.status === 200 && summaryRes.data) {
+      setSummary(summaryRes.data);
+    } else {
+      setSummary(null);
     }
     setLoading(false);
   };
@@ -52,17 +61,19 @@ export default function DashboardPage() {
     loadCases();
   }, []);
 
-  const totalPipelineAmount = cases.reduce(
+  const totalPipelineAmount = summary?.total_requested_amount ?? cases.reduce(
     (sum, c) => sum + (Number(c.requested_amount) || 0),
     0
   );
 
-  const totalSupportableLimit = cases.reduce(
+  const totalSupportableLimit = summary?.approved_amount ?? cases.reduce(
     (sum, c) => sum + (Number(c.evaluation_result?.binding_limit || c.evaluation_result?.supportable_limit) || 0),
     0
   );
 
-  const pendingCount = cases.filter(
+  const totalCasesCount = summary?.active_cases ?? cases.length;
+
+  const pendingCount = summary?.awaiting_human_decision ?? cases.filter(
     (c) => c.status === "IN_REVIEW" || c.status === "SUBMITTED" || c.status === "PENDING"
   ).length;
 
@@ -121,7 +132,7 @@ export default function DashboardPage() {
               {loading ? "..." : formatCurrency(totalPipelineAmount)}
             </div>
             <div className="text-[11px] text-emerald-400 font-mono">
-              {loading ? "..." : `${cases.length} Scoped Applications`}
+              {loading ? "..." : `${totalCasesCount} Scoped Applications`}
             </div>
           </div>
           <div>
@@ -152,7 +163,7 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="text-2xl font-bold text-white">
-            {loading ? "..." : `${cases.length} Cases`}
+            {loading ? "..." : `${totalCasesCount} Cases`}
           </div>
           <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
             <span className="text-blue-400">BOLA Scoped</span> • Active Pipeline

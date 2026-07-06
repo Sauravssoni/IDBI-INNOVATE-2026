@@ -106,7 +106,11 @@ def seed_shakti():
 
     # Seed users
     print("Seeding users and scopes...")
-    default_pw = os.environ.get("DEMO_USER_PASSWORD", "demo_dev_only_123")
+    default_pw = os.environ.get("DEMO_USER_PASSWORD")
+    if not default_pw:
+        raise RuntimeError(
+            "DEMO_USER_PASSWORD environment variable must be explicitly supplied for development/test seeding."
+        )
     users_to_seed = [
         {
             "email": "rm@bank.example",
@@ -266,8 +270,8 @@ def seed_shakti():
 
         # Bank
         bank_credits = round(
-            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))), 2
-        )  # nosec B311
+            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))), 2  # nosec B311
+        )
         db.add(
             BankTransaction(
                 business_id_fk=shakti.id,

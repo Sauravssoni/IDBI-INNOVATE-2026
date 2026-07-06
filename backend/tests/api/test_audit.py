@@ -10,6 +10,7 @@ import os
 @pytest.fixture(scope="module", autouse=True)
 def setup_shakti_data():
     import urllib.parse
+    import uuid
     db_url = os.environ.get("DATABASE_URL", str(engine.url))
     parsed_url = urllib.parse.urlparse(db_url)
     datname = parsed_url.path.lstrip("/")
@@ -17,6 +18,9 @@ def setup_shakti_data():
         raise RuntimeError(f"Refusing to run tests against non-test database name: '{datname}'")
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Refusing to run tests in production environment")
+
+    test_password = os.environ.get("DEMO_USER_PASSWORD") or f"test_pw_{uuid.uuid4().hex}"
+    os.environ["DEMO_USER_PASSWORD"] = test_password
 
     seed_shakti()
     yield
@@ -41,9 +45,12 @@ def get_cookie_from_response(response, cookie_name):
 
 
 def get_auth_headers(client: TestClient, email: str):
+    password = os.environ.get("DEMO_USER_PASSWORD")
+    if not password:
+        raise RuntimeError("DEMO_USER_PASSWORD must be set for test login.")
     response = client.post(
         "/api/auth/login",
-        json={"email": email, "password": os.environ.get("DEMO_USER_PASSWORD", "demo_dev_only_123")},
+        json={"email": email, "password": password},
     )
     assert response.status_code == 200, f"Failed to login {email}: {response.text}"
     session_token = get_cookie_from_response(response, "vyapar_session_token")
@@ -75,11 +82,15 @@ def test_audit_endpoints_and_scope(client: TestClient, db: Session):
         seqs = [e["event_sequence"] for e in events]
         assert seqs == sorted(seqs), "event_sequence must be strictly ordered"
 
-    # 3. Test GET /api/audit/logs with RM
+    # 3. Test GET /api/audit/logs with RM (including pagination limit/offset)
     logs_res = client.get("/api/audit/logs", headers=rm_auth["headers"])
     assert logs_res.status_code == 200
     logs = logs_res.json()
     assert isinstance(logs, list)
+
+    paginated_res = client.get("/api/audit/logs?limit=5&offset=0", headers=rm_auth["headers"])
+    assert paginated_res.status_code == 200
+    assert len(paginated_res.json()) <= 5
 
     # 4. Test System Admin cannot view audit
     sys_auth = get_auth_headers(client, "system@bank.example")

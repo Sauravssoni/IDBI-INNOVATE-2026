@@ -3,20 +3,17 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.main import app
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, engine
 from app.seed.seed_shakti import seed_shakti
 from app.db.orm.cases import Case
 
-from app.db.session import engine
-from app.db.orm.cases import Base
-from sqlalchemy import text
 import os
-import subprocess
 
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_shakti_db():
     import urllib.parse
+    import uuid
 
     db_url = os.environ.get("DATABASE_URL", str(engine.url))
     parsed_url = urllib.parse.urlparse(db_url)
@@ -27,6 +24,9 @@ def setup_shakti_db():
         )
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Refusing to run tests in production environment")
+
+    test_password = os.environ.get("DEMO_USER_PASSWORD") or f"test_pw_{uuid.uuid4().hex}"
+    os.environ["DEMO_USER_PASSWORD"] = test_password
 
     seed_shakti()
     yield
@@ -53,11 +53,15 @@ def get_cookie_from_response(response, cookie_name):
 def get_auth_headers(client: TestClient, email: str):
     import os
 
+    password = os.environ.get("DEMO_USER_PASSWORD")
+    if not password:
+        raise RuntimeError("DEMO_USER_PASSWORD must be set for test login.")
+
     response = client.post(
         "/api/auth/login",
         json={
             "email": email,
-            "password": os.environ.get("DEMO_USER_PASSWORD", "demo_dev_only_123"),
+            "password": password,
         },
     )
     assert response.status_code == 200, f"Failed to login {email}: {response.text}"

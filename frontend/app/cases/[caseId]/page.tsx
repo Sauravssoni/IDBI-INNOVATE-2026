@@ -76,12 +76,12 @@ export default function CaseEvaluationPage() {
     if (!foundCase) {
       const { data: listData, status: listStatus, error: listErr } = await apiFetch<any[]>("/api/cases/");
       if (listStatus === 200 && Array.isArray(listData)) {
+        const isShaktiAlias = targetId.toLowerCase() === "shakti" || targetId === "SHAKTI_PRECISION_001";
         const match = listData.find(
           (c) =>
             c.id === targetId ||
             c.business_id === targetId ||
-            c.business_name?.toLowerCase().includes("shakti") ||
-            c.business_id === "SHAKTI_PRECISION_001"
+            (isShaktiAlias && (c.business_name?.toLowerCase().includes("shakti") || c.business_id === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001"))
         );
 
         if (match) {
@@ -154,7 +154,7 @@ export default function CaseEvaluationPage() {
     setActionSuccess(null);
 
     const idempotencyKey = `rec-${caseData.id}-${Date.now()}`;
-    const recAction = evalResult?.decision?.decision === "CONDITIONAL_OFFER" ? "RECOMMEND_CONDITIONAL" : "RECOMMEND_APPROVAL";
+    const recAction = evalResult?.decision?.decision === "CONDITIONAL_OFFER" ? "RECOMMEND_ALTERNATIVE_STRUCTURE" : "RECOMMEND_AS_REQUESTED";
     const limit = evalResult?.decision?.binding_limit || caseData.requested_amount || 0;
 
     const payload = {
@@ -238,6 +238,27 @@ export default function CaseEvaluationPage() {
       </div>
     );
   }
+
+  if (user?.role === "SYSTEM_ADMIN") {
+    return (
+      <div className="glass-panel p-8 rounded-2xl border border-rose-500/30 text-center max-w-md mx-auto my-12 space-y-4">
+        <AlertTriangle className="w-12 h-12 text-rose-400 mx-auto" />
+        <h3 className="text-lg font-bold text-white">Access Restricted</h3>
+        <p className="text-xs text-slate-400">System Administrators do not have access to case workspace content.</p>
+        <Link
+          href="/dashboard"
+          className="inline-block px-4 py-2 bg-navy-800 hover:bg-navy-700 text-white text-xs font-mono rounded-xl border border-white/10 transition-colors"
+        >
+          RETURN TO DASHBOARD
+        </Link>
+      </div>
+    );
+  }
+
+  const allowedActions = caseData.allowed_actions || {};
+  const canRunAssessment = allowedActions.run_assessment ?? (user?.role === "CREDIT_ANALYST");
+  const canSubmitAnalystRec = allowedActions.submit_analyst_recommendation ?? (user?.role === "CREDIT_ANALYST");
+  const canSubmitHumanDecision = allowedActions.submit_human_decision ?? (user?.role === "SANCTIONING_AUTHORITY");
 
   const reqAmount = caseData.requested_amount || 0;
   const scoreVal = evalResult?.scores?.total_score ?? "-";
@@ -503,127 +524,131 @@ export default function CaseEvaluationPage() {
         </div>
 
         {/* Role-Specific Action Panels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left: Analyst & RM Evaluation Actions */}
-          <div className="p-5 rounded-xl bg-navy-800/60 border border-white/5 space-y-4">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-blue-400" />
-              <span>Credit Analyst & RM Workflows</span>
-            </h3>
-            <p className="text-xs text-slate-400">
-              Trigger live CAS evaluation engine or submit formal recommendation to the Sanctioning Authority.
+        {(!canRunAssessment && !canSubmitAnalystRec && !canSubmitHumanDecision) ? (
+          <div className="p-6 text-center space-y-2 bg-navy-800/60 rounded-xl border border-white/5">
+            <Lock className="w-8 h-8 text-slate-500 mx-auto" />
+            <div className="text-xs font-bold text-slate-300">Read-Only Workspace Access</div>
+            <p className="text-[11px] text-slate-500 max-w-md mx-auto">
+              Your role ({user?.role}) has read-only access to this case workspace. Mutation workflows (evaluations, recommendations, and sanction decisions) are restricted to assigned Credit Analysts and Sanctioning Authorities.
             </p>
-
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                onClick={handleRunEvaluation}
-                disabled={evaluating}
-                className="px-4 py-2.5 bg-navy-800 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs rounded-xl border border-blue-500/30 flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
-              >
-                {evaluating ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
-                ) : (
-                  <Play className="w-4 h-4 fill-current" />
-                )}
-                <span>Run CAS Engine Evaluation</span>
-              </button>
-              <button
-                onClick={handleSubmitAnalystRec}
-                disabled={evaluating || user?.role === "SANCTIONING_AUTHORITY"}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-              >
-                <Send className="w-4 h-4" />
-                <span>Submit Rec ({formatCurrency(supportLimit)})</span>
-              </button>
-            </div>
-            {user?.role === "SANCTIONING_AUTHORITY" && (
-              <p className="text-[11px] text-amber-400/80 font-mono">
-                * Sanction Authorities review recommendations rather than initiating Analyst submissions.
-              </p>
-            )}
           </div>
-
-          {/* Right: Sanctioning Authority Decision Gate */}
-          <div className="p-5 rounded-xl bg-navy-800/60 border border-amber-500/20 space-y-4 relative overflow-hidden">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-amber-400" />
-                <span>Sanctioning Authority Gate</span>
-              </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                SA MANDATE REQUIRED
-              </span>
-            </div>
-
-            {user?.role !== "SANCTIONING_AUTHORITY" ? (
-              <div className="p-6 text-center space-y-2 bg-navy-900/80 rounded-xl border border-white/5">
-                <Lock className="w-8 h-8 text-slate-500 mx-auto" />
-                <div className="text-xs font-bold text-slate-300">Sanction Authority Access Required</div>
-                <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
-                  Only users with active SA mandate can execute final loan approvals or structure modifications.
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left: Analyst Workflows */}
+            {(canRunAssessment || canSubmitAnalystRec) ? (
+              <div className="p-5 rounded-xl bg-navy-800/60 border border-white/5 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-blue-400" />
+                  <span>Credit Analyst Workflows</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Trigger live CAS evaluation engine or submit formal recommendation to the Sanctioning Authority.
                 </p>
+
+                <div className="flex flex-wrap gap-3 pt-2">
+                  {canRunAssessment && (
+                    <button
+                      onClick={handleRunEvaluation}
+                      disabled={evaluating}
+                      className="px-4 py-2.5 bg-navy-800 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs rounded-xl border border-blue-500/30 flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                    >
+                      {evaluating ? (
+                        <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
+                      ) : (
+                        <Play className="w-4 h-4 fill-current" />
+                      )}
+                      <span>Run CAS Engine Evaluation</span>
+                    </button>
+                  )}
+                  {canSubmitAnalystRec && (
+                    <button
+                      onClick={handleSubmitAnalystRec}
+                      disabled={evaluating}
+                      className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>Submit Rec ({formatCurrency(supportLimit)})</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">
-                    DECISION ACTION
-                  </label>
-                  <select
-                    value={decisionAction}
-                    onChange={(e) => setDecisionAction(e.target.value)}
-                    className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
-                  >
-                    <option value="APPROVE_AS_REQUESTED">Approve as Requested ({formatCurrency(reqAmount)})</option>
-                    <option value="APPROVE_ALTERNATIVE_STRUCTURE">Approve Alternative Structure ({formatCurrency(supportLimit)})</option>
-                    <option value="DEFER">Defer Case for Further Audit</option>
-                    <option value="DECLINE">Decline Application</option>
-                  </select>
+            ) : null}
+
+            {/* Right: Sanctioning Authority Decision Gate */}
+            {canSubmitHumanDecision ? (
+              <div className="p-5 rounded-xl bg-navy-800/60 border border-amber-500/20 space-y-4 relative overflow-hidden">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-amber-400" />
+                    <span>Sanctioning Authority Gate</span>
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    SA MANDATE REQUIRED
+                  </span>
                 </div>
 
-                {decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE" && (
+                <div className="space-y-3">
                   <div>
                     <label className="block text-xs font-mono text-slate-300 mb-1">
-                      APPROVED AMOUNT (₹)
+                      DECISION ACTION
+                    </label>
+                    <select
+                      value={decisionAction}
+                      onChange={(e) => setDecisionAction(e.target.value)}
+                      className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="APPROVE_AS_REQUESTED">Approve as Requested ({formatCurrency(reqAmount)})</option>
+                      <option value="APPROVE_ALTERNATIVE_STRUCTURE">Approve Alternative Structure ({formatCurrency(supportLimit)})</option>
+                      <option value="DEFER_FOR_EVIDENCE">Defer Case for Further Evidence</option>
+                      <option value="ESCALATE_FOR_DUE_DILIGENCE">Escalate for Due Diligence</option>
+                      <option value="DECLINE_AFTER_HUMAN_REVIEW">Decline Application</option>
+                    </select>
+                  </div>
+
+                  {decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE" && (
+                    <div>
+                      <label className="block text-xs font-mono text-slate-300 mb-1">
+                        APPROVED AMOUNT (₹)
+                      </label>
+                      <input
+                        type="number"
+                        value={approvedAmount}
+                        onChange={(e) => setApprovedAmount(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-mono text-slate-300 mb-1">
+                      SANCTION NOTES / RATIONALE
                     </label>
                     <input
-                      type="number"
-                      value={approvedAmount}
-                      onChange={(e) => setApprovedAmount(Number(e.target.value))}
-                      className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+                      type="text"
+                      value={sanctionNotes}
+                      onChange={(e) => setSanctionNotes(e.target.value)}
+                      placeholder="Enter sanction rationale or conditions..."
+                      className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
                     />
                   </div>
-                )}
 
-                <div>
-                  <label className="block text-xs font-mono text-slate-300 mb-1">
-                    SANCTION NOTES / RATIONALE
-                  </label>
-                  <input
-                    type="text"
-                    value={sanctionNotes}
-                    onChange={(e) => setSanctionNotes(e.target.value)}
-                    placeholder="Enter sanction rationale or conditions..."
-                    className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
-                  />
+                  <button
+                    onClick={handleRecordSanctionDecision}
+                    disabled={submittingDecision}
+                    className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-navy-900 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {submittingDecision ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4 stroke-[3]" />
+                    )}
+                    <span>Execute Sanction Decision (Prototype)</span>
+                  </button>
                 </div>
-
-                <button
-                  onClick={handleRecordSanctionDecision}
-                  disabled={submittingDecision}
-                  className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-navy-900 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {submittingDecision ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  )}
-                  <span>Execute Sanction Decision (Prototype)</span>
-                </button>
               </div>
-            )}
+            ) : null}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
