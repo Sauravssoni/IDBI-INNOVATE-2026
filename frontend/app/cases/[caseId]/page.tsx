@@ -256,9 +256,9 @@ export default function CaseEvaluationPage() {
   }
 
   const allowedActions = caseData.allowed_actions || {};
-  const canRunAssessment = allowedActions.run_assessment ?? (user?.role === "CREDIT_ANALYST");
-  const canSubmitAnalystRec = allowedActions.submit_analyst_recommendation ?? (user?.role === "CREDIT_ANALYST");
-  const canSubmitHumanDecision = allowedActions.submit_human_decision ?? (user?.role === "SANCTIONING_AUTHORITY");
+  const canRunAssessment = allowedActions.run_assessment === true;
+  const canSubmitAnalystRec = allowedActions.submit_analyst_recommendation === true;
+  const canSubmitHumanDecision = allowedActions.record_human_decision === true;
 
   const reqAmount = caseData.requested_amount || 0;
   const scoreVal = evalResult?.scores?.total_score ?? "-";

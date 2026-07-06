@@ -29,11 +29,42 @@ from app.services.authz import (
     can_run_assessment,
     can_submit_analyst_recommendation,
     can_record_human_decision,
+    can_view_audit,
 )
 import hashlib
 import json
 import datetime
 from fastapi.encoders import jsonable_encoder
+from app.db.orm.cases import HumanDecisionAction
+
+def check_can_run_assessment(db: Session, case: Case, user: User) -> bool:
+    try:
+        can_run_assessment(db, case, user)
+        return True
+    except HTTPException:
+        return False
+
+def check_can_submit_analyst_recommendation(db: Session, case: Case, user: User) -> bool:
+    try:
+        can_submit_analyst_recommendation(db, case, user)
+        return True
+    except HTTPException:
+        return False
+
+def check_can_record_human_decision(db: Session, case: Case, user: User) -> bool:
+    try:
+        # Default action check since this just determines if the section should render at all
+        can_record_human_decision(db, case, user, action=HumanDecisionAction.APPROVE_AS_REQUESTED)
+        return True
+    except HTTPException:
+        return False
+
+def check_can_view_audit(db: Session, case: Case, user: User) -> bool:
+    try:
+        can_view_audit(db, case, user)
+        return True
+    except HTTPException:
+        return False
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -380,9 +411,10 @@ def get_case(
         "human_decision": case.human_decision.value if case.human_decision else None,
         "evaluation_result": evaluation_result,
         "allowed_actions": {
-            "run_assessment": user.role == UserRole.CREDIT_ANALYST,
-            "submit_analyst_recommendation": user.role == UserRole.CREDIT_ANALYST,
-            "submit_human_decision": user.role == UserRole.SANCTIONING_AUTHORITY,
+            "run_assessment": check_can_run_assessment(db, case, user),
+            "submit_analyst_recommendation": check_can_submit_analyst_recommendation(db, case, user),
+            "record_human_decision": check_can_record_human_decision(db, case, user),
+            "view_audit": check_can_view_audit(db, case, user)
         },
         "version": case.version,
         "created_at": case.created_at,
@@ -475,7 +507,7 @@ def evaluate_case(
 
 
 class AnalystRecommendationRequest(BaseModel):
-    recommendation: str
+    recommendation: AnalystRecommendationAction
     reason: str
     expected_version: int
 
@@ -495,32 +527,12 @@ def record_analyst_recommendation(
             detail="Reason is required and must be at least 10 characters",
         )
 
-    allowed_analyst_actions = {
-        "RECOMMEND_APPROVAL",
-        "RECOMMEND_CONDITIONAL",
-        "RECOMMEND_DECLINE",
-        "RECOMMEND_AS_REQUESTED",
-        "RECOMMEND_ALTERNATIVE_STRUCTURE",
-        "REQUEST_ADDITIONAL_EVIDENCE",
-        "RECOMMEND_ENHANCED_DUE_DILIGENCE",
-    }
-    if req.recommendation not in allowed_analyst_actions:
+    if req.recommendation not in AnalystRecommendationAction:
         raise HTTPException(
             status_code=400, detail="Invalid recommendation action"
         )
-
-    mapped_rec_str = req.recommendation
-    if mapped_rec_str == "RECOMMEND_APPROVAL":
-        mapped_rec_str = "RECOMMEND_AS_REQUESTED"
-    elif mapped_rec_str == "RECOMMEND_CONDITIONAL":
-        mapped_rec_str = "RECOMMEND_ALTERNATIVE_STRUCTURE"
-    elif mapped_rec_str == "RECOMMEND_DECLINE":
-        mapped_rec_str = "RECOMMEND_DECLINE"
-
-    try:
-        rec_enum = AnalystRecommendationAction(mapped_rec_str)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid recommendation action")
+    
+    rec_enum = req.recommendation
 
     case = can_view_case(db, user, case_id)
     can_submit_analyst_recommendation(db, case, user)
@@ -579,7 +591,7 @@ def record_analyst_recommendation(
 
 
 class HumanDecisionRequest(BaseModel):
-    decision: str
+    decision: HumanDecisionAction
     reason: str
     expected_version: int
     approved_amount: Optional[Decimal] = None
@@ -600,36 +612,12 @@ def record_human_decision(
             detail="Reason is required and must be at least 10 characters",
         )
 
-    allowed_human_actions = {
-        "APPROVE",
-        "APPROVE_AS_REQUESTED",
-        "APPROVE_ALTERNATIVE_STRUCTURE",
-        "CONDITIONAL_OFFER",
-        "DECLINE",
-        "DECLINE_AFTER_HUMAN_REVIEW",
-        "DEFER",
-        "DEFER_FOR_EVIDENCE",
-        "ESCALATE_FOR_DUE_DILIGENCE",
-    }
-    if req.decision not in allowed_human_actions:
+    if req.decision not in HumanDecisionAction:
         raise HTTPException(
             status_code=400, detail="Invalid decision action"
         )
 
-    mapped_dec_str = req.decision
-    if mapped_dec_str == "APPROVE":
-        mapped_dec_str = "APPROVE_AS_REQUESTED"
-    elif mapped_dec_str == "CONDITIONAL_OFFER":
-        mapped_dec_str = "APPROVE_ALTERNATIVE_STRUCTURE"
-    elif mapped_dec_str == "DECLINE":
-        mapped_dec_str = "DECLINE_AFTER_HUMAN_REVIEW"
-    elif mapped_dec_str == "DEFER":
-        mapped_dec_str = "DEFER_FOR_EVIDENCE"
-
-    try:
-        dec_enum = HumanDecisionAction(mapped_dec_str)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid decision action")
+    dec_enum = req.decision
 
     if (
         dec_enum == HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE

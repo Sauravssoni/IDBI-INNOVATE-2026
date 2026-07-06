@@ -99,6 +99,7 @@ describe('CaseEvaluationPage - Role Gating and Read-Only Load', () => {
         business_name: 'Test Borrower',
         requested_amount: 5000000,
         status: 'SUBMITTED',
+        allowed_actions: { run_assessment: true }
       },
     });
 
@@ -118,7 +119,12 @@ describe('CaseEvaluationPage - Role Gating and Read-Only Load', () => {
     });
     mockApiFetch.mockResolvedValue({
       status: 200,
-      data: { id: 'CASE-001', business_name: 'SME Corp', requested_amount: 5000000 },
+      data: { 
+        id: 'CASE-001', 
+        business_name: 'SME Corp', 
+        requested_amount: 5000000,
+        allowed_actions: { run_assessment: true, submit_analyst_recommendation: true }
+      },
     });
 
     render(<CaseEvaluationPage />);
@@ -134,7 +140,12 @@ describe('CaseEvaluationPage - Role Gating and Read-Only Load', () => {
     });
     mockApiFetch.mockResolvedValue({
       status: 200,
-      data: { id: 'CASE-001', business_name: 'SME Corp', requested_amount: 5000000 },
+      data: { 
+        id: 'CASE-001', 
+        business_name: 'SME Corp', 
+        requested_amount: 5000000,
+        allowed_actions: {}
+      },
     });
 
     render(<CaseEvaluationPage />);
@@ -159,7 +170,13 @@ describe('CaseEvaluationPage - Role Gating and Read-Only Load', () => {
       }
       return {
         status: 200,
-        data: { id: 'CASE-001', business_name: 'SME Corp', requested_amount: 5000000, version: 1 },
+        data: { 
+          id: 'CASE-001', 
+          business_name: 'SME Corp', 
+          requested_amount: 5000000, 
+          version: 1,
+          allowed_actions: { run_assessment: true } 
+        },
       };
     });
 
@@ -196,7 +213,13 @@ describe('CaseEvaluationPage - Role Gating and Read-Only Load', () => {
       }
       return {
         status: 200,
-        data: { id: 'CASE-001', business_name: 'SME Corp', requested_amount: 5000000, version: 1 },
+        data: { 
+          id: 'CASE-001', 
+          business_name: 'SME Corp', 
+          requested_amount: 5000000, 
+          version: 1,
+          allowed_actions: { run_assessment: true } 
+        },
       };
     });
 
