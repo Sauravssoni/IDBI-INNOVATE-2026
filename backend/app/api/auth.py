@@ -148,3 +148,16 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         samesite="lax",
     )
     return {"status": "logged_out"}
+
+
+@router.get("/me", response_model=LoginResponse)
+def get_me(request: Request, db: Session = Depends(get_db)):
+    from app.api.dependencies import get_current_user
+
+    user = get_current_user(request, db)
+    return LoginResponse(
+        id=str(user.id),
+        full_name=str(user.full_name),
+        role=user.role.value,
+        email=str(user.email),
+    )
