@@ -12,12 +12,11 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db.base import Base
-from app.db.orm.users import User, SessionStore
-from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord
-from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate
-from app.db.orm.consents import Consent, DataConnection
-from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation
-from dotenv import load_dotenv
+from app.db.orm.users import User, SessionStore  # noqa: F401
+from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord  # noqa: F401
+from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate  # noqa: F401
+from app.db.orm.consents import Consent, DataConnection  # noqa: F401
+from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation  # noqa: F401
 
 load_dotenv()
 
@@ -31,9 +30,10 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override the database URL if provided in the environment
-if os.getenv("DATABASE_URL"):
+env_url = os.getenv("DATABASE_URL")
+if env_url:
     # SQLAlchemy needs postgresql:// instead of postgres://
-    url = os.getenv("DATABASE_URL").replace("postgres://", "postgresql://")
+    url = env_url.replace("postgres://", "postgresql://")
     config.set_main_option("sqlalchemy.url", url)
 else:
     db_user = os.getenv("POSTGRES_USER", "vyapar_local")

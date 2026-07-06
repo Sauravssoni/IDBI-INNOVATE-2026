@@ -159,7 +159,7 @@ def can_record_human_decision(
     db: Session,
     case: Case,
     user: User,
-    action: HumanDecisionAction,
+    action: Optional[HumanDecisionAction] = None,
     approved_amount: Optional[Decimal] = None,
     now: Optional[datetime] = None,
 ):
@@ -205,7 +205,10 @@ def can_record_human_decision(
                 m.region_id and m.region_id == case_branch.region_id
             ):
                 # Valid matching mandate scope found. Check amount if approval action.
-                if action == HumanDecisionAction.APPROVE_AS_REQUESTED:
+                if action is None:
+                    has_mandate = True
+                    break
+                elif action == HumanDecisionAction.APPROVE_AS_REQUESTED:
                     if case.requested_amount <= m.maximum_amount:
                         has_mandate = True
                         break
