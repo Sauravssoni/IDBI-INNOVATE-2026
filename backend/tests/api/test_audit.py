@@ -9,7 +9,6 @@ from datetime import datetime, timedelta, timezone
 from app.main import app
 from app.db.session import SessionLocal, engine
 from app.seed.seed_shakti import seed_shakti
-from app.db.orm.users import User, UserRole, SessionStore
 from app.api.auth import get_password_hash
 
 def utc_now():

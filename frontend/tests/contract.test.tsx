@@ -1,8 +1,7 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import CaseEvaluationPage from '../app/cases/[caseId]/page';
-import DashboardPage from '../app/page';
 import { BankerShell } from '../components/BankerShell';
 
 // Mock Next.js Link and navigation
@@ -283,13 +282,13 @@ describe('Frontend Contract Tests', () => {
     mockUseAuth.mockReturnValue({ user: { id: 'usr-1', full_name: 'Analyst', role: 'CREDIT_ANALYST' } });
     const { unmount } = render(<BankerShell><div>child</div></BankerShell>);
     expect(screen.getByText('Policy & Risk Engine')).toBeInTheDocument();
-    expect(screen.getByText('Audit Log & CAS Trail')).toBeInTheDocument();
+    expect(screen.queryByText('Audit Log & CAS Trail')).not.toBeInTheDocument();
     unmount();
 
     mockUseAuth.mockReturnValue({ user: { id: 'usr-3', full_name: 'SA', role: 'SANCTIONING_AUTHORITY' } });
     render(<BankerShell><div>child</div></BankerShell>);
     expect(screen.getByText('Policy & Risk Engine')).toBeInTheDocument();
-    expect(screen.getByText('Audit Log & CAS Trail')).toBeInTheDocument();
+    expect(screen.queryByText('Audit Log & CAS Trail')).not.toBeInTheDocument();
   });
 });
 

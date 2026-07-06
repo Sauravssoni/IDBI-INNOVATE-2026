@@ -1,6 +1,5 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 from app.main import app
 from app.db.session import SessionLocal, engine
 from app.api.auth import hash_token
@@ -62,7 +61,7 @@ def test_auth_missing_session(client: TestClient):
     res = client.get("/api/auth/me")
     assert res.status_code == 401
 
-def test_auth_expired_session(client: TestClient, db: Session):
+def test_auth_expired_session(client: TestClient, db):
     session_token, _ = login_and_get_tokens(client)
     
     # Expire the session in DB
@@ -76,7 +75,7 @@ def test_auth_expired_session(client: TestClient, db: Session):
     res = client.get("/api/auth/me")
     assert res.status_code == 401
 
-def test_auth_revoked_session(client: TestClient, db: Session):
+def test_auth_revoked_session(client: TestClient, db):
     session_token, csrf_token = login_and_get_tokens(client)
     
     client.cookies.clear()
@@ -89,7 +88,7 @@ def test_auth_revoked_session(client: TestClient, db: Session):
     res = client.get("/api/auth/me")
     assert res.status_code == 401
 
-def test_second_login_invalidates_first(client: TestClient, db: Session):
+def test_second_login_invalidates_first(client: TestClient, db):
     session_token1, _ = login_and_get_tokens(client)
     session_token2, _ = login_and_get_tokens(client)
     
