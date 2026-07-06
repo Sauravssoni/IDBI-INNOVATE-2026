@@ -133,10 +133,8 @@ export default function CaseEvaluationPage() {
 
     if (status === 200 || status === 201) {
       setEvalResult(data);
-      const score = data?.scores?.total_score ?? "-";
-      const band = data?.scores?.band ?? "-";
       const decision = data?.decision?.decision ?? "-";
-      setActionSuccess(`AI-assisted credit assessment completed successfully! Score: ${score} / 900 (Band ${band}) • Recommendation: ${decision}`);
+      setActionSuccess(`AI-assisted credit assessment completed successfully! Recommendation: ${decision}`);
       if (data?.decision?.binding_limit) {
         setApprovedAmount(data.decision.binding_limit);
       }
@@ -261,8 +259,6 @@ export default function CaseEvaluationPage() {
   const canSubmitHumanDecision = allowedActions.record_human_decision === true;
 
   const reqAmount = caseData.requested_amount || 0;
-  const scoreVal = evalResult?.scores?.total_score ?? "-";
-  const bandVal = evalResult?.scores?.band ?? "-";
   const recVal = evalResult?.decision?.decision ?? "-";
   const supportLimit = evalResult?.decision?.binding_limit ?? "-";
   const dscrVal = evalResult?.features?.dscr ?? "-";
@@ -315,10 +311,7 @@ export default function CaseEvaluationPage() {
               <div className="text-[10px] font-mono text-slate-400">REQUESTED LIMIT</div>
               <div className="text-lg font-bold text-white font-mono mt-0.5">{formatCurrency(reqAmount)}</div>
             </div>
-            <div>
-              <div className="text-[10px] font-mono text-slate-400">CAS RISK SCORE</div>
-              <div className="text-lg font-bold text-pulse-400 font-mono mt-0.5">{scoreVal} {scoreVal !== "-" ? "/ 900" : ""}</div>
-            </div>
+
             <div className="col-span-2 sm:col-span-1">
               <div className="text-[10px] font-mono text-slate-400">SUPPORTABLE LIMIT</div>
               <div className="text-lg font-bold text-emerald-400 font-mono mt-0.5">{formatCurrency(supportLimit)}</div>
@@ -358,24 +351,12 @@ export default function CaseEvaluationPage() {
 
       {/* Main Grid: 3 Pillars (CAS Score, Reconciliation, CAM) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Pillar 1: CAS Credit Assessment Score */}
+        {/* Pillar 1: Assessment Scores */}
         <div className="glass-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Pillar 1: Credit Score</span>
+              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Pillar 1: Assessment Scores</span>
               <Award className="w-5 h-5 text-pulse-400" />
-            </div>
-
-            <div className="text-center py-6">
-              <div className="inline-flex items-center justify-center w-36 h-36 rounded-full bg-gradient-to-tr from-pulse-500/20 to-emerald-500/20 border-4 border-pulse-500/40 relative shadow-inner">
-                <div>
-                  <div className="text-3xl font-extrabold text-white font-mono">{scoreVal}</div>
-                  <div className="text-[10px] font-mono text-pulse-400 uppercase">{scoreVal !== "-" ? "out of 900" : "UN-EVALUATED"}</div>
-                </div>
-              </div>
-              <div className="mt-4 font-bold text-emerald-400 text-sm">
-                BAND {bandVal} • {bandVal !== "-" ? (bandVal.toString().startsWith("A") ? "LOW RISK PROFILE" : bandVal.toString().startsWith("B") ? "MODERATE RISK PROFILE" : "HIGH RISK PROFILE") : "PENDING"}
-              </div>
             </div>
 
             <div className="space-y-3 pt-4 border-t border-white/10 text-xs">

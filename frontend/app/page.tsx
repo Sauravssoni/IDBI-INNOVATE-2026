@@ -151,7 +151,7 @@ export default function DashboardPage() {
             <div>
               <div className="text-xs font-mono text-slate-400">BOLA GOVERNANCE</div>
               <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Secured</div>
-              <div className="text-[11px] text-emerald-400 font-mono">0 Unauthorized Access</div>
+              <div className="text-[11px] text-emerald-400 font-mono">Backend BOLA enforcement active</div>
             </div>
           </div>
         )}
@@ -175,20 +175,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-emerald-500/40 transition-all group">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Supportable Limit</span>
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-            </div>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "..." : formatCurrency(totalSupportableLimit)}
-            </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-              <span className="text-emerald-400">Evaluated</span> • Recommended
-            </div>
-          </div>
+
 
           <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/40 transition-all group">
             <div className="flex items-center justify-between mb-3">
@@ -223,7 +210,7 @@ export default function DashboardPage() {
       {/* Featured Hackathon Case & System Architecture Banner */}
       <div className={`grid grid-cols-1 ${user?.role !== "SYSTEM_ADMIN" ? "lg:grid-cols-3" : ""} gap-6`}>
         {/* Case Highlight Card */}
-        {user?.role !== "SYSTEM_ADMIN" && (
+        {user?.role !== "SYSTEM_ADMIN" && shaktiCase && (
           <div className="lg:col-span-2 glass-panel p-6 sm:p-8 rounded-2xl border border-pulse-500/30 bg-gradient-to-br from-navy-800 via-navy-800/80 to-navy-900 relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 right-0 px-4 py-1 bg-pulse-500 text-navy-900 font-bold text-xs uppercase tracking-widest rounded-bl-xl shadow-md">
               Featured Case Study
@@ -235,13 +222,13 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="text-xs font-mono text-pulse-400 uppercase tracking-wider">
-                  IDBI CASE REF: {shaktiCase ? shaktiCase.id : "SHAKTI_PRECISION_001"}
+                  IDBI CASE REF: {shaktiCase.id}
                 </div>
                 <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
-                  {shaktiCase ? shaktiCase.business_name : "Shakti Precision Components Pvt Ltd"}
+                  {shaktiCase.business_name}
                 </h2>
                 <p className="text-slate-400 text-sm mt-0.5">
-                  Precision auto parts & aerospace CNC manufacturing • {shaktiCase?.branch_name || "Jaipur Region"}
+                  {shaktiCase.branch_name || "Branch"}
                 </p>
               </div>
             </div>
@@ -250,21 +237,21 @@ export default function DashboardPage() {
               <div>
                 <div className="text-[10px] font-mono text-slate-400">REQUESTED LIMIT</div>
                 <div className="text-base sm:text-lg font-bold text-white mt-0.5">
-                  {shaktiCase ? formatCurrency(shaktiCase.requested_amount) : "₹50,00,000"}
+                  {formatCurrency(shaktiCase.requested_amount)}
                 </div>
               </div>
               <div>
                 <div className="text-[10px] font-mono text-slate-400">SUPPORTABLE LIMIT</div>
                 <div className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5">
-                  {shaktiCase?.evaluation_result?.binding_limit || shaktiCase?.evaluation_result?.supportable_limit
+                  {shaktiCase.evaluation_result?.binding_limit || shaktiCase.evaluation_result?.supportable_limit
                     ? formatCurrency(shaktiCase.evaluation_result.binding_limit || shaktiCase.evaluation_result.supportable_limit)
-                    : "₹35,70,000"}
+                    : "-"}
                 </div>
               </div>
               <div>
                 <div className="text-[10px] font-mono text-slate-400">RECOMMENDATION</div>
                 <div className="text-xs sm:text-sm font-bold text-pulse-400 mt-1 font-mono">
-                  {shaktiCase?.evaluation_result?.recommendation || shaktiCase?.evaluation_result?.decision?.decision || "CONDITIONAL_OFFER"}
+                  {shaktiCase.evaluation_result?.recommendation || shaktiCase.evaluation_result?.decision?.decision || "-"}
                 </div>
               </div>
             </div>
@@ -275,7 +262,7 @@ export default function DashboardPage() {
                 <span>AI-assisted credit assessment with tamper-evident prototype audit chain</span>
               </div>
               <Link
-                href={shaktiCase ? `/cases/${shaktiCase.id}` : "/cases"}
+                href={`/cases/${shaktiCase.id}`}
                 className="px-5 py-2.5 bg-white text-navy-900 hover:bg-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md"
               >
                 <span>View Case Details</span>

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -54,7 +54,7 @@ def check_can_submit_analyst_recommendation(db: Session, case: Case, user: User)
 def check_can_record_human_decision(db: Session, case: Case, user: User) -> bool:
     try:
         # Default action check since this just determines if the section should render at all
-        can_record_human_decision(db, case, user, action=HumanDecisionAction.APPROVE_AS_REQUESTED)
+        can_record_human_decision(db, case, user)
         return True
     except HTTPException:
         return False
@@ -346,9 +346,15 @@ def get_cases_summary(
 
 
 @router.get("/")
-def list_cases(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_cases(
+    db: Session = Depends(get_db), 
+    user: User = Depends(get_current_user),
+    limit: int = Query(50, ge=1),
+    offset: int = Query(0, ge=0),
+):
     now = utc_now()
-    cases = apply_case_list_scope(db, db.query(Case), user, now).all()
+    query = apply_case_list_scope(db, db.query(Case), user, now)
+    cases = query.order_by(Case.created_at.desc(), Case.id).offset(offset).limit(limit).all()
     results = []
     for c in cases:
         latest_eval = (
