@@ -94,9 +94,7 @@ def get_recent_audit_logs(
             "prior_event_hash": e.prior_event_hash,
             "event_hash": e.event_hash,
             "reason": e.reason,
-            "timestamp": e.created_at.isoformat() if e.created_at else None,
             "created_at": e.created_at.isoformat() if e.created_at else None,
-            "metadata_json": e.metadata_json,
         }
         for e in events
     ]

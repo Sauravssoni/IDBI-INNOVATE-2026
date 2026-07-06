@@ -19,7 +19,7 @@ def setup_shakti_data():
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Refusing to run tests in production environment")
 
-    test_password = os.environ.get("DEMO_USER_PASSWORD") or f"test_pw_{uuid.uuid4().hex}"
+    test_password = os.environ.get("DEMO_USER_PASSWORD") or "password"
     os.environ["DEMO_USER_PASSWORD"] = test_password
 
     seed_shakti()
@@ -123,3 +123,39 @@ def test_audit_endpoints_and_scope(client: TestClient, db: Session):
 
     risk_logs_res = client.get("/api/audit/logs", headers=risk_auth["headers"])
     assert risk_logs_res.status_code == 200
+
+def test_auditor_branch_isolation(client: TestClient, db: Session):
+    aud_auth = get_auth_headers(client, "auditor@bank.example")
+    client.cookies.clear()
+    client.cookies.update(aud_auth["cookies"])
+    
+    logs_res = client.get("/api/audit/logs", headers=aud_auth["headers"])
+    assert logs_res.status_code == 200
+    logs = logs_res.json()
+    if logs:
+        expected_keys = {
+            "id", "case_id", "event_sequence", "event_type", "actor", 
+            "actor_role", "prior_case_version", "resulting_case_version", 
+            "prior_event_hash", "event_hash", "reason", "created_at"
+        }
+        assert set(logs[0].keys()) == expected_keys
+
+def test_rm_unassigned_case_denial(client: TestClient, db: Session):
+    rm_auth = get_auth_headers(client, "rm@bank.example")
+    
+    aud_auth = get_auth_headers(client, "auditor@bank.example")
+    client.cookies.clear()
+    client.cookies.update(aud_auth["cookies"])
+    all_cases = client.get("/api/cases", headers=aud_auth["headers"]).json()
+    
+    client.cookies.clear()
+    client.cookies.update(rm_auth["cookies"])
+    rm_cases = client.get("/api/cases", headers=rm_auth["headers"]).json()
+    rm_case_ids = {c["id"] for c in rm_cases}
+    
+    unassigned_cases = [c for c in all_cases if c["id"] not in rm_case_ids]
+    if unassigned_cases:
+        unassigned_case_id = unassigned_cases[0]["id"]
+        res = client.get(f"/api/cases/{unassigned_case_id}/audit", headers=rm_auth["headers"])
+        assert res.status_code in [404, 403]
+

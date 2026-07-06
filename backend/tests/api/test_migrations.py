@@ -5,6 +5,7 @@ import uuid
 import urllib.parse
 from sqlalchemy import create_engine, text
 
+backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
 def test_migration_upgrade_downgrade():
     if os.environ.get("APP_ENV") == "production":
@@ -44,7 +45,7 @@ def test_migration_upgrade_downgrade():
     env = os.environ.copy()
     env["DATABASE_URL"] = db_url
     proc = subprocess.run(
-        ["alembic", "upgrade", "05f0b4de641c"], capture_output=True, text=True, env=env
+        ["alembic", "upgrade", "05f0b4de641c"], capture_output=True, text=True, env=env, cwd=backend_dir
     )
     if proc.returncode != 0:
         print("Alembic upgrade stdout:", proc.stdout)
@@ -102,7 +103,7 @@ def test_migration_upgrade_downgrade():
 
     # 4. Run alembic upgrade to phase 1.1.3
     proc = subprocess.run(
-        ["alembic", "upgrade", "7c35182cf1b8"], capture_output=True, text=True, env=env
+        ["alembic", "upgrade", "7c35182cf1b8"], capture_output=True, text=True, env=env, cwd=backend_dir
     )
     if proc.returncode != 0:
         print("Alembic upgrade 7c35 stdout:", proc.stdout)
@@ -191,6 +192,7 @@ def test_migration_upgrade_downgrade():
         capture_output=True,
         text=True,
         env=env,
+        cwd=backend_dir,
     )
     if proc.returncode != 0:
         print(proc.stdout)
@@ -220,7 +222,7 @@ def test_migration_upgrade_downgrade():
 
     # 8. Run alembic upgrade head
     proc = subprocess.run(
-        ["alembic", "upgrade", "head"], capture_output=True, text=True, env=env
+        ["alembic", "upgrade", "head"], capture_output=True, text=True, env=env, cwd=backend_dir
     )
     if proc.returncode != 0:
         print(proc.stdout)
@@ -228,7 +230,7 @@ def test_migration_upgrade_downgrade():
         proc.check_returncode()
 
     # 9. Run alembic check
-    proc = subprocess.run(["alembic", "check"], capture_output=True, text=True, env=env)
+    proc = subprocess.run(["alembic", "check"], capture_output=True, text=True, env=env, cwd=backend_dir)
     assert proc.returncode == 0, f"Alembic check failed: {proc.stderr} {proc.stdout}"
     assert (
         "No new upgrade operations detected" in proc.stdout

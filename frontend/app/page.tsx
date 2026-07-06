@@ -6,7 +6,6 @@ import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
 import {
   Sparkles,
-  TrendingUp,
   Clock,
   AlertTriangle,
   FolderKanban,
@@ -63,11 +62,6 @@ export default function DashboardPage() {
 
   const totalPipelineAmount = summary?.total_requested_amount ?? cases.reduce(
     (sum, c) => sum + (Number(c.requested_amount) || 0),
-    0
-  );
-
-  const totalSupportableLimit = summary?.approved_amount ?? cases.reduce(
-    (sum, c) => sum + (Number(c.evaluation_result?.binding_limit || c.evaluation_result?.supportable_limit) || 0),
     0
   );
 

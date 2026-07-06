@@ -64,7 +64,7 @@ describe('DashboardPage', () => {
         data: [
           {
             id: 'CASE-101',
-            business_name: 'Live SME Corp',
+            business_name: 'Shakti Precision Components',
             requested_amount: 5000000,
             status: 'IN_REVIEW',
             evaluation_result: { supportable_limit: 3500000, recommendation: 'CONDITIONAL_OFFER' },
