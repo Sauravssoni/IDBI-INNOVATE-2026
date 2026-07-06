@@ -64,6 +64,7 @@ Thumbs.db
 *.log
 *.sqlite
 *.sqlite3
+*.db
 postgres-data/
 
 # Environment variables
