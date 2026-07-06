@@ -8,3 +8,6 @@ def pytest_configure(config):
     )
     if "test" not in database_url.lower():
         raise RuntimeError("Test database must contain 'test' in database name for isolation.")
+    
+    import uuid
+    os.environ["DEMO_USER_PASSWORD"] = f"test_pw_{uuid.uuid4().hex}"

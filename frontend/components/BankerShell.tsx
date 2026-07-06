@@ -91,7 +91,10 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
     if (role === "SYSTEM_ADMIN") {
       return allItems.filter((item) => item.href === "/");
     }
-    if (role === "AUDITOR" || role === "RELATIONSHIP_MANAGER") {
+    if (role === "RELATIONSHIP_MANAGER") {
+      return allItems.filter((item) => item.href !== "/policy" && item.href !== "/audit");
+    }
+    if (role === "AUDITOR") {
       return allItems.filter((item) => item.href !== "/policy");
     }
     return allItems;

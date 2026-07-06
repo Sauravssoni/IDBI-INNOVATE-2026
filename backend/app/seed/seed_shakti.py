@@ -161,8 +161,10 @@ def seed_shakti():
                 role=u["role"],
             )
             db.add(user)
-            db.commit()
-            db.refresh(user)
+        else:
+            user.hashed_password = get_password_hash(u["password"])
+        db.commit()
+        db.refresh(user)
         seeded_users[user.role] = user
 
         # Add branch scope ONLY for roles that need it (not RM, Analyst, or SysAdmin)

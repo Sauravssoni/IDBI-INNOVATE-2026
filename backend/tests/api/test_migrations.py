@@ -220,14 +220,46 @@ def test_migration_upgrade_downgrade():
             "requested_facility_type not restored properly"
         )
 
-    # 8. Run alembic upgrade head
+    # 8. Run alembic upgrade to 8a45193de2c9 (head)
     proc = subprocess.run(
-        ["alembic", "upgrade", "head"], capture_output=True, text=True, env=env, cwd=backend_dir
+        ["alembic", "upgrade", "8a45193de2c9"], capture_output=True, text=True, env=env, cwd=backend_dir
     )
     if proc.returncode != 0:
         print(proc.stdout)
         print(proc.stderr)
         proc.check_returncode()
+
+    # 8b. Verify enum persistence for 8a45193de2c9
+    with engine.connect() as conn:
+        # Test RECOMMEND_AS_REQUESTED
+        conn.execute(
+            text("""
+            UPDATE cases SET analyst_recommendation = 'RECOMMEND_AS_REQUESTED' WHERE id = :case_id
+            """),
+            {"case_id": case_id}
+        )
+        conn.commit()
+        
+        res = conn.execute(
+            text("SELECT analyst_recommendation FROM cases WHERE id = :case_id"),
+            {"case_id": case_id}
+        ).fetchone()
+        assert res[0] == "RECOMMEND_AS_REQUESTED"
+
+        # Test RECOMMEND_DECLINE
+        conn.execute(
+            text("""
+            UPDATE cases SET analyst_recommendation = 'RECOMMEND_DECLINE' WHERE id = :case_id
+            """),
+            {"case_id": case_id}
+        )
+        conn.commit()
+
+        res2 = conn.execute(
+            text("SELECT analyst_recommendation FROM cases WHERE id = :case_id"),
+            {"case_id": case_id}
+        ).fetchone()
+        assert res2[0] == "RECOMMEND_DECLINE"
 
     # 9. Run alembic check
     proc = subprocess.run(["alembic", "check"], capture_output=True, text=True, env=env, cwd=backend_dir)
