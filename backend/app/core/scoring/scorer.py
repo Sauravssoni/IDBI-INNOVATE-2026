@@ -17,6 +17,18 @@ class ScoringEngine:
         evidence_score = self._compute_evidence_confidence()
         resilience_score = self._compute_resilience()
 
+        total_score = int((health_score + evidence_score + resilience_score) * Decimal("3"))
+        if total_score >= 750:
+            band = "A"
+        elif total_score >= 700:
+            band = "A-"
+        elif total_score >= 650:
+            band = "B+"
+        elif total_score >= 600:
+            band = "B"
+        else:
+            band = "C"
+
         return {
             "financial_health_score": health_score.quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -27,6 +39,8 @@ class ScoringEngine:
             "resilience_score": resilience_score.quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
             ),
+            "total_score": total_score,
+            "band": band,
         }
 
     def _compute_financial_health(self) -> Decimal:

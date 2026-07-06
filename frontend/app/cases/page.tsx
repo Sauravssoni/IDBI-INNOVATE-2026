@@ -124,18 +124,11 @@ export default function CaseInventoryPage() {
           <button
             onClick={loadCases}
             disabled={loading}
-            className="px-4 py-2.5 bg-navy-800 hover:bg-navy-700 text-white text-xs font-semibold rounded-xl border border-white/10 flex items-center gap-2 transition-all shadow-sm"
+            className="px-4 py-2.5 bg-navy-800 hover:bg-navy-700 text-white text-xs font-semibold rounded-xl border border-white/10 flex items-center gap-2 transition-all shadow-sm cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-pulse-400" : ""}`} />
             <span>Refresh Pipeline</span>
           </button>
-          <Link
-            href="/cases/shakti"
-            className="px-4 py-2.5 bg-gradient-to-r from-pulse-600 to-pulse-500 hover:from-pulse-500 hover:to-pulse-400 text-navy-900 text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition-all"
-          >
-            <Sparkles className="w-3.5 h-3.5 fill-current" />
-            <span>Shakti Demo Case</span>
-          </Link>
         </div>
       </div>
 
@@ -234,34 +227,20 @@ export default function CaseInventoryPage() {
                 {filteredCases.map((c) => {
                   const statusInfo = getStatusBadge(c.status);
                   const StatusIcon = statusInfo.icon;
-                  const isShakti = c.business_name?.toLowerCase().includes("shakti");
 
                   return (
                     <tr
                       key={c.id}
-                      className={`hover:bg-white/[0.02] transition-colors group ${
-                        isShakti ? "bg-pulse-500/[0.03]" : ""
-                      }`}
+                      className="hover:bg-white/[0.02] transition-colors group"
                     >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3.5">
-                          <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm ${
-                              isShakti
-                                ? "bg-gradient-to-tr from-pulse-600 to-navy-700 text-white shadow-md shadow-pulse-500/20 border border-pulse-400/30"
-                                : "bg-navy-800 text-slate-300 border border-white/5"
-                            }`}
-                          >
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm bg-navy-800 text-slate-300 border border-white/5">
                             <Building2 className="w-5 h-5 text-pulse-400" />
                           </div>
                           <div>
                             <div className="font-bold text-white flex items-center gap-2">
                               <span>{c.business_name || "SME Borrower"}</span>
-                              {isShakti && (
-                                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-pulse-500 text-navy-900">
-                                  DEMO
-                                </span>
-                              )}
                             </div>
                             <div className="text-[11px] font-mono text-slate-400">
                               REF: {c.id.slice(0, 8)}...{c.id.slice(-4)}
@@ -271,7 +250,7 @@ export default function CaseInventoryPage() {
                       </td>
                       <td className="py-4 px-6">
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-navy-800/80 border border-white/5 text-xs font-mono text-slate-300">
-                          {c.requested_product || "TERM_LOAN"}
+                          {c.requested_product || "-"}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -287,10 +266,10 @@ export default function CaseInventoryPage() {
                       </td>
                       <td className="py-4 px-6 text-right">
                         <Link
-                          href={isShakti ? "/cases/shakti" : `/cases/${c.id}`}
+                          href={`/cases/${c.id}`}
                           className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-navy-800 hover:bg-pulse-500 hover:text-navy-900 text-xs font-bold text-slate-300 border border-white/10 hover:border-pulse-500 transition-all shadow-sm group-hover:scale-105"
                         >
-                          <span>{isShakti ? "Shakti Deep Dive" : "Evaluate"}</span>
+                          <span>Evaluate</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />
                         </Link>
                       </td>

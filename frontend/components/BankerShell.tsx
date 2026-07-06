@@ -72,10 +72,17 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
   const roleInfo = getRoleBadge(user?.role);
   const RoleIcon = roleInfo.icon;
 
-  const navItems = [
+  type NavItem = {
+    label: string;
+    href: string;
+    icon: React.ElementType;
+    badge?: string;
+    highlight?: boolean;
+  };
+
+  const navItems: NavItem[] = [
     { label: "Dashboard", href: "/", icon: LayoutDashboard },
     { label: "Case Inventory", href: "/cases", icon: FolderKanban },
-    { label: "Shakti Case Summary", href: "/cases/shakti", icon: Sparkles, highlight: true },
     { label: "Policy & Risk Engine", href: "/policy", icon: ShieldAlert, badge: "AI" },
     { label: "Audit Log & CAS Trail", href: "/audit", icon: History },
   ];
@@ -143,7 +150,7 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
           {/* Logout Button */}
           <button
             onClick={logout}
-            title="Sign out of IDBI Core"
+            title="Sign out of Vyapar Pulse"
             className="p-2 rounded-xl bg-navy-800 hover:bg-rose-500/10 text-slate-400 hover:text-rose-400 border border-white/5 hover:border-rose-500/30 transition-all"
           >
             <LogOut className="w-4 h-4" />
@@ -200,7 +207,7 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
               <span>BOLA Governance v1.1</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed font-mono">
-              Role-scoped data access enforced. All decisions cryptographically signed & audited.
+              Role-scoped data access enforced. Tamper-evident prototype audit chain.
             </p>
           </div>
         </aside>
@@ -214,8 +221,12 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
         )}
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-          {children}
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto flex flex-col justify-between">
+          <div>{children}</div>
+          <footer className="mt-12 pt-6 border-t border-white/10 text-center text-xs text-slate-400 font-mono space-y-1">
+            <div>Built for IDBI Innovate 2026 • Hackathon prototype—not an official IDBI Bank production system</div>
+            <div>Illustrative prototype policy thresholds • Tamper-evident prototype audit chain</div>
+          </footer>
         </main>
       </div>
     </div>

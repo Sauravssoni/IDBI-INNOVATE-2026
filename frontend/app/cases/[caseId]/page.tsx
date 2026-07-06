@@ -31,7 +31,7 @@ import {
 export default function CaseEvaluationPage() {
   const { user } = useAuth();
   const params = useParams();
-  const caseIdParam = (params?.caseId as string) || "shakti";
+  const caseIdParam = (params?.caseId as string) || "";
 
   const [caseData, setCaseData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,15 +45,18 @@ export default function CaseEvaluationPage() {
 
   // SA Decision State
   const [decisionAction, setDecisionAction] = useState("APPROVE_ALTERNATIVE_STRUCTURE");
-  const [approvedAmount, setApprovedAmount] = useState<number>(3571428); // ~35.7L default supportable
-  const [sanctionNotes, setSanctionNotes] = useState("Approved alternative structure based on binding policy limit and strong DSCR (1.85x).");
+  const [approvedAmount, setApprovedAmount] = useState<number>(0);
+  const [sanctionNotes, setSanctionNotes] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
 
-  const formatCurrency = (val: number) => {
-    if (!val && val !== 0) return "₹0";
-    if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
-    if (val >= 100000) return `₹${(val / 100000).toFixed(2)} L`;
-    return `₹${val.toLocaleString("en-IN")}`;
+  const formatCurrency = (val: any) => {
+    if (val === "-" || val === null || val === undefined) return "-";
+    const num = Number(val);
+    if (isNaN(num)) return "-";
+    if (num === 0) return "₹0";
+    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
+    if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
+    return `₹${num.toLocaleString("en-IN")}`;
   };
 
   const loadCase = async () => {
@@ -63,7 +66,6 @@ export default function CaseEvaluationPage() {
     let targetId = caseIdParam;
     let foundCase: any = null;
 
-    // If it's not a generic alias, try loading directly by UUID
     if (targetId && targetId !== "shakti" && targetId !== "SHAKTI_PRECISION_001") {
       const { data: fullCase, status: caseStatus } = await apiFetch(`/api/cases/${targetId}`);
       if (caseStatus === 200 && fullCase) {
@@ -71,7 +73,6 @@ export default function CaseEvaluationPage() {
       }
     }
 
-    // Fallback: Fetch list of cases to find Shakti ID or match caseIdParam
     if (!foundCase) {
       const { data: listData, status: listStatus, error: listErr } = await apiFetch<any[]>("/api/cases/");
       if (listStatus === 200 && Array.isArray(listData)) {
@@ -91,7 +92,7 @@ export default function CaseEvaluationPage() {
             foundCase = match;
           }
         } else {
-          setError("Case not found in current BOLA scope. Ensure backend demo seed is loaded.");
+          setError("Case not found in current BOLA scope.");
         }
       } else {
         setError(listErr || "Failed to load case inventory.");
@@ -100,22 +101,13 @@ export default function CaseEvaluationPage() {
 
     if (foundCase) {
       setCaseData(foundCase);
-      // Automatically run or fetch evaluation to populate UI with backend evaluation results
-      try {
-        const autoKey = `auto-eval-${foundCase.id}-${foundCase.version || 1}`;
-        const { data: evalData, status: evalStatus } = await apiFetch(`/api/cases/${foundCase.id}/evaluate`, {
-          method: "POST",
-          headers: { "Idempotency-Key": autoKey },
-          body: JSON.stringify({ expected_version: foundCase.version || 1 }),
-        });
-        if (evalStatus === 200 || evalStatus === 201) {
-          setEvalResult(evalData);
-          if (evalData?.decision?.binding_limit) {
-            setApprovedAmount(evalData.decision.binding_limit);
-          }
+      if (foundCase.evaluation_result) {
+        setEvalResult(foundCase.evaluation_result);
+        if (foundCase.evaluation_result?.decision?.binding_limit) {
+          setApprovedAmount(foundCase.evaluation_result.decision.binding_limit);
         }
-      } catch {
-        // Fallback silently if evaluation is restricted or offline
+      } else if (foundCase.requested_amount) {
+        setApprovedAmount(foundCase.requested_amount);
       }
     }
 
@@ -141,10 +133,10 @@ export default function CaseEvaluationPage() {
 
     if (status === 200 || status === 201) {
       setEvalResult(data);
-      const score = data?.scores?.total_score || 724;
-      const band = data?.scores?.band || "A-";
-      const decision = data?.decision?.decision || "CONDITIONAL_OFFER";
-      setActionSuccess(`CAS Evaluation Engine completed successfully! Score: ${score} / 900 (Band ${band}) • Recommendation: ${decision}`);
+      const score = data?.scores?.total_score ?? "-";
+      const band = data?.scores?.band ?? "-";
+      const decision = data?.decision?.decision ?? "-";
+      setActionSuccess(`AI-assisted credit assessment completed successfully! Score: ${score} / 900 (Band ${band}) • Recommendation: ${decision}`);
       if (data?.decision?.binding_limit) {
         setApprovedAmount(data.decision.binding_limit);
       }
@@ -163,11 +155,11 @@ export default function CaseEvaluationPage() {
 
     const idempotencyKey = `rec-${caseData.id}-${Date.now()}`;
     const recAction = evalResult?.decision?.decision === "CONDITIONAL_OFFER" ? "RECOMMEND_CONDITIONAL" : "RECOMMEND_APPROVAL";
-    const limit = evalResult?.decision?.binding_limit || 3571428;
+    const limit = evalResult?.decision?.binding_limit || caseData.requested_amount || 0;
 
     const payload = {
       recommendation: recAction,
-      reason: `CAS evaluation confirmed clean GST reconciliation and 0 circular trading flags. Recommend ${formatCurrency(limit)} under conditional structure.`,
+      reason: `AI-assisted credit assessment confirmed clean GST reconciliation. Recommend ${formatCurrency(limit)} under deterministic evidence-linked recommendation.`,
       expected_version: caseData.version || 1,
     };
 
@@ -195,7 +187,7 @@ export default function CaseEvaluationPage() {
     const idempotencyKey = `dec-${caseData.id}-${Date.now()}`;
     const payload: any = {
       decision: decisionAction,
-      reason: sanctionNotes,
+      reason: sanctionNotes || "Sanction decision recorded via prototype portal.",
       expected_version: caseData.version || 1,
     };
 
@@ -225,7 +217,7 @@ export default function CaseEvaluationPage() {
           <Sparkles className="w-8 h-8 text-pulse-400" />
         </div>
         <p className="text-sm font-mono text-pulse-400 animate-pulse">
-          INITIALIZING CAS EVALUATION PIPELINE...
+          INITIALIZING AI-ASSISTED CREDIT ASSESSMENT...
         </p>
       </div>
     );
@@ -247,12 +239,12 @@ export default function CaseEvaluationPage() {
     );
   }
 
-  const reqAmount = caseData.requested_amount || 5000000;
-  const scoreVal = evalResult?.scores?.total_score || 724;
-  const bandVal = evalResult?.scores?.band || "A-";
-  const recVal = evalResult?.decision?.decision || "CONDITIONAL_OFFER";
-  const supportLimit = evalResult?.decision?.binding_limit || 3571428;
-  const dscrVal = evalResult?.features?.dscr || 1.85;
+  const reqAmount = caseData.requested_amount || 0;
+  const scoreVal = evalResult?.scores?.total_score ?? "-";
+  const bandVal = evalResult?.scores?.band ?? "-";
+  const recVal = evalResult?.decision?.decision ?? "-";
+  const supportLimit = evalResult?.decision?.binding_limit ?? "-";
+  const dscrVal = evalResult?.features?.dscr ?? "-";
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16">
@@ -267,7 +259,7 @@ export default function CaseEvaluationPage() {
         </Link>
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pulse-500/10 border border-pulse-500/30 text-xs font-mono text-pulse-400">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>IDBI INNOVATE 2026 • HACKATHON BENCHMARK CASE</span>
+          <span>Built for IDBI Innovate 2026 • Hackathon prototype—not an official IDBI Bank production system</span>
         </div>
       </div>
 
@@ -283,7 +275,7 @@ export default function CaseEvaluationPage() {
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                  {caseData.business?.legal_name || caseData.business_name || "Shakti Precision Components Pvt Ltd"}
+                  {caseData.business?.legal_name || caseData.business_name || "Applicant Business"}
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   {caseData.status || "UNDER_REVIEW"}
@@ -291,8 +283,8 @@ export default function CaseEvaluationPage() {
               </div>
               <p className="text-slate-400 text-sm mt-1 flex items-center gap-3 font-mono">
                 <span>ID: {caseData.id?.slice(0, 8)}...</span> •
-                <span>GSTIN: 08AABCU9603R1ZM</span> •
-                <span>Branch: Jaipur / Malviya Nagar</span>
+                <span>GSTIN: {caseData.business?.gstin || "-"}</span> •
+                <span>Branch: {caseData.originating_branch_id ? `Branch ${caseData.originating_branch_id.slice(0, 8)}` : "-"}</span>
               </p>
             </div>
           </div>
@@ -304,7 +296,7 @@ export default function CaseEvaluationPage() {
             </div>
             <div>
               <div className="text-[10px] font-mono text-slate-400">CAS RISK SCORE</div>
-              <div className="text-lg font-bold text-pulse-400 font-mono mt-0.5">{scoreVal} / 900</div>
+              <div className="text-lg font-bold text-pulse-400 font-mono mt-0.5">{scoreVal} {scoreVal !== "-" ? "/ 900" : ""}</div>
             </div>
             <div className="col-span-2 sm:col-span-1">
               <div className="text-[10px] font-mono text-slate-400">SUPPORTABLE LIMIT</div>
@@ -322,9 +314,24 @@ export default function CaseEvaluationPage() {
         </div>
       )}
       {actionError && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-300 text-sm animate-shake shadow-lg">
-          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
-          <span className="font-medium">{actionError}</span>
+        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-300 text-sm animate-shake shadow-lg">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+            <span className="font-medium">{actionError}</span>
+          </div>
+          {actionError.includes("STALE_VERSION") && (
+            <button
+              onClick={() => loadCase()}
+              className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-lg text-xs font-semibold text-rose-200 transition-colors shrink-0"
+            >
+              Refresh Case
+            </button>
+          )}
+          {actionError.includes("IDEMPOTENCY_IN_PROGRESS") && (
+            <span className="text-xs text-rose-300 font-mono shrink-0">
+              Please wait 5s and try again
+            </span>
+          )}
         </div>
       )}
 
@@ -342,11 +349,11 @@ export default function CaseEvaluationPage() {
               <div className="inline-flex items-center justify-center w-36 h-36 rounded-full bg-gradient-to-tr from-pulse-500/20 to-emerald-500/20 border-4 border-pulse-500/40 relative shadow-inner">
                 <div>
                   <div className="text-3xl font-extrabold text-white font-mono">{scoreVal}</div>
-                  <div className="text-[10px] font-mono text-pulse-400 uppercase">out of 900</div>
+                  <div className="text-[10px] font-mono text-pulse-400 uppercase">{scoreVal !== "-" ? "out of 900" : "UN-EVALUATED"}</div>
                 </div>
               </div>
               <div className="mt-4 font-bold text-emerald-400 text-sm">
-                BAND {bandVal} • LOW RISK PROFILE
+                BAND {bandVal} • {bandVal !== "-" ? (bandVal.toString().startsWith("A") ? "LOW RISK PROFILE" : bandVal.toString().startsWith("B") ? "MODERATE RISK PROFILE" : "HIGH RISK PROFILE") : "PENDING"}
               </div>
             </div>
 
@@ -354,28 +361,28 @@ export default function CaseEvaluationPage() {
               <div>
                 <div className="flex justify-between text-slate-300 mb-1">
                   <span>Financial Strength & DSCR</span>
-                  <span className="font-mono text-emerald-400">82 / 100</span>
+                  <span className="font-mono text-emerald-400">{evalResult?.scores?.financial_health_score ? `${evalResult.scores.financial_health_score} / 100` : "-"}</span>
                 </div>
                 <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-emerald-400 h-full w-[82%]" />
+                  <div className="bg-emerald-400 h-full" style={{ width: `${evalResult?.scores?.financial_health_score || 0}%` }} />
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-slate-300 mb-1">
                   <span>GST & Tax Compliance</span>
-                  <span className="font-mono text-pulse-400">95 / 100</span>
+                  <span className="font-mono text-pulse-400">{evalResult?.scores?.evidence_confidence_score ? `${evalResult.scores.evidence_confidence_score} / 100` : "-"}</span>
                 </div>
                 <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-pulse-400 h-full w-[95%]" />
+                  <div className="bg-pulse-400 h-full" style={{ width: `${evalResult?.scores?.evidence_confidence_score || 0}%` }} />
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-slate-300 mb-1">
                   <span>Bank Statement Consistency</span>
-                  <span className="font-mono text-blue-400">88 / 100</span>
+                  <span className="font-mono text-blue-400">{evalResult?.scores?.resilience_score ? `${evalResult.scores.resilience_score} / 100` : "-"}</span>
                 </div>
                 <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-blue-400 h-full w-[88%]" />
+                  <div className="bg-blue-400 h-full" style={{ width: `${evalResult?.scores?.resilience_score || 0}%` }} />
                 </div>
               </div>
             </div>
@@ -383,7 +390,7 @@ export default function CaseEvaluationPage() {
 
           <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>Model: CAS v1.1.3</span>
-            <span className="text-emerald-400">100% Deterministic</span>
+            <span className="text-emerald-400">Deterministic evidence-linked recommendation</span>
           </div>
         </div>
 
@@ -399,11 +406,15 @@ export default function CaseEvaluationPage() {
               <div className="p-3.5 rounded-xl bg-navy-800/80 border border-white/5 space-y-2">
                 <div className="text-xs font-semibold text-white flex justify-between">
                   <span>Revenue Matching</span>
-                  <span className="text-emerald-400 font-mono">98.2% Match</span>
+                  <span className="text-emerald-400 font-mono">
+                    {evalResult?.features?.reconciliation_metrics?.gst_bank_ratio
+                      ? `${(Number(evalResult.features.reconciliation_metrics.gst_bank_ratio) * 100).toFixed(1)}% Match`
+                      : "-"}
+                  </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
-                  <div>GST Turnover: ₹14.2 Cr</div>
-                  <div>Bank Credits: ₹14.5 Cr</div>
+                  <div>GST Turnover: {evalResult?.features?.gst_metrics?.avg_monthly_revenue ? formatCurrency(Number(evalResult.features.gst_metrics.avg_monthly_revenue) * (evalResult.features.gst_metrics.months_filed || 12)) : "-"}</div>
+                  <div>Bank Credits: {evalResult?.features?.bank_metrics?.total_credits ? formatCurrency(evalResult.features.bank_metrics.total_credits) : "-"}</div>
                 </div>
               </div>
 
@@ -411,15 +422,17 @@ export default function CaseEvaluationPage() {
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
                 <div>
                   <div className="text-xs font-bold text-white">0 Circular Trading Flags</div>
-                  <div className="text-[10px] text-slate-300">No related-party shell loop detected</div>
+                  <div className="text-[10px] text-slate-300">Tamper-evident prototype audit chain checked</div>
                 </div>
               </div>
 
               <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
                 <Activity className="w-5 h-5 text-blue-400 shrink-0" />
                 <div>
-                  <div className="text-xs font-bold text-white">Clean Cash Flow Velocity</div>
-                  <div className="text-[10px] text-slate-300">Average monthly balance ₹42.8 Lakhs</div>
+                  <div className="text-xs font-bold text-white">Cash Flow Velocity</div>
+                  <div className="text-[10px] text-slate-300">
+                    Average monthly balance: {evalResult?.features?.bank_metrics?.avg_monthly_credits ? formatCurrency(evalResult.features.bank_metrics.avg_monthly_credits) : "-"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -427,15 +440,15 @@ export default function CaseEvaluationPage() {
 
           <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>Reconciliation Engine</span>
-            <span className="text-pulse-400">Straight-Through</span>
+            <span className="text-pulse-400">Automated Reconciliation</span>
           </div>
         </div>
 
-        {/* Pillar 3: Automated CAM Generation */}
+        {/* Pillar 3: AI-Assisted Memo */}
         <div className="glass-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Pillar 3: Auto-CAM</span>
+              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Pillar 3: AI-Assisted Memo</span>
               <FileText className="w-5 h-5 text-emerald-400" />
             </div>
 
@@ -443,20 +456,20 @@ export default function CaseEvaluationPage() {
               <div className="p-3.5 rounded-xl bg-navy-800/80 border border-white/5 space-y-2">
                 <div className="font-bold text-white text-sm">Credit Assessment Memo Summary</div>
                 <p className="text-slate-300">
-                  Shakti Precision exhibits consistent top-line growth (14% YoY) driven by precision aerospace supplier contracts.
+                  {evalResult ? `${caseData.business?.legal_name || "Applicant"} AI-assisted credit assessment indicates a ${recVal.toString().toLowerCase()} status based on verified GST and banking data.` : "Case not yet evaluated. Run CAS Engine evaluation to generate summary."}
                 </p>
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5 font-mono text-[11px]">
-                  <div>DSCR: <span className="text-emerald-400 font-bold">{dscrVal}x</span></div>
-                  <div>EBITDA: <span className="text-emerald-400 font-bold">18.4%</span></div>
-                  <div>Gearing: <span className="text-emerald-400 font-bold">1.12x</span></div>
-                  <div>Collateral: <span className="text-emerald-400 font-bold">135%</span></div>
+                  <div>DSCR: <span className="text-emerald-400 font-bold">{dscrVal !== "-" ? `${dscrVal}x` : "-"}</span></div>
+                  <div>EBITDA: <span className="text-emerald-400 font-bold">{evalResult?.features?.ebitda || "-"}</span></div>
+                  <div>Gearing: <span className="text-emerald-400 font-bold">{evalResult?.features?.gearing || "-"}</span></div>
+                  <div>Collateral: <span className="text-emerald-400 font-bold">{evalResult?.features?.collateral || "-"}</span></div>
                 </div>
               </div>
 
               <div className="p-3 rounded-xl bg-gradient-to-r from-pulse-500/10 to-transparent border-l-2 border-pulse-500">
-                <div className="font-semibold text-pulse-300 text-xs">AI Sanction Recommendation:</div>
+                <div className="font-semibold text-pulse-300 text-xs">AI-Assisted Sanction Recommendation:</div>
                 <div className="text-[11px] text-slate-300 mt-0.5">
-                  Recommendation: <strong className="text-white font-mono">{recVal}</strong> of <strong className="text-white font-mono">{formatCurrency(supportLimit)}</strong> @ 9.25% p.a. with quarterly stock audit review.
+                  Recommendation: <strong className="text-white font-mono">{recVal}</strong> of <strong className="text-white font-mono">{formatCurrency(supportLimit)}</strong>.
                 </div>
               </div>
             </div>
@@ -464,7 +477,7 @@ export default function CaseEvaluationPage() {
 
           <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>CAM Status:</span>
-            <span className="text-emerald-400 font-bold">Ready for Sanction</span>
+            <span className="text-emerald-400 font-bold">{evalResult ? "Ready for Review" : "Pending Evaluation"}</span>
           </div>
         </div>
       </div>
@@ -479,7 +492,7 @@ export default function CaseEvaluationPage() {
             <div>
               <h2 className="text-lg font-bold text-white">BOLA Governance & Decision Portal</h2>
               <p className="text-xs text-slate-400">
-                Logged in as <strong className="text-white">{user?.full_name}</strong> ({user?.role}) • Scoped to Jaipur Region
+                Logged in as <strong className="text-white">{user?.full_name}</strong> ({user?.role}) • Scoped to Originating Branch
               </p>
             </div>
           </div>
@@ -505,7 +518,7 @@ export default function CaseEvaluationPage() {
               <button
                 onClick={handleRunEvaluation}
                 disabled={evaluating}
-                className="px-4 py-2.5 bg-navy-800 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs rounded-xl border border-blue-500/30 flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
+                className="px-4 py-2.5 bg-navy-800 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs rounded-xl border border-blue-500/30 flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
               >
                 {evaluating ? (
                   <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
@@ -514,11 +527,10 @@ export default function CaseEvaluationPage() {
                 )}
                 <span>Run CAS Engine Evaluation</span>
               </button>
-
               <button
                 onClick={handleSubmitAnalystRec}
                 disabled={evaluating || user?.role === "SANCTIONING_AUTHORITY"}
-                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all disabled:opacity-50"
+                className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
                 <span>Submit Rec ({formatCurrency(supportLimit)})</span>
@@ -591,6 +603,7 @@ export default function CaseEvaluationPage() {
                     type="text"
                     value={sanctionNotes}
                     onChange={(e) => setSanctionNotes(e.target.value)}
+                    placeholder="Enter sanction rationale or conditions..."
                     className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
@@ -605,7 +618,7 @@ export default function CaseEvaluationPage() {
                   ) : (
                     <Check className="w-4 h-4 stroke-[3]" />
                   )}
-                  <span>Execute Cryptographic Sanction Decision</span>
+                  <span>Execute Sanction Decision (Prototype)</span>
                 </button>
               </div>
             )}

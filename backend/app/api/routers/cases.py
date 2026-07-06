@@ -261,6 +261,8 @@ def list_cases(db: Session = Depends(get_db), user: User = Depends(get_current_u
                 "business_id": str(c.business_id_fk),
                 "status": c.status.value,
                 "requested_amount": c.requested_amount,
+                "currency": c.currency,
+                "recommendation": c.recommendation.value if c.recommendation else None,
                 "business_name": c.business.legal_name,
                 "requested_product": c.requested_product.value
                 if c.requested_product
@@ -276,6 +278,14 @@ def get_case(
 ):
     case = can_view_case(db, user, case_id)
 
+    latest_eval = (
+        db.query(AuditEvent)
+        .filter(AuditEvent.case_id == case.id, AuditEvent.event_type == "evaluate")
+        .order_by(AuditEvent.created_at.desc())
+        .first()
+    )
+    evaluation_result = latest_eval.metadata_json if latest_eval else None
+
     return {
         "id": str(case.id),
         "business": {
@@ -290,6 +300,10 @@ def get_case(
         else None,
         "currency": case.currency,
         "status": case.status.value,
+        "recommendation": case.recommendation.value if case.recommendation else None,
+        "analyst_recommendation": case.analyst_recommendation.value if case.analyst_recommendation else None,
+        "human_decision": case.human_decision.value if case.human_decision else None,
+        "evaluation_result": evaluation_result,
         "version": case.version,
         "created_at": case.created_at,
         "updated_at": case.updated_at,
@@ -378,7 +392,7 @@ def evaluate_case(
 
 
 class AnalystRecommendationRequest(BaseModel):
-    recommendation: AnalystRecommendationAction
+    recommendation: str
     reason: str
     expected_version: int
 
@@ -397,6 +411,33 @@ def record_analyst_recommendation(
             status_code=422,
             detail="Reason is required and must be at least 10 characters",
         )
+
+    allowed_analyst_actions = {
+        "RECOMMEND_APPROVAL",
+        "RECOMMEND_CONDITIONAL",
+        "RECOMMEND_DECLINE",
+        "RECOMMEND_AS_REQUESTED",
+        "RECOMMEND_ALTERNATIVE_STRUCTURE",
+        "REQUEST_ADDITIONAL_EVIDENCE",
+        "RECOMMEND_ENHANCED_DUE_DILIGENCE",
+    }
+    if req.recommendation not in allowed_analyst_actions:
+        raise HTTPException(
+            status_code=400, detail="Invalid recommendation action"
+        )
+
+    mapped_rec_str = req.recommendation
+    if mapped_rec_str == "RECOMMEND_APPROVAL":
+        mapped_rec_str = "RECOMMEND_AS_REQUESTED"
+    elif mapped_rec_str == "RECOMMEND_CONDITIONAL":
+        mapped_rec_str = "RECOMMEND_ALTERNATIVE_STRUCTURE"
+    elif mapped_rec_str == "RECOMMEND_DECLINE":
+        mapped_rec_str = "RECOMMEND_DECLINE"
+
+    try:
+        rec_enum = AnalystRecommendationAction(mapped_rec_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid recommendation action")
 
     case = can_view_case(db, user, case_id)
     can_submit_analyst_recommendation(db, case, user)
@@ -419,10 +460,10 @@ def record_analyst_recommendation(
     try:
         result_payload = {
             "status": "success",
-            "recommendation": req.recommendation.value,
+            "recommendation": rec_enum.value,
         }
 
-        update_values = {"analyst_recommendation": req.recommendation.value}
+        update_values = {"analyst_recommendation": rec_enum.value}
 
         cas_update_case_and_audit(
             db=db,
@@ -452,7 +493,7 @@ def record_analyst_recommendation(
 
 
 class HumanDecisionRequest(BaseModel):
-    decision: HumanDecisionAction
+    decision: str
     reason: str
     expected_version: int
     approved_amount: Optional[Decimal] = None
@@ -473,8 +514,39 @@ def record_human_decision(
             detail="Reason is required and must be at least 10 characters",
         )
 
+    allowed_human_actions = {
+        "APPROVE",
+        "APPROVE_AS_REQUESTED",
+        "APPROVE_ALTERNATIVE_STRUCTURE",
+        "CONDITIONAL_OFFER",
+        "DECLINE",
+        "DECLINE_AFTER_HUMAN_REVIEW",
+        "DEFER",
+        "DEFER_FOR_EVIDENCE",
+        "ESCALATE_FOR_DUE_DILIGENCE",
+    }
+    if req.decision not in allowed_human_actions:
+        raise HTTPException(
+            status_code=400, detail="Invalid decision action"
+        )
+
+    mapped_dec_str = req.decision
+    if mapped_dec_str == "APPROVE":
+        mapped_dec_str = "APPROVE_AS_REQUESTED"
+    elif mapped_dec_str == "CONDITIONAL_OFFER":
+        mapped_dec_str = "APPROVE_ALTERNATIVE_STRUCTURE"
+    elif mapped_dec_str == "DECLINE":
+        mapped_dec_str = "DECLINE_AFTER_HUMAN_REVIEW"
+    elif mapped_dec_str == "DEFER":
+        mapped_dec_str = "DEFER_FOR_EVIDENCE"
+
+    try:
+        dec_enum = HumanDecisionAction(mapped_dec_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid decision action")
+
     if (
-        req.decision == HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE
+        dec_enum == HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE
         and req.approved_amount is None
     ):
         raise HTTPException(
@@ -484,7 +556,7 @@ def record_human_decision(
 
     case = can_view_case(db, user, case_id)
     can_record_human_decision(
-        db, case, user, action=req.decision, approved_amount=req.approved_amount
+        db, case, user, action=dec_enum, approved_amount=req.approved_amount
     )
 
     req_hash = hashlib.sha256(
@@ -500,12 +572,12 @@ def record_human_decision(
     try:
         result_payload: dict[str, Any] = {
             "status": "success",
-            "decision": req.decision.value,
+            "decision": dec_enum.value,
         }
         if req.approved_amount is not None:
             result_payload["approved_amount"] = req.approved_amount
 
-        update_values = {"human_decision": req.decision.value}
+        update_values = {"human_decision": dec_enum.value}
 
         cas_update_case_and_audit(
             db=db,

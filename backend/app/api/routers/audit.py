@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List, Any, Dict
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,13 +8,14 @@ from app.db.session import get_db
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User, UserRole
 from app.db.orm.cases import Case, AuditEvent
-from app.services.authz import can_view_case, can_view_audit
+from app.services.authz import can_view_case, can_view_audit, apply_case_list_scope
 
 router = APIRouter(tags=["audit"])
 
 
 @router.get("/api/cases/{case_id}/audit")
 @router.get("/api/audit/cases/{case_id}")
+@router.get("/api/audit/cases/{case_id}/events")
 def get_case_audit_trail(
     case_id: UUID,
     db: Session = Depends(get_db),
@@ -62,21 +64,12 @@ def get_recent_audit_logs(
             detail="System administrators cannot view case audit trails",
         )
 
-    all_cases = db.query(Case).all()
-    accessible_case_ids = []
-    for c in all_cases:
-        try:
-            can_view_case(db, user, c.id)
-            accessible_case_ids.append(c.id)
-        except HTTPException:
-            continue
-
-    if not accessible_case_ids:
-        return []
+    now = datetime.now(timezone.utc)
+    scoped_cases_query = apply_case_list_scope(db, db.query(Case.id), user, now)
 
     events = (
         db.query(AuditEvent)
-        .filter(AuditEvent.case_id.in_(accessible_case_ids))
+        .filter(AuditEvent.case_id.in_(scoped_cases_query))
         .order_by(AuditEvent.created_at.desc(), AuditEvent.event_sequence.desc())
         .limit(limit)
         .all()

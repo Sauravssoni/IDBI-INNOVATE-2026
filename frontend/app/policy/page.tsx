@@ -28,7 +28,7 @@ export default function PolicyEnginePage() {
           </div>
           <div className="text-2xl font-bold text-white font-mono">&ge; 1.35x</div>
           <p className="text-xs text-slate-400">
-            Minimum Debt Service Coverage Ratio required for automated straight-through sanction approval.
+            Minimum Debt Service Coverage Ratio required for deterministic evidence-linked recommendation and human-reviewed sanction decision.
           </p>
         </div>
 
@@ -57,9 +57,9 @@ export default function PolicyEnginePage() {
 
       <div className="glass-panel p-8 rounded-2xl border border-white/10 text-center space-y-3">
         <CheckCircle2 className="w-12 h-12 text-pulse-400 mx-auto" />
-        <h3 className="text-lg font-bold text-white">IDBI Innovate 2026 Policy Matrix Active</h3>
+        <h3 className="text-lg font-bold text-white">Built for IDBI Innovate 2026 Policy Matrix Active</h3>
         <p className="text-xs text-slate-400 max-w-md mx-auto">
-          All scoring weights and credit matrices are governed under RBI guidelines and IDBI Bank SME Risk Policy 2026-A.
+          Illustrative prototype policy thresholds for AI-assisted credit assessment. Hackathon prototype—not an official IDBI Bank production system.
         </p>
       </div>
     </div>

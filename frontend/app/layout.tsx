@@ -16,8 +16,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Vyapar Pulse | IDBI Innovate 2026 - Autonomous Credit Decisioning",
-  description: "Next-generation SME credit assessment, real-time GST/Bank statement analysis, BOLA governance and automated CAM generation engine.",
+  title: "Vyapar Pulse | IDBI Innovate 2026 - AI-Assisted Credit Assessment Prototype",
+  description: "Next-generation SME credit assessment with deterministic evidence-linked recommendations, BOLA governance, and tamper-evident prototype audit chain. Hackathon prototype—not an official IDBI Bank production system.",
 };
 
 export default function RootLayout({

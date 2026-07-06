@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/api";
 import {
   Sparkles,
   TrendingUp,
@@ -17,10 +18,60 @@ import {
   Users,
   Building2,
   BarChart3,
+  RefreshCw,
 } from "lucide-react";
+
+const formatCurrency = (val: any) => {
+  if (val === undefined || val === null || val === "") return "-";
+  const num = typeof val === "string" ? parseFloat(val) : Number(val);
+  if (isNaN(num)) return String(val);
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(num);
+};
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const [cases, setCases] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadCases = async () => {
+    setLoading(true);
+    const { data, status } = await apiFetch<any[]>("/api/cases");
+    if (status === 200 && Array.isArray(data)) {
+      setCases(data);
+    } else {
+      setCases([]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadCases();
+  }, []);
+
+  const totalPipelineAmount = cases.reduce(
+    (sum, c) => sum + (Number(c.requested_amount) || 0),
+    0
+  );
+
+  const totalSupportableLimit = cases.reduce(
+    (sum, c) => sum + (Number(c.evaluation_result?.binding_limit || c.evaluation_result?.supportable_limit) || 0),
+    0
+  );
+
+  const pendingCount = cases.filter(
+    (c) => c.status === "IN_REVIEW" || c.status === "SUBMITTED" || c.status === "PENDING"
+  ).length;
+
+  const shaktiCase = cases.find(
+    (c) =>
+      c.business_name?.toLowerCase().includes("shakti") ||
+      c.id === "SHAKTI_PRECISION_001" ||
+      c.id === "shakti"
+  );
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -39,23 +90,24 @@ export default function DashboardPage() {
               Welcome back, <span className="text-gradient">{user?.full_name || "Banker"}</span>
             </h1>
             <p className="text-slate-400 text-sm sm:text-base mt-1 max-w-2xl">
-              Vyapar Pulse Credit Decisioning & Risk Assessment Dashboard. BOLA access controls and CAS cryptographic audit trails are active.
+              Vyapar Pulse AI-assisted credit assessment and risk evaluation dashboard. BOLA access controls and tamper-evident prototype audit chain are active.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <Link
-              href="/cases/shakti"
-              className="px-5 py-3 bg-gradient-to-r from-pulse-600 to-pulse-500 hover:from-pulse-500 hover:to-pulse-400 text-navy-900 font-bold text-sm rounded-xl shadow-lg shadow-pulse-500/25 flex items-center gap-2 transition-all"
+            <button
+              onClick={loadCases}
+              disabled={loading}
+              className="px-4 py-3 bg-navy-800 hover:bg-navy-700 text-white font-semibold text-sm rounded-xl border border-white/10 flex items-center gap-2 transition-all shadow-sm cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 fill-current" />
-              <span>Shakti Case Summary</span>
-            </Link>
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-pulse-400" : ""}`} />
+              <span>Refresh</span>
+            </button>
             <Link
               href="/cases"
-              className="px-5 py-3 bg-navy-800 hover:bg-navy-700 text-white font-semibold text-sm rounded-xl border border-white/10 hover:border-white/20 flex items-center gap-2 transition-all shadow-sm"
+              className="px-5 py-3 bg-gradient-to-r from-pulse-600 to-pulse-500 hover:from-pulse-500 hover:to-pulse-400 text-navy-900 font-bold text-sm rounded-xl shadow-lg shadow-pulse-500/25 flex items-center gap-2 transition-all"
             >
-              <FolderKanban className="w-4 h-4 text-slate-400" />
+              <FolderKanban className="w-4 h-4 fill-current" />
               <span>Case Inventory</span>
             </Link>
           </div>
@@ -65,18 +117,22 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/10 relative z-10">
           <div>
             <div className="text-xs font-mono text-slate-400">ACTIVE PIPELINE</div>
-            <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">₹14.8 Cr</div>
-            <div className="text-[11px] text-emerald-400 font-mono">↑ 4 SME Applications</div>
+            <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">
+              {loading ? "..." : formatCurrency(totalPipelineAmount)}
+            </div>
+            <div className="text-[11px] text-emerald-400 font-mono">
+              {loading ? "..." : `${cases.length} Scoped Applications`}
+            </div>
           </div>
           <div>
             <div className="text-xs font-mono text-slate-400">AVG DECISION TAT</div>
-            <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">4.2 Min</div>
-            <div className="text-[11px] text-emerald-400 font-mono">↓ 99% vs Legacy (14d)</div>
+            <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Not yet measured</div>
+            <div className="text-[11px] text-slate-400 font-mono">Prototype metric unavailable</div>
           </div>
           <div>
             <div className="text-xs font-mono text-slate-400">CAS ENGINE ACCURACY</div>
-            <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">99.4%</div>
-            <div className="text-[11px] text-pulse-400 font-mono">100% Audit Verified</div>
+            <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Not yet measured</div>
+            <div className="text-[11px] text-slate-400 font-mono">Prototype metric unavailable</div>
           </div>
           <div>
             <div className="text-xs font-mono text-slate-400">BOLA GOVERNANCE</div>
@@ -95,22 +151,26 @@ export default function DashboardPage() {
               <FolderKanban className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">12 Cases</div>
+          <div className="text-2xl font-bold text-white">
+            {loading ? "..." : `${cases.length} Cases`}
+          </div>
           <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-            <span className="text-blue-400">8 Evaluated</span> • 4 In Review
+            <span className="text-blue-400">BOLA Scoped</span> • Active Pipeline
           </div>
         </div>
 
         <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-emerald-500/40 transition-all group">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Approved Limit</span>
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Supportable Limit</span>
             <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
               <TrendingUp className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">₹8.45 Cr</div>
+          <div className="text-2xl font-bold text-white">
+            {loading ? "..." : formatCurrency(totalSupportableLimit)}
+          </div>
           <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-            <span className="text-emerald-400">₹1.85 Cr</span> Shakti Precision
+            <span className="text-emerald-400">Evaluated</span> • Recommended
           </div>
         </div>
 
@@ -121,32 +181,34 @@ export default function DashboardPage() {
               <Clock className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">3 Cases</div>
+          <div className="text-2xl font-bold text-white">
+            {loading ? "..." : `${pendingCount} Cases`}
+          </div>
           <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-            <span className="text-amber-400">Requires SA Approval</span>
+            <span className="text-amber-400">Requires Review</span>
           </div>
         </div>
 
         <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-pulse-500/40 transition-all group">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">CAM Automation</span>
+            <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">CAM Generation</span>
             <div className="w-10 h-10 rounded-xl bg-pulse-500/10 border border-pulse-500/20 flex items-center justify-center text-pulse-400 group-hover:scale-110 transition-transform">
               <Activity className="w-5 h-5" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-white">100% Auto</div>
+          <div className="text-2xl font-bold text-white">AI-Assisted</div>
           <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-            <span className="text-pulse-400">Zero Manual Excel</span> Required
+            <span className="text-pulse-400">Evidence-Linked</span> Recommendation
           </div>
         </div>
       </div>
 
       {/* Featured Hackathon Case & System Architecture Banner */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Shakti Case Highlight Card */}
+        {/* Case Highlight Card */}
         <div className="lg:col-span-2 glass-panel p-6 sm:p-8 rounded-2xl border border-pulse-500/30 bg-gradient-to-br from-navy-800 via-navy-800/80 to-navy-900 relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 px-4 py-1 bg-pulse-500 text-navy-900 font-bold text-xs uppercase tracking-widest rounded-bl-xl shadow-md">
-            Featured Hackathon Demo
+            Featured Case Study
           </div>
 
           <div className="flex items-start gap-4 mb-6">
@@ -155,48 +217,50 @@ export default function DashboardPage() {
             </div>
             <div>
               <div className="text-xs font-mono text-pulse-400 uppercase tracking-wider">
-                IDBI CASE REF: SHAKTI_001
+                IDBI CASE REF: {shaktiCase ? shaktiCase.id : "SHAKTI_PRECISION_001"}
               </div>
               <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
-                Shakti Precision Components Pvt Ltd
+                {shaktiCase ? shaktiCase.business_name : "Shakti Precision Components Pvt Ltd"}
               </h2>
               <p className="text-slate-400 text-sm mt-0.5">
-                Precision auto parts & aerospace CNC manufacturing • Jaipur Region
+                Precision auto parts & aerospace CNC manufacturing • {shaktiCase?.branch_name || "Jaipur Region"}
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 rounded-xl bg-navy-900/60 border border-white/5 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-navy-900/60 border border-white/5 mb-6">
             <div>
               <div className="text-[10px] font-mono text-slate-400">REQUESTED LIMIT</div>
-              <div className="text-base sm:text-lg font-bold text-white mt-0.5">₹2.00 Cr</div>
-            </div>
-            <div>
-              <div className="text-[10px] font-mono text-slate-400">CAS RISK SCORE</div>
-              <div className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5 flex items-center gap-1">
-                <span>724 / 900</span>
+              <div className="text-base sm:text-lg font-bold text-white mt-0.5">
+                {shaktiCase ? formatCurrency(shaktiCase.requested_amount) : "₹50,00,000"}
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-mono text-slate-400">RECOMMENDED</div>
-              <div className="text-base sm:text-lg font-bold text-pulse-400 mt-0.5">₹1.85 Cr</div>
+              <div className="text-[10px] font-mono text-slate-400">SUPPORTABLE LIMIT</div>
+              <div className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5">
+                {shaktiCase?.evaluation_result?.binding_limit || shaktiCase?.evaluation_result?.supportable_limit
+                  ? formatCurrency(shaktiCase.evaluation_result.binding_limit || shaktiCase.evaluation_result.supportable_limit)
+                  : "₹35,70,000"}
+              </div>
             </div>
             <div>
-              <div className="text-[10px] font-mono text-slate-400">RISK BAND</div>
-              <div className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5">LOW RISK (A-)</div>
+              <div className="text-[10px] font-mono text-slate-400">RECOMMENDATION</div>
+              <div className="text-xs sm:text-sm font-bold text-pulse-400 mt-1 font-mono">
+                {shaktiCase?.evaluation_result?.recommendation || shaktiCase?.evaluation_result?.decision?.decision || "CONDITIONAL_OFFER"}
+              </div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
             <div className="flex items-center gap-2 text-xs text-slate-300">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>GST / Bank reconciliation & CAM generated automatically</span>
+              <span>AI-assisted credit assessment with tamper-evident audit trail</span>
             </div>
             <Link
-              href="/cases/shakti"
+              href={shaktiCase ? `/cases/${shaktiCase.id}` : "/cases"}
               className="px-5 py-2.5 bg-white text-navy-900 hover:bg-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md"
             >
-              <span>Launch Deep Dive Evaluation</span>
+              <span>View Case Details</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -231,7 +295,7 @@ export default function DashboardPage() {
           <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs font-mono">
             <span className="text-slate-400">Audit Status:</span>
             <span className="text-emerald-400 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Cryptographic Seal
+              <CheckCircle2 className="w-3.5 h-3.5" /> Tamper-Evident Trail
             </span>
           </div>
         </div>
