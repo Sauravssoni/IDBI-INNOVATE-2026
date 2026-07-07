@@ -5,8 +5,6 @@ from decimal import Decimal
 
 def run_evaluations():
     # Setup environments
-    os.environ["DEMO_USER_PASSWORD"] = "demopassword"
-    os.environ["ALLOW_DANGEROUS_CORS"] = "true"
 
     from fastapi.testclient import TestClient
     from app.main import app

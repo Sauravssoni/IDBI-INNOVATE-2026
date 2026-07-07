@@ -1,0 +1,55 @@
+{
+  "title": "Decision Assurance Report",
+  "cases": [
+    {
+      "business_id": "SHAKTI_PRECISION_001",
+      "legal_name": "Shakti Precision Components Pvt Ltd",
+      "status": "INITIATED",
+      "requested_amount": 5000000.0,
+      "assessment_result": {
+        "dscr": null,
+        "recommendation": null
+      }
+    },
+    {
+      "business_id": "NAVPRERNA_TECH_001",
+      "legal_name": "Navprerna Tech Solutions",
+      "status": "ASSESSMENT_COMPLETED",
+      "requested_amount": 3000000.0,
+      "assessment_result": {
+        "dscr": null,
+        "recommendation": "ADDITIONAL_EVIDENCE_REQUIRED"
+      }
+    },
+    {
+      "business_id": "RANGREZ_TEXTILES_001",
+      "legal_name": "Rangrez Textiles",
+      "status": "DECISION_PENDING",
+      "requested_amount": 4500000.0,
+      "assessment_result": {
+        "dscr": null,
+        "recommendation": "READY_FOR_REVIEW"
+      }
+    },
+    {
+      "business_id": "AAROHAN_INFRA_001",
+      "legal_name": "Aarohan Infrastructure",
+      "status": "ASSESSMENT_COMPLETED",
+      "requested_amount": 20000000.0,
+      "assessment_result": {
+        "dscr": null,
+        "recommendation": "DECLINE_RECOMMENDED"
+      }
+    },
+    {
+      "business_id": "RANGREZ_TEXTILE_001",
+      "legal_name": "Rangrez Textiles",
+      "status": "ASSESSMENT_COMPLETED",
+      "requested_amount": 8000000.0,
+      "assessment_result": {
+        "dscr": null,
+        "recommendation": "DECLINE_RECOMMENDED"
+      }
+    }
+  ]
+}
