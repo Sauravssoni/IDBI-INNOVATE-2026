@@ -81,15 +81,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Welcome Banner */}
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-white/10 relative overflow-hidden bg-gradient-to-r from-navy-800/80 via-navy-800/40 to-navy-900/80 shadow-xl">
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-pulse-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="glass-panel p-6 sm:p-8 rounded-2xl relative overflow-hidden shadow-sm">
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pulse-500/10 border border-pulse-500/30 text-xs text-pulse-400 font-mono mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-700 text-xs text-pulse-500 mb-3">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>IDBI INNOVATE 2026 • LIVE EVALUATION ENVIRONMENT</span>
+              <span>IDBI INNOVATE 2026 • CONTROLLED PROTOTYPE ENVIRONMENT</span>
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
               Welcome back, <span className="text-gradient">{user?.full_name || "Banker"}</span>
@@ -111,9 +109,9 @@ export default function DashboardPage() {
             {user?.role !== "SYSTEM_ADMIN" && (
               <Link
                 href="/cases"
-                className="px-5 py-3 bg-gradient-to-r from-pulse-600 to-pulse-500 hover:from-pulse-500 hover:to-pulse-400 text-navy-900 font-bold text-sm rounded-xl shadow-lg shadow-pulse-500/25 flex items-center gap-2 transition-all"
+                className="px-5 py-3 bg-pulse-500 hover:bg-pulse-600 text-white font-bold text-sm rounded-xl border border-pulse-400 flex items-center gap-2 transition-all"
               >
-                <FolderKanban className="w-4 h-4 fill-current" />
+                <FolderKanban className="w-4 h-4" />
                 <span>Case Inventory</span>
               </Link>
             )}
@@ -122,30 +120,30 @@ export default function DashboardPage() {
 
         {/* Mini Stats Bar inside Hero */}
         {user?.role !== "SYSTEM_ADMIN" && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-white/10 relative z-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-bank-border relative z-10">
             <div>
-              <div className="text-xs font-mono text-slate-400">ACTIVE PIPELINE</div>
+              <div className="text-xs text-bank-secondary">SCOPED APPLICATIONS</div>
               <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">
-                {loading ? "..." : formatCurrency(totalPipelineAmount)}
+                {loading ? "..." : totalCasesCount}
               </div>
-              <div className="text-[11px] text-emerald-400 font-mono">
-                {loading ? "..." : `${totalCasesCount} Scoped Applications`}
+              <div className="text-[11px] text-pulse-500">
+                {loading ? "..." : formatCurrency(totalPipelineAmount)} Pipeline
               </div>
             </div>
             <div>
-              <div className="text-xs font-mono text-slate-400">AVG DECISION TAT</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Not yet measured</div>
-              <div className="text-[11px] text-slate-400 font-mono">Prototype metric unavailable</div>
+              <div className="text-xs text-bank-secondary">EVIDENCE COVERAGE</div>
+              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Connected</div>
+              <div className="text-[11px] text-bank-muted">GST & Bank integrations</div>
             </div>
             <div>
-              <div className="text-xs font-mono text-slate-400">CAS ENGINE ACCURACY</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Not yet measured</div>
-              <div className="text-[11px] text-slate-400 font-mono">Prototype metric unavailable</div>
+              <div className="text-xs text-bank-secondary">POLICY ENGINE STATUS</div>
+              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Active</div>
+              <div className="text-[11px] text-bank-muted">CAS evaluating cases</div>
             </div>
             <div>
-              <div className="text-xs font-mono text-slate-400">BOLA GOVERNANCE</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Secured</div>
-              <div className="text-[11px] text-emerald-400 font-mono">Backend BOLA enforcement active</div>
+              <div className="text-xs text-bank-secondary">BOLA ENFORCEMENT</div>
+              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Active</div>
+              <div className="text-[11px] text-pulse-500">Mandate limits applied</div>
             </div>
           </div>
         )}
@@ -156,16 +154,16 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-pulse-500/40 transition-all group">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Total Inventory</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+              <span className="text-xs text-bank-secondary uppercase tracking-wider">Total Inventory</span>
+              <div className="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-pulse-500">
                 <FolderKanban className="w-5 h-5" />
               </div>
             </div>
             <div className="text-2xl font-bold text-white">
               {loading ? "..." : `${totalCasesCount} Cases`}
             </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-              <span className="text-blue-400">BOLA Scoped</span> • Active Pipeline
+            <div className="text-xs text-bank-muted mt-2 flex items-center gap-1.5">
+              <span>Active Pipeline</span>
             </div>
           </div>
 
@@ -173,29 +171,29 @@ export default function DashboardPage() {
 
           <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/40 transition-all group">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">Pending Sanction</span>
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+              <span className="text-xs text-bank-secondary uppercase tracking-wider">Pending Sanction</span>
+              <div className="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-bank-warning">
                 <Clock className="w-5 h-5" />
               </div>
             </div>
             <div className="text-2xl font-bold text-white">
               {loading ? "..." : `${pendingCount} Cases`}
             </div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-              <span className="text-amber-400">Requires Review</span>
+            <div className="text-xs text-bank-muted mt-2 flex items-center gap-1.5">
+              <span>Requires Review</span>
             </div>
           </div>
 
           <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-pulse-500/40 transition-all group">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">CAM Generation</span>
-              <div className="w-10 h-10 rounded-xl bg-pulse-500/10 border border-pulse-500/20 flex items-center justify-center text-pulse-400 group-hover:scale-110 transition-transform">
+              <span className="text-xs text-bank-secondary uppercase tracking-wider">Memo Preparation</span>
+              <div className="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-pulse-500">
                 <Activity className="w-5 h-5" />
               </div>
             </div>
-            <div className="text-2xl font-bold text-white">AI-Assisted</div>
-            <div className="text-xs text-slate-400 mt-2 flex items-center gap-1.5 font-mono">
-              <span className="text-pulse-400">Evidence-Linked</span> Recommendation
+            <div className="text-2xl font-bold text-white">Evidence-linked</div>
+            <div className="text-xs text-bank-muted mt-2 flex items-center gap-1.5">
+              <span>Summary</span>
             </div>
           </div>
         </div>
@@ -205,14 +203,14 @@ export default function DashboardPage() {
       <div className={`grid grid-cols-1 ${user?.role !== "SYSTEM_ADMIN" ? "lg:grid-cols-3" : ""} gap-6`}>
         {/* Case Highlight Card */}
         {user?.role !== "SYSTEM_ADMIN" && shaktiCase && (
-          <div className="lg:col-span-2 glass-panel p-6 sm:p-8 rounded-2xl border border-pulse-500/30 bg-gradient-to-br from-navy-800 via-navy-800/80 to-navy-900 relative overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 px-4 py-1 bg-pulse-500 text-navy-900 font-bold text-xs uppercase tracking-widest rounded-bl-xl shadow-md">
+          <div className="lg:col-span-2 glass-panel p-6 sm:p-8 rounded-2xl relative shadow-sm">
+            <div className="absolute top-0 right-0 px-4 py-1 bg-navy-600 text-pulse-500 font-bold text-xs rounded-bl-xl shadow-sm border-l border-b border-bank-border">
               Featured Case Study
             </div>
 
             <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-pulse-600 to-navy-700 flex items-center justify-center text-white shrink-0 shadow-lg shadow-pulse-500/20 border border-pulse-400/30">
-                <Building2 className="w-6 h-6 text-pulse-400" />
+              <div className="w-12 h-12 rounded-lg bg-navy-700 flex items-center justify-center text-white shrink-0 border border-bank-border">
+                <Building2 className="w-6 h-6 text-pulse-500" />
               </div>
               <div>
                 <div className="text-xs font-mono text-pulse-400 uppercase tracking-wider">
@@ -235,8 +233,8 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div>
-                <div className="text-[10px] font-mono text-slate-400">SUPPORTABLE LIMIT</div>
-                <div className="text-base sm:text-lg font-bold text-emerald-400 mt-0.5">
+                <div className="text-[10px] text-bank-secondary">SUPPORTABLE LIMIT</div>
+                <div className="text-base sm:text-lg font-bold text-pulse-500 mt-0.5 font-mono">
                   {shaktiCase.evaluation_result?.binding_limit || shaktiCase.evaluation_result?.supportable_limit
                     ? formatCurrency(shaktiCase.evaluation_result.binding_limit || shaktiCase.evaluation_result.supportable_limit)
                     : "-"}
@@ -251,13 +249,13 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <div className="flex items-center gap-2 text-xs text-slate-300">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>AI-assisted credit assessment with tamper-evident prototype audit chain</span>
+              <div className="flex items-center gap-2 text-xs text-bank-secondary">
+                <CheckCircle2 className="w-4 h-4 text-pulse-500 shrink-0" />
+                <span>Evidence-linked credit assessment with tamper-evident prototype audit chain</span>
               </div>
               <Link
                 href={`/cases/${shaktiCase.id}`}
-                className="px-5 py-2.5 bg-white text-navy-900 hover:bg-slate-200 font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md"
+                className="px-5 py-2.5 bg-pulse-500 text-white hover:bg-pulse-600 font-bold text-xs rounded-lg flex items-center gap-2 transition-all shadow-sm"
               >
                 <span>View Case Details</span>
                 <ArrowRight className="w-4 h-4" />
@@ -267,9 +265,9 @@ export default function DashboardPage() {
         )}
 
         {/* Quick BOLA & Audit Info Card */}
-        <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-white/10 flex flex-col justify-between">
+        <div className="glass-panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between">
           <div>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-navy-700 flex items-center justify-center text-bank-info mb-4">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2">BOLA Security Architecture</h3>
@@ -292,9 +290,9 @@ export default function DashboardPage() {
             </ul>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs font-mono">
-            <span className="text-slate-400">Audit Status:</span>
-            <span className="text-emerald-400 flex items-center gap-1">
+          <div className="mt-6 pt-4 border-t border-bank-border flex items-center justify-between text-xs">
+            <span className="text-bank-secondary">Audit Status:</span>
+            <span className="text-pulse-500 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> Tamper-Evident Prototype Audit Chain
             </span>
           </div>
