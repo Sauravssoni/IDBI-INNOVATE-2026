@@ -1,4 +1,3 @@
-import os
 
 docs = {
     "docs/security/SECURITY_ARCHITECTURE.md": """# Security Architecture

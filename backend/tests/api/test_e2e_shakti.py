@@ -25,7 +25,9 @@ def setup_shakti_db():
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Refusing to run tests in production environment")
 
-    test_password = os.environ.get("DEMO_USER_PASSWORD") or f"test_pw_{uuid.uuid4().hex}"
+    test_password = (
+        os.environ.get("DEMO_USER_PASSWORD") or f"test_pw_{uuid.uuid4().hex}"
+    )
     os.environ["DEMO_USER_PASSWORD"] = test_password
 
     seed_shakti()

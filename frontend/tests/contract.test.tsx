@@ -206,7 +206,7 @@ describe('Frontend Contract Tests', () => {
       const calls = mockApiFetch.mock.calls;
       const recCall = calls.find(c => c[0].includes('analyst-recommendation') && c[1]?.method === 'POST');
       expect(recCall).toBeDefined();
-      const body = JSON.parse(recCall[1].body);
+      const body = JSON.parse(recCall![1].body);
       expect(body.recommendation).toBe('RECOMMEND_ALTERNATIVE_STRUCTURE');
     });
   });
