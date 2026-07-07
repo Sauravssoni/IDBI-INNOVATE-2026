@@ -66,12 +66,12 @@ export default function DashboardPage() {
 
   const totalCasesCount = summary?.active_cases ?? cases.length;
 
-  const analystReviewCount = cases.filter(
-    (c) => c.status === "SUBMITTED" || c.status === "ADDITIONAL_EVIDENCE_PROVIDED" || c.status === "PENDING"
+  const analystReviewCount = summary?.awaiting_analyst ?? cases.filter(
+    (c) => ["INITIATED", "EVIDENCE_GATHERING", "ASSESSMENT_COMPLETED"].includes(c.status)
   ).length;
 
-  const sanctionReviewCount = cases.filter(
-    (c) => c.status === "RECOMMENDED" || c.status === "ESCALATED"
+  const sanctionReviewCount = summary?.awaiting_human_decision ?? cases.filter(
+    (c) => c.status === "DECISION_PENDING"
   ).length;
 
   return (

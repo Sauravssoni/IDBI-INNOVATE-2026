@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { apiFetch } from "@/lib/api";
 import {
   ShieldCheck,
   Lock,
@@ -33,7 +34,11 @@ export default function LoginPage() {
     if (res.success) {
       router.push("/");
     } else {
-      setError(res.error || "Login failed. Please verify credentials.");
+      if (res.error?.includes("Failed to fetch") || res.error?.includes("Network request failed") || res.error?.includes("unavailable")) {
+        setError("Vyapar Pulse API is unavailable. Start the backend service or verify NEXT_PUBLIC_API_URL.");
+      } else {
+        setError(res.error || "Login failed. Please verify credentials.");
+      }
       setIsSubmitting(false);
     }
   };
@@ -43,6 +48,20 @@ export default function LoginPage() {
     setPassword("");
     setError(null);
   };
+
+  React.useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const { status, error: fetchErr } = await apiFetch("/health");
+        if (status !== 200) {
+          setError("Vyapar Pulse API is unavailable. Start the backend service or verify NEXT_PUBLIC_API_URL.");
+        }
+      } catch (err) {
+        setError("Vyapar Pulse API is unavailable. Start the backend service or verify NEXT_PUBLIC_API_URL.");
+      }
+    };
+    checkHealth();
+  }, []);
 
   const enableDemoShortcuts = process.env.NEXT_PUBLIC_ENABLE_DEMO_SHORTCUTS === "true";
 

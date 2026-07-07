@@ -17,7 +17,7 @@
       "status": "ASSESSMENT_COMPLETED",
       "requested_amount": 3000000.0,
       "assessment_result": {
-        "dscr": null,
+        "dscr": 2.41,
         "recommendation": "ADDITIONAL_EVIDENCE_REQUIRED"
       }
     },
@@ -27,7 +27,7 @@
       "status": "DECISION_PENDING",
       "requested_amount": 4500000.0,
       "assessment_result": {
-        "dscr": null,
+        "dscr": 7.26,
         "recommendation": "READY_FOR_REVIEW"
       }
     },
@@ -37,17 +37,7 @@
       "status": "ASSESSMENT_COMPLETED",
       "requested_amount": 20000000.0,
       "assessment_result": {
-        "dscr": null,
-        "recommendation": "DECLINE_RECOMMENDED"
-      }
-    },
-    {
-      "business_id": "RANGREZ_TEXTILE_001",
-      "legal_name": "Rangrez Textiles",
-      "status": "ASSESSMENT_COMPLETED",
-      "requested_amount": 8000000.0,
-      "assessment_result": {
-        "dscr": null,
+        "dscr": 0.55,
         "recommendation": "DECLINE_RECOMMENDED"
       }
     }

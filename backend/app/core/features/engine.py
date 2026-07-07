@@ -4,6 +4,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from app.db.orm.cases import Business
 from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, EmploymentPeriod
+from app.services.credit_twin import calculate_dscr_sandbox_v1
+import datetime
 
 
 class FeatureEngine:
@@ -103,6 +105,10 @@ class FeatureEngine:
 
         # Assumes 18 months based on standard pulling
         months = Decimal("18.0")
+        
+        # Calculate authoritative DSCR
+        today = datetime.date(2026, 7, 1)
+        dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, today)
 
         return {
             "total_credits": str(
@@ -117,6 +123,7 @@ class FeatureEngine:
             "avg_monthly_debits": str(
                 (debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ),
+            "dscr": str(dscr) if dscr is not None else None,
         }
 
     def _derive_reconciliation_metrics(self) -> Dict[str, Any]:
