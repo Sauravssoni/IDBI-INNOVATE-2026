@@ -220,9 +220,9 @@ def test_migration_upgrade_downgrade():
             "requested_facility_type not restored properly"
         )
 
-    # 8. Run alembic upgrade to 8a45193de2c9 (head)
+    # 8. Run alembic upgrade to fc4c9edd7015 (head)
     proc = subprocess.run(
-        ["alembic", "upgrade", "8a45193de2c9"], capture_output=True, text=True, env=env, cwd=backend_dir
+        ["alembic", "upgrade", "fc4c9edd7015"], capture_output=True, text=True, env=env, cwd=backend_dir
     )
     if proc.returncode != 0:
         print(proc.stdout)

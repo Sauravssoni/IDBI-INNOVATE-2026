@@ -11,6 +11,7 @@ from app.db.orm.evidence import (
     Invoice,
     InvoicePayment,
     EmploymentPeriod,
+    Obligation,
 )
 from app.db.orm.users import User, UserRole
 from app.db.orm.org import (
@@ -60,6 +61,9 @@ def seed_shakti():
             Invoice.business_id_fk == existing_business.id
         ).delete()
 
+        db.query(Obligation).filter(
+            Obligation.business_id_fk == existing_business.id
+        ).delete()
         db.query(EmploymentPeriod).filter(
             EmploymentPeriod.business_id_fk == existing_business.id
         ).delete()
@@ -267,6 +271,7 @@ def seed_shakti():
                 tax_paid=round(monthly_rev * Decimal("0.18"), 2),
                 source_system="GSTN",
                 source_record_id=f"GST-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
             )
         )
 
@@ -283,6 +288,7 @@ def seed_shakti():
                 category="BUYER_RECEIPT",
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-CR-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
             )
         )
 
@@ -296,6 +302,7 @@ def seed_shakti():
                 category="SUPPLIER_PAYMENT",
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-SUP-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
             )
         )
 
@@ -309,6 +316,7 @@ def seed_shakti():
                 category="SALARY",
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-SAL-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
             )
         )
 
@@ -321,6 +329,21 @@ def seed_shakti():
                 total_pf_remittance=round(salary_payment * Decimal("0.12"), 2),
                 source_system="EPFO",
                 source_record_id=f"EPFO-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+            )
+        )
+
+        # Debt Service
+        db.add(
+            BankTransaction(
+                business_id_fk=shakti.id,
+                transaction_date=month_start + timedelta(days=20),
+                amount=Decimal("228238.12"),
+                transaction_type="DEBIT",
+                category="DEBT_SERVICE",
+                source_system="ACCOUNT_AGGREGATOR",
+                source_record_id=f"TXN-DEBT-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
             )
         )
 
@@ -352,6 +375,7 @@ def seed_shakti():
                     status=status,
                     source_system="GST_E_INVOICE",
                     source_record_id=f"INV-P-{m}-{idx}-{shakti.id}",
+                    ingestion_mode="SEEDED_PROTOTYPE",
                 )
                 db.add(inv)
             else:
@@ -365,6 +389,7 @@ def seed_shakti():
                     status=status,
                     source_system="GST_E_INVOICE",
                     source_record_id=f"INV-D-{m}-{idx}-{shakti.id}",
+                    ingestion_mode="SEEDED_PROTOTYPE",
                 )
                 db.add(inv)
                 db.flush()  # flush to get id
@@ -377,8 +402,21 @@ def seed_shakti():
                         amount=amount,
                         source_system="ACCOUNT_AGGREGATOR",
                         source_record_id=f"PAY-{m}-{idx}-{shakti.id}",
+                        ingestion_mode="SEEDED_PROTOTYPE",
                     )
                 )
+
+    db.add(
+        Obligation(
+            business_id_fk=shakti.id,
+            facility_type="TERM_LOAN",
+            monthly_emi=Decimal("228238.12"),
+            outstanding_balance=Decimal("8000000.00"),
+            source_system="CIBIL",
+            source_record_id=f"OBL-1-{shakti.id}",
+            ingestion_mode="SEEDED_PROTOTYPE",
+        )
+    )
 
     db.commit()
 
