@@ -2,13 +2,21 @@ import os
 import sys
 from app.db.session import SessionLocal
 from app.db.orm.cases import Business, Case, AuditEvent, IdempotencyRecord
-from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation
+from app.db.orm.evidence import (
+    GSTPeriod,
+    BankTransaction,
+    Invoice,
+    InvoicePayment,
+    EmploymentPeriod,
+    Obligation,
+)
 from app.db.orm.consents import Consent, DataConnection
 from app.seed.seed_shakti import seed_shakti
 from app.seed.seed_navprerna import seed_navprerna
 from app.seed.seed_rangrez import seed_rangrez
 from app.seed.seed_aarohan import seed_aarohan
 from app.seed.run_evaluations import run_evaluations
+
 
 def reset_demo():
     if os.environ.get("APP_ENV") == "production":
@@ -21,7 +29,7 @@ def reset_demo():
         # Delete idempotency and audit before cases
         db.query(AuditEvent).delete()
         db.query(IdempotencyRecord).delete()
-        
+
         # Delete evidence
         db.query(GSTPeriod).delete()
         db.query(BankTransaction).delete()
@@ -29,15 +37,15 @@ def reset_demo():
         db.query(Invoice).delete()
         db.query(EmploymentPeriod).delete()
         db.query(Obligation).delete()
-        
+
         # Delete cases and consents
         db.query(DataConnection).delete()
         db.query(Consent).delete()
         db.query(Case).delete()
-        
+
         # Finally delete businesses
         db.query(Business).delete()
-        
+
         db.commit()
     except Exception as e:
         db.rollback()
@@ -62,6 +70,7 @@ def reset_demo():
     run_evaluations()
 
     print("Demo reset complete! Precisely four personas are loaded.")
+
 
 if __name__ == "__main__":
     reset_demo()

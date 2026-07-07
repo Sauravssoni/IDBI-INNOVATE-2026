@@ -303,11 +303,19 @@ def get_cases_summary(
     approved_amount = Decimal(0)
 
     for c in cases:
-        if c.status in [CaseStatus.INITIATED, CaseStatus.EVIDENCE_GATHERING, CaseStatus.ASSESSMENT_COMPLETED]:
+        if c.status in [
+            CaseStatus.INITIATED,
+            CaseStatus.EVIDENCE_GATHERING,
+            CaseStatus.ASSESSMENT_COMPLETED,
+        ]:
             awaiting_analyst += 1
         elif c.status == CaseStatus.DECISION_PENDING:
             awaiting_human += 1
-        elif c.status in [CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED]:
+        elif c.status in [
+            CaseStatus.HUMAN_APPROVED,
+            CaseStatus.HUMAN_DECLINED,
+            CaseStatus.HUMAN_DEFERRED,
+        ]:
             approved_cases += 1
             if c.status == CaseStatus.HUMAN_APPROVED:
                 latest_dec = (
@@ -487,7 +495,11 @@ def evaluate_case(
         }
 
         dscr_val = None
-        if "bank_metrics" in features and "dscr" in features["bank_metrics"] and features["bank_metrics"]["dscr"] is not None:
+        if (
+            "bank_metrics" in features
+            and "dscr" in features["bank_metrics"]
+            and features["bank_metrics"]["dscr"] is not None
+        ):
             dscr_val = Decimal(str(features["bank_metrics"]["dscr"]))
 
         update_values = {
