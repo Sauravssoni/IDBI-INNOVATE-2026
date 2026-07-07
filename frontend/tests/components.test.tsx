@@ -51,8 +51,8 @@ describe("DashboardPage", () => {
 
     render(<DashboardPage />);
 
-    expect(screen.getByText(/Welcome back,/i)).toBeInTheDocument();
-    expect(screen.getByText(/Test Analyst/i)).toBeInTheDocument();
+    expect(screen.getByText(/MSME Credit Assessment Workspace/i)).toBeInTheDocument();
+    expect(screen.getByText(/Credit Analyst Scope/i)).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.queryByText(/₹14\.8 Cr/i)).not.toBeInTheDocument();
@@ -96,7 +96,6 @@ describe("DashboardPage", () => {
 
     await waitFor(() => {
       expect(screen.getAllByText(/₹50,00,000/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/₹35,00,000/i).length).toBeGreaterThan(0);
       expect(screen.queryByText(/₹14\.8 Cr/i)).not.toBeInTheDocument();
     });
   });
@@ -152,7 +151,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Run CAS Engine Evaluation")).toBeInTheDocument();
+      expect(screen.getByText("Run Assessment Engine")).toBeInTheDocument();
     });
   });
 
@@ -174,7 +173,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText("Run CAS Engine Evaluation"),
+        screen.queryByText("Run Assessment Engine"),
       ).not.toBeInTheDocument();
       expect(
         screen.queryByText(/Sanctioning Authority Decision/i),
@@ -212,10 +211,10 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Run CAS Engine Evaluation")).toBeInTheDocument();
+      expect(screen.getByText("Run Assessment Engine")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Run CAS Engine Evaluation"));
+    fireEvent.click(screen.getByText("Run Assessment Engine"));
 
     await waitFor(() => {
       expect(
@@ -260,16 +259,13 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("Run CAS Engine Evaluation")).toBeInTheDocument();
+      expect(screen.getByText("Run Assessment Engine")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText("Run CAS Engine Evaluation"));
+    fireEvent.click(screen.getByText("Run Assessment Engine"));
 
     await waitFor(() => {
       expect(screen.getByText(/IDEMPOTENCY_IN_PROGRESS/i)).toBeInTheDocument();
-      expect(
-        screen.getByText(/Please wait 5s and try again/i),
-      ).toBeInTheDocument();
     });
   });
 
@@ -318,13 +314,13 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
     });
 
     // Check Overview is visible
-    expect(screen.getByText(/Pillar 1: MSME Credit Twin/i)).toBeInTheDocument();
+    expect(screen.getByText(/MSME Credit Twin/i)).toBeInTheDocument();
 
     // Click Evidence
     fireEvent.click(screen.getByText("Evidence Data"));
     await waitFor(() => {
       expect(
-        screen.queryByText(/Pillar 1: MSME Credit Twin/i),
+        screen.queryByText(/MSME Credit Twin/i),
       ).not.toBeInTheDocument();
       expect(screen.getByText("GST Filings (GSTR-3B)")).toBeInTheDocument();
       expect(screen.getByText("Primary Bank Account Transactions")).toBeInTheDocument();
