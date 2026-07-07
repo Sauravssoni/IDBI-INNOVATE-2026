@@ -33,7 +33,7 @@ Unlike standard dashboards or LLM-wrappers, Vyapar Pulse is an **Evidence-First*
 1. **Deterministic Bounded Scoring:** Financial Health, Evidence, and Resilience scores are mathematically bounded `[0, 100]`.
 2. **Monotonic Stress Response:** As risk factors (e.g., buyer concentration, payment delays) increase, resilience scores strictly decrease or remain stable.
 3. **No LLM Hallucinations in Core Logic:** Authoritative credit decisions, policy constraints, and offer generation are 100% deterministic code. LLMs are strictly bounded to generating explainable narrative summaries of the numeric data.
-4. **Idempotent Audit Trails:** Every system action and human decision is immutably logged with cryptographic hashing, ensuring complete BOLA (Broken Object Level Authorization) protection.
+4. **Tamper-Evident Audit Trails:** Every system action and human decision is logged with cryptographic hashing.
 
 ## Demo Personas
 

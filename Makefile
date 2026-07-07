@@ -57,16 +57,43 @@ build:
 	docker-compose build backend
 
 demo-up:
-	@echo "Starting demo environment..."
-	docker-compose up --build -d
+	@echo "Starting PostgreSQL..."
+	docker-compose up -d db
+	@echo "Waiting for PostgreSQL..."
+	@sleep 5
+	@echo "Running migrations inside backend container..."
+	docker-compose run --rm backend alembic upgrade head
+	@echo "Running demo reset inside backend container..."
+	docker-compose run --rm -e DEMO_USER_PASSWORD="$${DEMO_USER_PASSWORD:-demopassword}" backend python -m app.seed.run_demo_reset
+	@echo "Starting backend and frontend..."
+	docker-compose up -d backend
+	@echo "Waiting for backend health check..."
+	@for i in {1..15}; do \
+		curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health | grep -q 200 && break || sleep 2; \
+		if [ $$i -eq 15 ]; then echo "Backend failed to start"; exit 1; fi \
+	done
+	docker-compose up -d frontend
+	@echo "=========================================="
+	@echo "🚀 VYAPAR PULSE AI DEMO IS RUNNING!"
+	@echo "=========================================="
+	@echo "Frontend URL: http://localhost:3005"
+	@echo "Backend API:  http://localhost:8000/docs"
+	@echo ""
+	@echo "Demo Credentials (Password: demopassword):"
+	@echo "  RM:      rm@bank.example"
+	@echo "  Analyst: credit@bank.example"
+	@echo "  SA:      sa@bank.example"
+	@echo "  Auditor: auditor@bank.example"
+	@echo "  Admin:   admin@bank.example"
+	@echo "=========================================="
 
 demo-reset:
 	@echo "Resetting demo environment..."
-	cd backend && source .venv/bin/activate && DEMO_USER_PASSWORD=demopassword python -m app.seed.run_demo_reset
+	docker-compose exec -e DEMO_USER_PASSWORD="$${DEMO_USER_PASSWORD:-demopassword}" backend python -m app.seed.run_demo_reset
 
 verify:
 	@echo "Running decision assurance verification..."
-	cd backend && source .venv/bin/activate && DEMO_USER_PASSWORD=demopassword python scripts/run_decision_assurance.py
+	docker-compose exec -e DEMO_USER_PASSWORD="$${DEMO_USER_PASSWORD:-demopassword}" backend python scripts/run_decision_assurance.py
 
 demo-down:
 	@echo "Stopping demo environment and destroying volumes..."
