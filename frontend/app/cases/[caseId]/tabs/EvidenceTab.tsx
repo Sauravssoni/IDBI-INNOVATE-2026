@@ -43,41 +43,41 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   if (loading) {
-    return <div className="text-center p-8 text-slate-400 font-mono text-sm">Loading Evidence Data...</div>;
+    return <div className="text-center p-8 text-light-secondary font-mono text-sm">Loading Evidence Data...</div>;
   }
 
   const renderProvenanceMarker = (metadata: any) => {
     const mode = metadata?.ingestion_mode;
-    if (!mode) return <span className="px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30 text-[10px] font-mono">UNKNOWN</span>;
+    if (!mode) return <span className="px-2 py-0.5 rounded bg-light-elevated text-light-secondary border border-light-border text-xs font-mono">UNKNOWN</span>;
     switch(mode) {
       case "SEEDED_PROTOTYPE":
-        return <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-mono">SEEDED (SANDBOX)</span>;
+        return <span className="px-2 py-0.5 rounded bg-brand-softTeal text-brand-teal border border-brand-teal/30 text-[10px] font-mono">SEEDED (SANDBOX)</span>;
       case "CONNECTED_SOURCE":
-        return <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono"><CheckCircle2 className="w-3 h-3 inline mr-1" />VERIFIED SOURCE</span>;
+        return <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-mono"><CheckCircle2 className="w-3 h-3 inline mr-1" />VERIFIED SOURCE</span>;
       case "UPLOADED_DOCUMENT":
-        return <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-mono">UPLOADED</span>;
+        return <span className="px-2 py-0.5 rounded bg-brand-softAmber text-brand-amber border border-brand-amber/30 text-[10px] font-mono">UPLOADED</span>;
       default:
-        return <span className="px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30 text-[10px] font-mono">{mode}</span>;
+        return <span className="px-2 py-0.5 rounded bg-light-elevated text-light-secondary border border-light-border text-[10px] font-mono">{mode}</span>;
     }
   }
 
   return (
     <div className="space-y-6">
       {/* GST Evidence Table */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-          <FileText className="w-5 h-5 text-pulse-400" />
+      <div className="glass-card p-6 border border-light-border shadow-sm">
+        <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-4">
+          <FileText className="w-5 h-5 text-brand-teal" />
           GST Filings (GSTR-3B)
         </h3>
         
         {gstRecords.length === 0 ? (
-          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+          <div className="p-4 bg-light-bg rounded-xl border border-dashed border-light-border text-center text-sm text-light-secondary">
             No GST records found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+              <thead className="text-xs font-mono text-light-secondary bg-light-bg">
                 <tr>
                   <th className="px-4 py-3 rounded-l-xl">Period</th>
                   <th className="px-4 py-3">Declared Revenue</th>
@@ -86,14 +86,14 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                   <th className="px-4 py-3 rounded-r-xl">Provenance</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-light-border">
                 {gstRecords.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 font-mono text-slate-300">{r.period}</td>
-                    <td className="px-4 py-3 text-emerald-400 font-mono">{formatCurrency(r.declared_revenue)}</td>
-                    <td className="px-4 py-3 text-rose-400 font-mono">{formatCurrency(r.tax_paid)}</td>
+                  <tr key={i} className="hover:bg-light-elevated transition-colors">
+                    <td className="px-4 py-3 font-mono text-light-text">{r.period}</td>
+                    <td className="px-4 py-3 text-brand-teal font-mono">{formatCurrency(r.declared_revenue)}</td>
+                    <td className="px-4 py-3 text-brand-red font-mono">{formatCurrency(r.tax_paid)}</td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs">{r.status}</span>
+                      <span className="px-2 py-1 rounded bg-emerald-50 text-emerald-600 text-xs">{r.status}</span>
                     </td>
                     <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
@@ -105,20 +105,20 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
       </div>
 
       {/* Bank Evidence Table */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-          <Database className="w-5 h-5 text-blue-400" />
+      <div className="glass-card p-6 border border-light-border shadow-sm">
+        <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-4">
+          <Database className="w-5 h-5 text-brand-teal" />
           Primary Bank Account Transactions
         </h3>
         
         {bankRecords.length === 0 ? (
-          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+          <div className="p-4 bg-light-bg rounded-xl border border-dashed border-light-border text-center text-sm text-light-secondary">
             No bank transactions found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+              <thead className="text-xs font-mono text-light-secondary bg-light-bg">
                 <tr>
                   <th className="px-4 py-3 rounded-l-xl">Date</th>
                   <th className="px-4 py-3">Amount</th>
@@ -127,19 +127,19 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                   <th className="px-4 py-3 rounded-r-xl">Provenance</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-light-border">
                 {bankRecords.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 font-mono text-slate-300">{r.date}</td>
-                    <td className={`px-4 py-3 font-mono ${r.type === 'CREDIT' ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  <tr key={i} className="hover:bg-light-elevated transition-colors">
+                    <td className="px-4 py-3 font-mono text-light-text">{r.date}</td>
+                    <td className={`px-4 py-3 font-mono ${r.type === 'CREDIT' ? 'text-brand-teal' : 'text-light-text'}`}>
                       {formatCurrency(r.amount)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${r.type === 'CREDIT' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${r.type === 'CREDIT' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-brand-red'}`}>
                         {r.type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-400">{r.category || "-"}</td>
+                    <td className="px-4 py-3 text-xs text-light-secondary">{r.category || "-"}</td>
                     <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
                 ))}
@@ -150,20 +150,20 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
       </div>
 
       {/* Invoices Evidence Table */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-          <FileText className="w-5 h-5 text-amber-400" />
+      <div className="glass-card p-6 border border-light-border shadow-sm">
+        <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-4">
+          <FileText className="w-5 h-5 text-brand-teal" />
           Invoices
         </h3>
         
         {invoiceRecords.length === 0 ? (
-          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+          <div className="p-4 bg-light-bg rounded-xl border border-dashed border-light-border text-center text-sm text-light-secondary">
             No invoices found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+              <thead className="text-xs font-mono text-light-secondary bg-light-bg">
                 <tr>
                   <th className="px-4 py-3 rounded-l-xl">Date</th>
                   <th className="px-4 py-3">Counterparty</th>
@@ -172,13 +172,13 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                   <th className="px-4 py-3 rounded-r-xl">Provenance</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-light-border">
                 {invoiceRecords.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 font-mono text-slate-300">{r.date}</td>
-                    <td className="px-4 py-3 text-slate-300 font-mono">{r.counterparty}</td>
-                    <td className="px-4 py-3 text-emerald-400 font-mono">{formatCurrency(r.amount)}</td>
-                    <td className="px-4 py-3 text-slate-400">{r.status}</td>
+                  <tr key={i} className="hover:bg-light-elevated transition-colors">
+                    <td className="px-4 py-3 font-mono text-light-text">{r.date}</td>
+                    <td className="px-4 py-3 text-light-text font-mono">{r.counterparty}</td>
+                    <td className="px-4 py-3 text-brand-teal font-mono">{formatCurrency(r.amount)}</td>
+                    <td className="px-4 py-3 text-light-secondary">{r.status}</td>
                     <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
                 ))}
@@ -189,20 +189,20 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
       </div>
 
       {/* Employment Evidence Table */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-          <FileText className="w-5 h-5 text-purple-400" />
+      <div className="glass-card p-6 border border-light-border shadow-sm">
+        <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-4">
+          <FileText className="w-5 h-5 text-brand-teal" />
           Employment (EPFO)
         </h3>
         
         {employmentRecords.length === 0 ? (
-          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+          <div className="p-4 bg-light-bg rounded-xl border border-dashed border-light-border text-center text-sm text-light-secondary">
             No employment records found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+              <thead className="text-xs font-mono text-light-secondary bg-light-bg">
                 <tr>
                   <th className="px-4 py-3 rounded-l-xl">Period</th>
                   <th className="px-4 py-3">Employee Count</th>
@@ -210,12 +210,12 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                   <th className="px-4 py-3 rounded-r-xl">Provenance</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-light-border">
                 {employmentRecords.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 font-mono text-slate-300">{r.period}</td>
-                    <td className="px-4 py-3 text-slate-300 font-mono">{r.employee_count}</td>
-                    <td className="px-4 py-3 text-emerald-400 font-mono">{formatCurrency(r.pf_remittance)}</td>
+                  <tr key={i} className="hover:bg-light-elevated transition-colors">
+                    <td className="px-4 py-3 font-mono text-light-text">{r.period}</td>
+                    <td className="px-4 py-3 text-light-text font-mono">{r.employee_count}</td>
+                    <td className="px-4 py-3 text-brand-teal font-mono">{formatCurrency(r.pf_remittance)}</td>
                     <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
                 ))}
@@ -226,20 +226,20 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
       </div>
 
       {/* Obligations Evidence Table */}
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
-          <ShieldAlert className="w-5 h-5 text-rose-400" />
+      <div className="glass-card p-6 border border-light-border shadow-sm">
+        <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-4">
+          <ShieldAlert className="w-5 h-5 text-brand-teal" />
           Credit Obligations (Bureau)
         </h3>
         
         {obligationRecords.length === 0 ? (
-          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+          <div className="p-4 bg-light-bg rounded-xl border border-dashed border-light-border text-center text-sm text-light-secondary">
             No active obligations found.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+              <thead className="text-xs font-mono text-light-secondary bg-light-bg">
                 <tr>
                   <th className="px-4 py-3 rounded-l-xl">Lender</th>
                   <th className="px-4 py-3">Facility Type</th>
@@ -248,13 +248,13 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                   <th className="px-4 py-3 rounded-r-xl">Provenance</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
+              <tbody className="divide-y divide-light-border">
                 {obligationRecords.map((r, i) => (
-                  <tr key={i} className="hover:bg-white/[0.02]">
-                    <td className="px-4 py-3 font-mono text-slate-300">{r.lender}</td>
-                    <td className="px-4 py-3 text-slate-300">{r.facility_type}</td>
-                    <td className="px-4 py-3 text-rose-400 font-mono">{formatCurrency(r.outstanding_balance)}</td>
-                    <td className="px-4 py-3 text-rose-400 font-mono">{formatCurrency(r.monthly_emi)}</td>
+                  <tr key={i} className="hover:bg-light-elevated transition-colors">
+                    <td className="px-4 py-3 font-mono text-light-text">{r.lender}</td>
+                    <td className="px-4 py-3 text-light-text">{r.facility_type}</td>
+                    <td className="px-4 py-3 text-brand-red font-mono">{formatCurrency(r.outstanding_balance)}</td>
+                    <td className="px-4 py-3 text-brand-red font-mono">{formatCurrency(r.monthly_emi)}</td>
                     <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
                 ))}
