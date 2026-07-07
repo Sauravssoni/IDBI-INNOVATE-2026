@@ -1,0 +1,68 @@
+[
+  {
+    "step": "Analyst Login",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:31.871893"
+  },
+  {
+    "step": "Shakti Assessment",
+    "status": "PASS",
+    "result": "Evaluated Shakti",
+    "timestamp": "2026-07-07T18:35:31.880741"
+  },
+  {
+    "step": "Analyst Recommend Alternative Structure",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:32.007901"
+  },
+  {
+    "step": "SA Login",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:32.078560"
+  },
+  {
+    "step": "SA Approve Alternative Structure",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:32.126627"
+  },
+  {
+    "step": "RM Read-only Result",
+    "status": "PASS",
+    "result": "RM viewed approved case",
+    "timestamp": "2026-07-07T18:35:32.218641"
+  },
+  {
+    "step": "Auditor Audit Access",
+    "status": "PASS",
+    "result": "Auditor viewed 4 events",
+    "timestamp": "2026-07-07T18:35:32.322014"
+  },
+  {
+    "step": "System Admin Borrower-data Denial",
+    "status": "PASS",
+    "result": "System Admin denied",
+    "timestamp": "2026-07-07T18:35:32.457843"
+  },
+  {
+    "step": "Invalid-case Denial",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:32.483967"
+  },
+  {
+    "step": "Idempotency Replay",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:32.615822"
+  },
+  {
+    "step": "Continuous Case Versions and Audit Sequence",
+    "status": "PASS",
+    "result": "",
+    "timestamp": "2026-07-07T18:35:32.637282"
+  }
+]

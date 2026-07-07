@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects.postgresql import ENUM
 
 
 # revision identifiers, used by Alembic.
@@ -17,8 +18,6 @@ down_revision: Union[str, Sequence[str], None] = '05f0b4de641c'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-
-from sqlalchemy.dialects.postgresql import ENUM
 
 def upgrade() -> None:
     """Upgrade schema."""

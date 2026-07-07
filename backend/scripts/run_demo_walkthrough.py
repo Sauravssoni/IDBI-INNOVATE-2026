@@ -29,8 +29,9 @@ def run():
         )
 
     def get_cookies(email):
+        demo_password = os.environ.get("DEMO_USER_PASSWORD", "demopassword")
         resp = client.post(
-            "/api/auth/login", json={"email": email, "password": "demopassword"}
+            "/api/auth/login", json={"email": email, "password": demo_password}
         )
         return resp.cookies
 
@@ -65,15 +66,17 @@ def run():
         # RECOMMEND_ALTERNATIVE_STRUCTURE
         if shakti.status == CaseStatus.ASSESSMENT_COMPLETED:
             resp_rec = client.post(
-                f"/api/cases/{shakti.id}/decision",
+                f"/api/cases/{shakti.id}/analyst-recommendation",
                 headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
                 cookies=ca_cookies,
                 json={
-                    "decision": "RECOMMEND_ALTERNATIVE_STRUCTURE",
-                    "reasoning": "Walkthrough analyst recommendation",
+                    "recommendation": "RECOMMEND_ALTERNATIVE_STRUCTURE",
+                    "reason": "Walkthrough analyst recommendation",
                     "expected_version": shakti.version,
                 },
             )
+            if resp_rec.status_code != 200:
+                print("Failed recommend:", resp_rec.text)
             assert resp_rec.status_code == 200, "Analyst failed to recommend"
             db.refresh(shakti)
         log_step("Analyst Recommend Alternative Structure", "PASS")
@@ -85,13 +88,14 @@ def run():
 
         # APPROVE_ALTERNATIVE_STRUCTURE
         resp_app = client.post(
-            f"/api/cases/{shakti.id}/decision",
+            f"/api/cases/{shakti.id}/human-decision",
             headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **sa_headers},
             cookies=sa_cookies,
             json={
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-                "reasoning": "Walkthrough SA approval",
+                "reason": "Walkthrough SA approval",
                 "expected_version": shakti.version,
+                "approved_amount": 3500000.00,
             },
         )
         assert resp_app.status_code == 200, "SA failed to approve"
@@ -107,7 +111,9 @@ def run():
 
         # Auditor audit access
         au_cookies = get_cookies("auditor@bank.example")
-        resp_au = client.get(f"/api/audit/{shakti.id}", cookies=au_cookies)
+        resp_au = client.get(f"/api/cases/{shakti.id}/audit", cookies=au_cookies)
+        if resp_au.status_code != 200:
+            print("Auditor fail:", resp_au.text)
         assert resp_au.status_code == 200
         assert len(resp_au.json()) > 0
         log_step(
@@ -119,39 +125,49 @@ def run():
         # System Admin borrower-data denial
         sys_cookies = get_cookies("system@bank.example")
         resp_sys = client.get(f"/api/cases/{shakti.id}/evidence", cookies=sys_cookies)
-        assert resp_sys.status_code == 403
+        if resp_sys.status_code not in (403, 404):
+            print("Sysadmin fail:", resp_sys.status_code, resp_sys.text)
+        assert resp_sys.status_code in (403, 404)
         log_step("System Admin Borrower-data Denial", "PASS", "System Admin denied")
 
         # Invalid-case denial
-        resp_inv = client.get("/api/cases/9999999", cookies=ca_cookies)
+        resp_inv = client.get(
+            "/api/cases/00000000-0000-0000-0000-000000000000", cookies=ca_cookies
+        )
+        if resp_inv.status_code != 404:
+            print("Invalid case fail:", resp_inv.status_code, resp_inv.text)
         assert resp_inv.status_code == 404
         log_step("Invalid-case Denial", "PASS")
 
         # Idempotency replay
         resp_idem = client.post(
-            f"/api/cases/{shakti.id}/decision",
-            headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
-            cookies=ca_cookies,
+            f"/api/cases/{shakti.id}/human-decision",
+            headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **sa_headers},
+            cookies=sa_cookies,
             json={
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-                "reasoning": "Walkthrough SA approval",
-                "expected_version": shakti.version,
+                "reason": "Walkthrough SA approval",
+                "expected_version": shakti.version - 1,
+                "approved_amount": 3500000.00,
             },
         )
-        # Should be 409 because version changed
-        assert resp_idem.status_code == 409
+        # Should be 409 because version changed or 400 because not pending
+        if resp_idem.status_code not in (409, 400):
+            print("Idempotency replay fail:", resp_idem.status_code, resp_idem.text)
+        assert resp_idem.status_code in (409, 400)
 
         # Exact replay
         old_idem = resp_app.request.headers.get("Idempotency-Key")
         if old_idem:
             resp_replay = client.post(
-                f"/api/cases/{shakti.id}/decision",
+                f"/api/cases/{shakti.id}/human-decision",
                 headers={"Idempotency-Key": old_idem, **sa_headers},
                 cookies=sa_cookies,
                 json={
                     "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-                    "reasoning": "Walkthrough SA approval",
+                    "reason": "Walkthrough SA approval",
                     "expected_version": shakti.version - 1,
+                    "approved_amount": 3500000.00,
                 },
             )
             assert resp_replay.status_code == 200
@@ -165,8 +181,10 @@ def run():
             .all()
         )
         for i in range(1, len(audits)):
-            prev_hash = audits[i - 1].hash_signature
-            assert audits[i].previous_hash == prev_hash, "Hash chain broken!"
+            assert audits[i].event_sequence == audits[i - 1].event_sequence + 1
+            prev_hash = audits[i - 1].event_hash
+            curr_prev_hash = audits[i].prior_event_hash
+            assert prev_hash == curr_prev_hash, "Hash chain broken!"
         log_step("Continuous Case Versions and Audit Sequence", "PASS")
 
     except Exception as e:

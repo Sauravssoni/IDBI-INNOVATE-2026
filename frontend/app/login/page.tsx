@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Settings,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 
 export default function LoginPage() {
@@ -21,6 +22,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [serviceStatus, setServiceStatus] = useState<"checking" | "available" | "unavailable">("checking");
 
   const { login } = useAuth();
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function LoginPage() {
       router.push("/");
     } else {
       if (res.error?.includes("Failed to fetch") || res.error?.includes("Network request failed") || res.error?.includes("unavailable")) {
-        setError("Vyapar Pulse API is unavailable. Start the backend service or verify NEXT_PUBLIC_API_URL.");
+        setServiceStatus("unavailable");
       } else {
         setError(res.error || "Login failed. Please verify credentials.");
       }
@@ -49,17 +51,21 @@ export default function LoginPage() {
     setError(null);
   };
 
-  React.useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const { status, error: fetchErr } = await apiFetch("/health");
-        if (status !== 200) {
-          setError("Vyapar Pulse API is unavailable. Start the backend service or verify NEXT_PUBLIC_API_URL.");
-        }
-      } catch (err) {
-        setError("Vyapar Pulse API is unavailable. Start the backend service or verify NEXT_PUBLIC_API_URL.");
+  const checkHealth = async () => {
+    setServiceStatus("checking");
+    try {
+      const { status } = await apiFetch("/health");
+      if (status !== 200) {
+        setServiceStatus("unavailable");
+      } else {
+        setServiceStatus("available");
       }
-    };
+    } catch (err) {
+      setServiceStatus("unavailable");
+    }
+  };
+
+  React.useEffect(() => {
     checkHealth();
   }, []);
 
@@ -84,10 +90,30 @@ export default function LoginPage() {
 
       {/* Main Card */}
       <div className="bg-white w-full max-w-lg p-8 rounded-lg shadow-2xl border border-light-border z-10">
-        <h2 className="text-xl font-bold text-light-text mb-6 flex items-center justify-between">
-          <span>Sign in to Vyapar Pulse</span>
-          <span className="text-xs text-light-secondary font-medium bg-light-bg px-2 py-1 rounded">Prototype release 1.1.3</span>
-        </h2>
+        
+        {serviceStatus === "unavailable" ? (
+          <div className="text-center py-6">
+            <div className="w-16 h-16 bg-brand-softRed rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-red">
+              <AlertCircle className="w-8 h-8 text-brand-red" />
+            </div>
+            <h2 className="text-xl font-bold text-light-text mb-2">Service Unavailable</h2>
+            <p className="text-sm text-light-secondary mb-8">
+              Vyapar Pulse API could not be reached. Ensure the backend services are running.
+            </p>
+            <button
+              onClick={checkHealth}
+              className="w-full py-3 px-4 bg-light-bg hover:bg-light-elevated text-light-text font-bold rounded-lg border border-light-border flex items-center justify-center gap-2 transition-all shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry Connection</span>
+            </button>
+          </div>
+        ) : (
+          <>
+            <h2 className="text-xl font-bold text-light-text mb-6 flex items-center justify-between">
+              <span>Sign in to Vyapar Pulse</span>
+              <span className="text-xs text-light-secondary font-medium bg-light-bg px-2 py-1 rounded">Prototype release 1.1.3</span>
+            </h2>
 
         {/* 1-Click Demo Role Selector */}
         {enableDemoShortcuts && (
@@ -243,6 +269,8 @@ export default function LoginPage() {
             Protected by CAS & Role-Based BOLA Governance • Built for IDBI Innovate 2026
           </p>
         </div>
+          </>
+        )}
       </div>
 
       {/* Footer Info */}
