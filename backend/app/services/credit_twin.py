@@ -84,7 +84,8 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
         "binding_limit": float(binding_limit) if binding_limit is not None else None,
         "recommendation": case.recommendation.value if case.recommendation else None,
         "evidence_completeness_score": evidence_completeness_score,
-        "financial_health_score": scores.get("financial_health") if scores else None,
-        "resilience_score": scores.get("resilience") if scores else None,
+        "financial_health_score": scores.get("financial_health_score") if scores else None,
+        "evidence_confidence_score": scores.get("evidence_confidence_score") if scores else None,
+        "resilience_score": scores.get("resilience_score") if scores else None,
         "evaluated_at": timestamp
     }

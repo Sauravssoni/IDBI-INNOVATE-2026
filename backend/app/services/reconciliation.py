@@ -25,7 +25,7 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
     gst_periods = db.query(GSTPeriod).filter(GSTPeriod.business_id_fk == business_id).all()
     if not gst_periods:
         checks.append({
-            "check_id": str(uuid.uuid4()),
+            "check_id": "GST_BANK_RECON",
             "name": "GST vs Bank Credits",
             "status": MISSING_EVIDENCE,
             "observed_value": None,
@@ -60,7 +60,7 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
             status = MISSING_EVIDENCE
             
         checks.append({
-            "check_id": str(uuid.uuid4()),
+            "check_id": "GST_BANK_RECON",
             "name": "GST vs Bank Credits",
             "status": status,
             "observed_value": float(total_bank_credits),
@@ -72,11 +72,39 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
             "rule_version": "1.1"
         })
 
-    # 2. Obligations vs Debt Service
+    # 2. Invoices vs Payments
+    checks.append({
+        "check_id": "INVOICE_PAYMENT_RECON",
+        "name": "Invoices vs Payments",
+        "status": MISSING_EVIDENCE,
+        "observed_value": None,
+        "reference_value": None,
+        "variance_amount": None,
+        "variance_percentage": None,
+        "evidence_references": [],
+        "explanation": "No invoice data available for reconciliation.",
+        "rule_version": "1.1"
+    })
+
+    # 3. Payroll vs Employment
+    checks.append({
+        "check_id": "PAYROLL_EMPLOYMENT_RECON",
+        "name": "Payroll vs Employment",
+        "status": MISSING_EVIDENCE,
+        "observed_value": None,
+        "reference_value": None,
+        "variance_amount": None,
+        "variance_percentage": None,
+        "evidence_references": [],
+        "explanation": "No payroll data available for reconciliation.",
+        "rule_version": "1.1"
+    })
+
+    # 4. Obligations vs Debt Service
     obligations = db.query(Obligation).filter(Obligation.business_id_fk == business_id).all()
     if not obligations:
         checks.append({
-            "check_id": str(uuid.uuid4()),
+            "check_id": "OBLIGATION_DEBT_SERVICE_RECON",
             "name": "Obligations vs Debt Service",
             "status": MISSING_EVIDENCE,
             "observed_value": None,
@@ -95,7 +123,7 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
         
         if not debt_service_debits:
             checks.append({
-                "check_id": str(uuid.uuid4()),
+                "check_id": "OBLIGATION_DEBT_SERVICE_RECON",
                 "name": "Obligations vs Debt Service",
                 "status": MISSING_EVIDENCE,
                 "observed_value": None,
@@ -123,7 +151,7 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
             status = MATCHED if variance_percentage <= Decimal("10.0") else VARIANCE
             
             checks.append({
-                "check_id": str(uuid.uuid4()),
+                "check_id": "OBLIGATION_DEBT_SERVICE_RECON",
                 "name": "Obligations vs Debt Service",
                 "status": status,
                 "observed_value": float(total_actual_debt_service),
@@ -135,9 +163,9 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
                 "rule_version": "1.1"
             })
 
-    # 3. Circular Flow Analysis
+    # 5. Circular Flow Analysis
     checks.append({
-        "check_id": str(uuid.uuid4()),
+        "check_id": "CIRCULAR_FLOW_EVIDENCE",
         "name": "Circular Flow Analysis",
         "status": MISSING_EVIDENCE,
         "observed_value": None,

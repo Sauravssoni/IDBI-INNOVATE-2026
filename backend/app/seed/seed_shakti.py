@@ -231,24 +231,27 @@ def seed_shakti():
     # 3. Create Consents & Connections
     today = date(2026, 7, 1)
 
-    sources = ["GST", "ACCOUNT_AGGREGATOR", "EPFO", "UPI"]
+    sources = ["GST", "ACCOUNT_AGGREGATOR", "EPFO", "UPI", "CIBIL"]
+    consents_by_source = {}
+    connections_by_source = {}
     for source in sources:
-        db.add(
-            Consent(
-                business_id_fk=shakti.id,
-                source_type=source,
-                status=ConsentStatus.ACTIVE,
-                valid_until=today + timedelta(days=90),
-            )
+        c = Consent(
+            business_id_fk=shakti.id,
+            source_type=source,
+            status=ConsentStatus.ACTIVE,
+            valid_until=today + timedelta(days=90),
         )
-        db.add(
-            DataConnection(
-                business_id_fk=shakti.id,
-                source_type=source,
-                status="CONNECTED",
-                last_sync_at=today,
-            )
+        db.add(c)
+        d = DataConnection(
+            business_id_fk=shakti.id,
+            source_type=source,
+            status="CONNECTED",
+            last_sync_at=today,
         )
+        db.add(d)
+        db.flush()
+        consents_by_source[source] = c.id
+        connections_by_source[source] = d.id
     db.commit()
 
     # 4. Generate 18 months of deterministic data
@@ -272,6 +275,8 @@ def seed_shakti():
                 source_system="GSTN",
                 source_record_id=f"GST-{m}-{shakti.id}",
                 ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["GST"],
+                data_connection_id_fk=connections_by_source["GST"],
             )
         )
 
@@ -289,6 +294,8 @@ def seed_shakti():
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-CR-{m}-{shakti.id}",
                 ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -303,6 +310,8 @@ def seed_shakti():
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-SUP-{m}-{shakti.id}",
                 ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -317,6 +326,8 @@ def seed_shakti():
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-SAL-{m}-{shakti.id}",
                 ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -330,6 +341,8 @@ def seed_shakti():
                 source_system="EPFO",
                 source_record_id=f"EPFO-{m}-{shakti.id}",
                 ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["EPFO"],
+                data_connection_id_fk=connections_by_source["EPFO"],
             )
         )
 
@@ -344,6 +357,8 @@ def seed_shakti():
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-DEBT-{m}-{shakti.id}",
                 ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -376,6 +391,8 @@ def seed_shakti():
                     source_system="GST_E_INVOICE",
                     source_record_id=f"INV-P-{m}-{idx}-{shakti.id}",
                     ingestion_mode="SEEDED_PROTOTYPE",
+                    consent_id_fk=consents_by_source["GST"],
+                    data_connection_id_fk=connections_by_source["GST"],
                 )
                 db.add(inv)
             else:
@@ -390,6 +407,8 @@ def seed_shakti():
                     source_system="GST_E_INVOICE",
                     source_record_id=f"INV-D-{m}-{idx}-{shakti.id}",
                     ingestion_mode="SEEDED_PROTOTYPE",
+                    consent_id_fk=consents_by_source["GST"],
+                    data_connection_id_fk=connections_by_source["GST"],
                 )
                 db.add(inv)
                 db.flush()  # flush to get id
@@ -403,6 +422,8 @@ def seed_shakti():
                         source_system="ACCOUNT_AGGREGATOR",
                         source_record_id=f"PAY-{m}-{idx}-{shakti.id}",
                         ingestion_mode="SEEDED_PROTOTYPE",
+                        consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                        data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
                     )
                 )
 
@@ -415,6 +436,8 @@ def seed_shakti():
             source_system="CIBIL",
             source_record_id=f"OBL-1-{shakti.id}",
             ingestion_mode="SEEDED_PROTOTYPE",
+            consent_id_fk=consents_by_source["CIBIL"],
+            data_connection_id_fk=connections_by_source["CIBIL"],
         )
     )
 

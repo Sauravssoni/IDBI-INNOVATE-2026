@@ -526,14 +526,14 @@ export default function CaseEvaluationPage() {
                       <div className="flex justify-between text-slate-300 mb-1">
                         <span>Evidence Completeness</span>
                         <span className="font-mono text-purple-400 font-bold">
-                          {creditTwin.evidence_completeness}%
+                          {creditTwin.evidence_completeness_score !== undefined && creditTwin.evidence_completeness_score !== null ? `${creditTwin.evidence_completeness_score}%` : "-"}
                         </span>
                       </div>
                       <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden mt-1">
                         <div
                           className="bg-purple-400 h-full"
                           style={{
-                            width: `${creditTwin.evidence_completeness || 0}%`,
+                            width: `${creditTwin.evidence_completeness_score || 0}%`,
                           }}
                         />
                       </div>
@@ -545,7 +545,7 @@ export default function CaseEvaluationPage() {
               <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
                 <span>Model: {creditTwin?.calculation_version || "-"}</span>
                 <span className="text-emerald-400 truncate ml-2 text-right">
-                  {creditTwin?.last_updated ? new Date(creditTwin.last_updated).toLocaleString() : "Never evaluated"}
+                  {creditTwin?.evaluated_at ? new Date(creditTwin.evaluated_at).toLocaleString() : "Never evaluated"}
                 </span>
               </div>
             </div>
