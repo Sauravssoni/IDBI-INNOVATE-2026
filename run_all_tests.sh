@@ -11,7 +11,7 @@ bandit -r . -ll -ii
 echo ">> Running pip-audit..."
 pip-audit
 echo ">> Running pytest..."
-pytest -v
+DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test" pytest -v
 cd ../frontend
 echo ">> Running eslint..."
 npm run lint || npx eslint .
