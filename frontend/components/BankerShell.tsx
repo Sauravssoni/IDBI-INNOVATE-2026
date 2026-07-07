@@ -106,7 +106,7 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
   const navItems = getNavItemsForRole(user?.role);
 
   return (
-    <div className="min-h-screen bg-navy-900 text-foreground flex flex-col">
+    <div className="min-h-screen bg-light-bg text-light-text flex flex-col">
       {/* Top Navbar */}
       <header className="h-16 border-b border-white/10 bg-navy-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 flex items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3">
@@ -152,8 +152,8 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
           {/* System Health Pill */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-white/10 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-pulse-500 animate-pulse" />
-            <span className="text-slate-300">CAS Engine:</span>
-            <span className="text-pulse-400 font-semibold">Active</span>
+            <span className="text-slate-300">Assessment Service</span>
+            <span className="text-pulse-400 font-semibold">Available</span>
           </div>
 
           {/* User Role Badge */}
@@ -222,10 +222,10 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
           <div className="p-4 border-t border-white/5 bg-navy-800/40 m-3 rounded-xl border">
             <div className="flex items-center gap-2 text-xs font-semibold text-white mb-1">
               <CheckCircle2 className="w-4 h-4 text-pulse-400 shrink-0" />
-              <span>BOLA Governance v1.1</span>
+              <span>Governance & Access Controls</span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed font-mono">
-              Role-scoped data access enforced. Tamper-evident prototype audit chain.
+              Role-Scoped Access enforced. Tamper-evident prototype audit chain.
             </p>
           </div>
         </aside>

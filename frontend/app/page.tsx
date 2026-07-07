@@ -5,18 +5,12 @@ import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
 import {
-  Sparkles,
-  Clock,
-  AlertTriangle,
   FolderKanban,
-  ArrowRight,
+  Clock,
+  Activity,
   ShieldCheck,
   CheckCircle2,
-  FileText,
-  Activity,
-  Users,
-  Building2,
-  BarChart3,
+  ArrowRight,
   RefreshCw,
 } from "lucide-react";
 
@@ -29,6 +23,11 @@ const formatCurrency = (val: any) => {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(num);
+};
+
+const humaniseEnum = (str: string) => {
+  if (!str) return "-";
+  return str.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
 };
 
 export default function DashboardPage() {
@@ -67,233 +66,192 @@ export default function DashboardPage() {
 
   const totalCasesCount = summary?.active_cases ?? cases.length;
 
-  const pendingCount = summary?.awaiting_human_decision ?? cases.filter(
-    (c) => c.status === "IN_REVIEW" || c.status === "SUBMITTED" || c.status === "PENDING"
+  const analystReviewCount = cases.filter(
+    (c) => c.status === "SUBMITTED" || c.status === "ADDITIONAL_EVIDENCE_PROVIDED" || c.status === "PENDING"
   ).length;
 
-  const shaktiCase = cases.find(
-    (c) =>
-      c.business_name?.toLowerCase().includes("shakti") ||
-      c.id === "SHAKTI_PRECISION_001" ||
-      c.id === "shakti"
-  );
+  const sanctionReviewCount = cases.filter(
+    (c) => c.status === "RECOMMENDED" || c.status === "ESCALATED"
+  ).length;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Welcome Banner */}
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl relative overflow-hidden shadow-sm">
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-700 text-xs text-pulse-500 mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>IDBI INNOVATE 2026 • CONTROLLED PROTOTYPE ENVIRONMENT</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight">
-              Welcome back, <span className="text-gradient">{user?.full_name || "Banker"}</span>
-            </h1>
-            <p className="text-slate-400 text-sm sm:text-base mt-1 max-w-2xl">
-              Vyapar Pulse AI-assisted credit assessment and risk evaluation dashboard. BOLA access controls and tamper-evident prototype audit chain are active.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <button
-              onClick={loadCases}
-              disabled={loading}
-              className="px-4 py-3 bg-navy-800 hover:bg-navy-700 text-white font-semibold text-sm rounded-xl border border-white/10 flex items-center gap-2 transition-all shadow-sm cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-pulse-400" : ""}`} />
-              <span>Refresh</span>
-            </button>
-            {user?.role !== "SYSTEM_ADMIN" && (
-              <Link
-                href="/cases"
-                className="px-5 py-3 bg-pulse-500 hover:bg-pulse-600 text-white font-bold text-sm rounded-xl border border-pulse-400 flex items-center gap-2 transition-all"
-              >
-                <FolderKanban className="w-4 h-4" />
-                <span>Case Inventory</span>
-              </Link>
-            )}
-          </div>
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* Compact Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-light-text tracking-tight">
+            MSME Credit Assessment Workspace
+          </h1>
+          <p className="text-light-secondary text-sm mt-1">
+            {user?.role ? humaniseEnum(user.role) : "Banker"} Scope • Role-scoped application pipeline
+          </p>
         </div>
-
-        {/* Mini Stats Bar inside Hero */}
-        {user?.role !== "SYSTEM_ADMIN" && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-6 border-t border-bank-border relative z-10">
-            <div>
-              <div className="text-xs text-bank-secondary">SCOPED APPLICATIONS</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">
-                {loading ? "..." : totalCasesCount}
-              </div>
-              <div className="text-[11px] text-pulse-500">
-                {loading ? "..." : formatCurrency(totalPipelineAmount)} Pipeline
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-bank-secondary">EVIDENCE COVERAGE</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Connected</div>
-              <div className="text-[11px] text-bank-muted">GST & Bank integrations</div>
-            </div>
-            <div>
-              <div className="text-xs text-bank-secondary">POLICY ENGINE STATUS</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Active</div>
-              <div className="text-[11px] text-bank-muted">CAS evaluating cases</div>
-            </div>
-            <div>
-              <div className="text-xs text-bank-secondary">BOLA ENFORCEMENT</div>
-              <div className="text-xl sm:text-2xl font-bold text-white mt-0.5">Active</div>
-              <div className="text-[11px] text-pulse-500">Mandate limits applied</div>
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadCases}
+            disabled={loading}
+            className="px-4 py-2 bg-white text-light-text font-medium text-sm rounded-lg border border-light-border hover:bg-light-elevated transition-all shadow-sm flex items-center gap-2"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-brand-teal" : ""}`} />
+            <span>Refresh</span>
+          </button>
+          {user?.role !== "SYSTEM_ADMIN" && (
+            <Link
+              href="/cases"
+              className="px-4 py-2 bg-brand-teal hover:bg-brand-tealHover text-white font-medium text-sm rounded-lg transition-all shadow-sm flex items-center gap-2"
+            >
+              <FolderKanban className="w-4 h-4" />
+              <span>Case Inventory</span>
+            </Link>
+          )}
+        </div>
       </div>
 
-      {/* 4 Key Metric Cards */}
+      {/* Primary Dashboard Content - 4 Metric Cards */}
       {user?.role !== "SYSTEM_ADMIN" && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-pulse-500/40 transition-all group">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-bank-secondary uppercase tracking-wider">Total Inventory</span>
-              <div className="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-pulse-500">
-                <FolderKanban className="w-5 h-5" />
-              </div>
+          <div className="glass-card p-5 group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-light-secondary font-medium uppercase tracking-wider">Scoped Applications</span>
+              <FolderKanban className="w-5 h-5 text-brand-teal" />
             </div>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "..." : `${totalCasesCount} Cases`}
+            <div className="text-2xl font-bold text-light-text">
+              {loading ? "..." : totalCasesCount}
             </div>
-            <div className="text-xs text-bank-muted mt-2 flex items-center gap-1.5">
-              <span>Active Pipeline</span>
+            <div className="text-xs text-light-muted mt-1">
+              {loading ? "..." : formatCurrency(totalPipelineAmount)} Pipeline
             </div>
           </div>
 
-
-
-          <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-amber-500/40 transition-all group">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-bank-secondary uppercase tracking-wider">Pending Sanction</span>
-              <div className="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-bank-warning">
-                <Clock className="w-5 h-5" />
-              </div>
+          <div className="glass-card p-5 group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-light-secondary font-medium uppercase tracking-wider">Pending Analyst Review</span>
+              <Clock className="w-5 h-5 text-brand-amber" />
             </div>
-            <div className="text-2xl font-bold text-white">
-              {loading ? "..." : `${pendingCount} Cases`}
+            <div className="text-2xl font-bold text-light-text">
+              {loading ? "..." : analystReviewCount}
             </div>
-            <div className="text-xs text-bank-muted mt-2 flex items-center gap-1.5">
-              <span>Requires Review</span>
+            <div className="text-xs text-light-muted mt-1">
+              Requires evaluation
             </div>
           </div>
 
-          <div className="glass-card p-5 rounded-2xl border border-white/10 hover:border-pulse-500/40 transition-all group">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-bank-secondary uppercase tracking-wider">Memo Preparation</span>
-              <div className="w-10 h-10 rounded-xl bg-navy-700 flex items-center justify-center text-pulse-500">
-                <Activity className="w-5 h-5" />
-              </div>
+          <div className="glass-card p-5 group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-light-secondary font-medium uppercase tracking-wider">Pending Sanction</span>
+              <Activity className="w-5 h-5 text-brand-red" />
             </div>
-            <div className="text-2xl font-bold text-white">Evidence-linked</div>
-            <div className="text-xs text-bank-muted mt-2 flex items-center gap-1.5">
-              <span>Summary</span>
+            <div className="text-2xl font-bold text-light-text">
+              {loading ? "..." : sanctionReviewCount}
+            </div>
+            <div className="text-xs text-light-muted mt-1">
+              Requires sanctioning authority
+            </div>
+          </div>
+
+          <div className="glass-card p-5 group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-light-secondary font-medium uppercase tracking-wider">Evidence Coverage</span>
+              <ShieldCheck className="w-5 h-5 text-brand-teal" />
+            </div>
+            <div className="text-sm font-bold text-light-text leading-tight mt-1">
+              GST, Bank, EPFO and invoice evidence available
+            </div>
+            <div className="text-xs text-light-muted mt-1">
+              Sandbox dataset
             </div>
           </div>
         </div>
       )}
 
-      {/* Featured Hackathon Case & System Architecture Banner */}
+      {/* Main Grid for Table & Governance */}
       <div className={`grid grid-cols-1 ${user?.role !== "SYSTEM_ADMIN" ? "lg:grid-cols-3" : ""} gap-6`}>
-        {/* Case Highlight Card */}
-        {user?.role !== "SYSTEM_ADMIN" && shaktiCase && (
-          <div className="lg:col-span-2 glass-panel p-6 sm:p-8 rounded-2xl relative shadow-sm">
-            <div className="absolute top-0 right-0 px-4 py-1 bg-navy-600 text-pulse-500 font-bold text-xs rounded-bl-xl shadow-sm border-l border-b border-bank-border">
-              Featured Case Study
+        {/* Application Pipeline Table */}
+        {user?.role !== "SYSTEM_ADMIN" && (
+          <div className="lg:col-span-2 glass-card overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-light-border bg-light-elevated flex items-center justify-between">
+              <h2 className="text-lg font-bold text-light-text">Role-scoped application pipeline</h2>
             </div>
-
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-12 h-12 rounded-lg bg-navy-700 flex items-center justify-center text-white shrink-0 border border-bank-border">
-                <Building2 className="w-6 h-6 text-pulse-500" />
-              </div>
-              <div>
-                <div className="text-xs font-mono text-pulse-400 uppercase tracking-wider">
-                  IDBI CASE REF: {shaktiCase.id}
-                </div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-1">
-                  {shaktiCase.business_name}
-                </h2>
-                <p className="text-slate-400 text-sm mt-0.5">
-                  {shaktiCase.branch_name || "Branch"}
-                </p>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-light-bg text-light-secondary text-xs uppercase font-medium">
+                  <tr>
+                    <th className="px-5 py-3">Business</th>
+                    <th className="px-5 py-3">Facility</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-light-border bg-white">
+                  {loading ? (
+                    <tr><td colSpan={4} className="px-5 py-8 text-center text-light-muted">Loading pipeline...</td></tr>
+                  ) : cases.length === 0 ? (
+                    <tr><td colSpan={4} className="px-5 py-8 text-center text-light-muted">No cases in your scope.</td></tr>
+                  ) : (
+                    cases.slice(0, 5).map((c) => (
+                      <tr key={c.id} className="hover:bg-light-bg transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="font-bold text-light-text">{c.business_name}</div>
+                          <div className="text-xs text-light-muted mt-0.5">{c.id}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="font-medium text-light-text">{humaniseEnum(c.facility_type)}</div>
+                          <div className="text-xs text-light-muted mt-0.5">{formatCurrency(c.requested_amount)}</div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-light-elevated border border-light-border text-light-secondary">
+                            {humaniseEnum(c.status)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <Link href={`/cases/${c.id}`} className="text-brand-teal hover:text-brand-tealHover font-medium text-xs flex items-center justify-end gap-1">
+                            Open <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-navy-900/60 border border-white/5 mb-6">
-              <div>
-                <div className="text-[10px] font-mono text-slate-400">REQUESTED LIMIT</div>
-                <div className="text-base sm:text-lg font-bold text-white mt-0.5">
-                  {formatCurrency(shaktiCase.requested_amount)}
-                </div>
+            {cases.length > 5 && (
+              <div className="p-3 bg-light-bg text-center border-t border-light-border">
+                <Link href="/cases" className="text-xs font-medium text-light-secondary hover:text-light-text">
+                  View all {cases.length} cases
+                </Link>
               </div>
-              <div>
-                <div className="text-[10px] text-bank-secondary">SUPPORTABLE LIMIT</div>
-                <div className="text-base sm:text-lg font-bold text-pulse-500 mt-0.5 font-mono">
-                  {shaktiCase.evaluation_result?.binding_limit || shaktiCase.evaluation_result?.supportable_limit
-                    ? formatCurrency(shaktiCase.evaluation_result.binding_limit || shaktiCase.evaluation_result.supportable_limit)
-                    : "-"}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] font-mono text-slate-400">RECOMMENDATION</div>
-                <div className="text-xs sm:text-sm font-bold text-pulse-400 mt-1 font-mono">
-                  {shaktiCase.evaluation_result?.recommendation || shaktiCase.evaluation_result?.decision?.decision || "-"}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-              <div className="flex items-center gap-2 text-xs text-bank-secondary">
-                <CheckCircle2 className="w-4 h-4 text-pulse-500 shrink-0" />
-                <span>Evidence-linked credit assessment with tamper-evident prototype audit chain</span>
-              </div>
-              <Link
-                href={`/cases/${shaktiCase.id}`}
-                className="px-5 py-2.5 bg-pulse-500 text-white hover:bg-pulse-600 font-bold text-xs rounded-lg flex items-center gap-2 transition-all shadow-sm"
-              >
-                <span>View Case Details</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Quick BOLA & Audit Info Card */}
-        <div className="glass-panel p-6 sm:p-8 rounded-2xl flex flex-col justify-between">
-          <div>
-            <div className="w-10 h-10 rounded-lg bg-navy-700 flex items-center justify-center text-bank-info mb-4">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">BOLA Security Architecture</h3>
-            <p className="text-xs text-slate-400 leading-relaxed mb-4">
-              Vyapar Pulse implements enterprise Broken Object Level Authorization (BOLA). Users can only access, evaluate, or sanction credit cases within their assigned regional/branch scopes and authorization limits.
-            </p>
-            <ul className="space-y-2 text-xs text-slate-300 font-mono">
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-pulse-400" />
-                <span>RM Scope: Branch origination & KYC</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                <span>Analyst Scope: Credit & CAS Evaluation</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                <span>SA Scope: Mandate-capped Approvals</span>
-              </li>
-            </ul>
+        {/* Compact Governance & Access Controls */}
+        <div className="glass-card p-5 sm:p-6 flex flex-col">
+          <div className="w-10 h-10 rounded-lg bg-light-elevated border border-light-border flex items-center justify-center text-brand-teal mb-4">
+            <ShieldCheck className="w-5 h-5" />
           </div>
+          <h3 className="text-base font-bold text-light-text mb-2">Governance & Access Controls</h3>
+          <p className="text-xs text-light-secondary leading-relaxed mb-4">
+            Vyapar Pulse implements enterprise Role-Scoped Access. Users can only access, evaluate, or sanction credit cases within their assigned scopes.
+          </p>
+          <ul className="space-y-3 text-xs text-light-secondary font-medium">
+            <li className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-brand-softTeal text-brand-teal flex items-center justify-center shrink-0">RM</div>
+              <span>Branch origination & KYC</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-brand-softAmber text-brand-amber flex items-center justify-center shrink-0">CA</div>
+              <span>Credit & Assessment Evaluation</span>
+            </li>
+            <li className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-brand-softRed text-brand-red flex items-center justify-center shrink-0">SA</div>
+              <span>Mandate-capped Approvals</span>
+            </li>
+          </ul>
 
-          <div className="mt-6 pt-4 border-t border-bank-border flex items-center justify-between text-xs">
-            <span className="text-bank-secondary">Audit Status:</span>
-            <span className="text-pulse-500 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Tamper-Evident Prototype Audit Chain
+          <div className="mt-auto pt-5 border-t border-light-border flex items-center justify-between text-xs">
+            <span className="text-light-muted">Audit Status:</span>
+            <span className="text-brand-teal flex items-center gap-1 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Tamper-Evident Chain
             </span>
           </div>
         </div>
