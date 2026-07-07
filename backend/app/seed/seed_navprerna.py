@@ -82,8 +82,8 @@ def seed_navprerna():
         fluctuation = Decimal(str(round(1.0 + random.uniform(-0.1, 0.1), 4)))
         monthly_rev = round(base_revenue * fluctuation, 2)
 
-        # Missing GST and EPFO for 4 months (simulating compliance gap)
-        skip_evidence = m in [12, 13, 14, 15]
+        # Missing GST and EPFO for many months to force low evidence confidence
+        skip_evidence = m >= 5
 
         if not skip_evidence:
             db.add(
