@@ -72,6 +72,7 @@ export default function CaseInventoryPage() {
     switch (statusStr?.toUpperCase()) {
       case "SANCTIONED":
       case "APPROVED":
+      case "HUMAN_APPROVED":
       case "CONDITIONAL_OFFER":
         return {
           label: humaniseEnum(statusStr),
@@ -87,6 +88,7 @@ export default function CaseInventoryPage() {
         };
       case "UNDER_REVIEW":
       case "ESCALATED":
+      case "DECISION_PENDING":
       case "ENHANCED_DUE_DILIGENCE":
       case "ADDITIONAL_EVIDENCE_REQUIRED":
         return {
@@ -158,7 +160,7 @@ export default function CaseInventoryPage() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-card p-4 rounded-xl border border-light-border flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="glass-card p-4 rounded-lg border border-light-border flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-light-muted" />
           <input
@@ -190,7 +192,7 @@ export default function CaseInventoryPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="p-4 bg-brand-softRed border border-brand-red rounded-xl flex items-center gap-3 text-brand-red text-sm">
+        <div className="p-4 bg-brand-softRed border border-brand-red rounded-lg flex items-center gap-3 text-brand-red text-sm">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -200,7 +202,7 @@ export default function CaseInventoryPage() {
       {loading ? (
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="glass-card p-6 rounded-xl border border-light-border animate-pulse flex items-center justify-between">
+            <div key={i} className="glass-card p-6 rounded-lg border border-light-border animate-pulse flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-lg bg-light-elevated" />
                 <div className="space-y-2">
@@ -214,7 +216,7 @@ export default function CaseInventoryPage() {
         </div>
       ) : filteredCases.length === 0 ? (
         <div className="glass-card p-12 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-light-bg mx-auto flex items-center justify-center text-light-muted border border-light-border">
+          <div className="w-16 h-16 rounded-lg bg-light-bg mx-auto flex items-center justify-center text-light-muted border border-light-border">
             <FolderKanban className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-light-text">No Cases Found</h3>

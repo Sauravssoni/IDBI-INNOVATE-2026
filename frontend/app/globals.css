@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #F4F6F8;
-  --foreground: #10243E;
+  --background: #F1F5F8;
+  --foreground: #172B4D;
 }
 
 body {
@@ -18,19 +18,21 @@ body {
 @layer utilities {
   .glass-panel {
     background: #FFFFFF;
-    border: 1px solid #D7E0E8;
+    border: 1px solid #D6E0E8;
+    border-radius: 8px;
   }
 
   .glass-card {
     background: #FFFFFF;
-    border: 1px solid #D7E0E8;
+    border: 1px solid #D6E0E8;
     border-radius: 8px;
     transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   }
 
   .glass-card:hover {
-    background: #F9FAFB;
-    border-color: #0E7C66;
+    background: #F7F9FB;
+    border-color: #007C72;
   }
 
   .glow-pulse {
@@ -38,7 +40,7 @@ body {
   }
 
   .text-gradient {
-    color: var(--foreground);
+    color: #007C72;
   }
 }
 
@@ -49,14 +51,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #080e1e;
+  background: #F1F5F8;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e3266;
+  background: #D6E0E8;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00d28a;
+  background: #7C8C9C;
 }
