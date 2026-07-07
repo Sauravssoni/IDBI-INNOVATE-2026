@@ -130,7 +130,13 @@ def test_conditional_offer_when_requested_exceeds_limit(requested_amount: Decima
 
 def test_scoring_engine_returns_only_three_scores():
     from app.core.scoring.scorer import ScoringEngine
-    engine = ScoringEngine({"gst_metrics": {"months_filed": 12}, "reconciliation_metrics": {"gst_bank_ratio": 1.0}})
+
+    engine = ScoringEngine(
+        {
+            "gst_metrics": {"months_filed": 12},
+            "reconciliation_metrics": {"gst_bank_ratio": 1.0},
+        }
+    )
     scores = engine.compute_all_scores()
     assert set(scores.keys()) == {
         "financial_health_score",
@@ -139,4 +145,3 @@ def test_scoring_engine_returns_only_three_scores():
     }
     assert "total_score" not in scores
     assert "band" not in scores
-

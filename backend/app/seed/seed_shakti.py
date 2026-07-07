@@ -11,6 +11,7 @@ from app.db.orm.evidence import (
     Invoice,
     InvoicePayment,
     EmploymentPeriod,
+    Obligation,
 )
 from app.db.orm.users import User, UserRole
 from app.db.orm.org import (
@@ -60,6 +61,9 @@ def seed_shakti():
             Invoice.business_id_fk == existing_business.id
         ).delete()
 
+        db.query(Obligation).filter(
+            Obligation.business_id_fk == existing_business.id
+        ).delete()
         db.query(EmploymentPeriod).filter(
             EmploymentPeriod.business_id_fk == existing_business.id
         ).delete()
@@ -227,24 +231,27 @@ def seed_shakti():
     # 3. Create Consents & Connections
     today = date(2026, 7, 1)
 
-    sources = ["GST", "ACCOUNT_AGGREGATOR", "EPFO", "UPI"]
+    sources = ["GST", "ACCOUNT_AGGREGATOR", "EPFO", "UPI", "CIBIL"]
+    consents_by_source = {}
+    connections_by_source = {}
     for source in sources:
-        db.add(
-            Consent(
-                business_id_fk=shakti.id,
-                source_type=source,
-                status=ConsentStatus.ACTIVE,
-                valid_until=today + timedelta(days=90),
-            )
+        c = Consent(
+            business_id_fk=shakti.id,
+            source_type=source,
+            status=ConsentStatus.ACTIVE,
+            valid_until=today + timedelta(days=90),
         )
-        db.add(
-            DataConnection(
-                business_id_fk=shakti.id,
-                source_type=source,
-                status="CONNECTED",
-                last_sync_at=today,
-            )
+        db.add(c)
+        d = DataConnection(
+            business_id_fk=shakti.id,
+            source_type=source,
+            status="CONNECTED",
+            last_sync_at=today,
         )
+        db.add(d)
+        db.flush()
+        consents_by_source[source] = c.id
+        connections_by_source[source] = d.id
     db.commit()
 
     # 4. Generate 18 months of deterministic data
@@ -267,12 +274,16 @@ def seed_shakti():
                 tax_paid=round(monthly_rev * Decimal("0.18"), 2),
                 source_system="GSTN",
                 source_record_id=f"GST-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["GST"],
+                data_connection_id_fk=connections_by_source["GST"],
             )
         )
 
         # Bank
         bank_credits = round(
-            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))), 2  # nosec B311
+            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))),
+            2,  # nosec B311
         )
         db.add(
             BankTransaction(
@@ -283,6 +294,9 @@ def seed_shakti():
                 category="BUYER_RECEIPT",
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-CR-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -296,6 +310,9 @@ def seed_shakti():
                 category="SUPPLIER_PAYMENT",
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-SUP-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -309,6 +326,9 @@ def seed_shakti():
                 category="SALARY",
                 source_system="ACCOUNT_AGGREGATOR",
                 source_record_id=f"TXN-SAL-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -321,6 +341,25 @@ def seed_shakti():
                 total_pf_remittance=round(salary_payment * Decimal("0.12"), 2),
                 source_system="EPFO",
                 source_record_id=f"EPFO-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["EPFO"],
+                data_connection_id_fk=connections_by_source["EPFO"],
+            )
+        )
+
+        # Debt Service
+        db.add(
+            BankTransaction(
+                business_id_fk=shakti.id,
+                transaction_date=month_start + timedelta(days=20),
+                amount=Decimal("228238.12"),
+                transaction_type="DEBIT",
+                category="DEBT_SERVICE",
+                source_system="ACCOUNT_AGGREGATOR",
+                source_record_id=f"TXN-DEBT-{m}-{shakti.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
             )
         )
 
@@ -352,6 +391,9 @@ def seed_shakti():
                     status=status,
                     source_system="GST_E_INVOICE",
                     source_record_id=f"INV-P-{m}-{idx}-{shakti.id}",
+                    ingestion_mode="SEEDED_PROTOTYPE",
+                    consent_id_fk=consents_by_source["GST"],
+                    data_connection_id_fk=connections_by_source["GST"],
                 )
                 db.add(inv)
             else:
@@ -365,6 +407,9 @@ def seed_shakti():
                     status=status,
                     source_system="GST_E_INVOICE",
                     source_record_id=f"INV-D-{m}-{idx}-{shakti.id}",
+                    ingestion_mode="SEEDED_PROTOTYPE",
+                    consent_id_fk=consents_by_source["GST"],
+                    data_connection_id_fk=connections_by_source["GST"],
                 )
                 db.add(inv)
                 db.flush()  # flush to get id
@@ -377,8 +422,27 @@ def seed_shakti():
                         amount=amount,
                         source_system="ACCOUNT_AGGREGATOR",
                         source_record_id=f"PAY-{m}-{idx}-{shakti.id}",
+                        ingestion_mode="SEEDED_PROTOTYPE",
+                        consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                        data_connection_id_fk=connections_by_source[
+                            "ACCOUNT_AGGREGATOR"
+                        ],
                     )
                 )
+
+    db.add(
+        Obligation(
+            business_id_fk=shakti.id,
+            facility_type="TERM_LOAN",
+            monthly_emi=Decimal("228238.12"),
+            outstanding_balance=Decimal("8000000.00"),
+            source_system="CIBIL",
+            source_record_id=f"OBL-1-{shakti.id}",
+            ingestion_mode="SEEDED_PROTOTYPE",
+            consent_id_fk=consents_by_source["CIBIL"],
+            data_connection_id_fk=connections_by_source["CIBIL"],
+        )
+    )
 
     db.commit()
 
