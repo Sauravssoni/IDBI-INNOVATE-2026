@@ -277,11 +277,11 @@ export default function CaseEvaluationPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-pulse-600 to-navy-700 flex items-center justify-center animate-bounce shadow-xl">
-          <Sparkles className="w-8 h-8 text-pulse-400" />
+        <div className="w-16 h-16 rounded-lg bg-navy-700 flex items-center justify-center animate-bounce shadow-sm border border-bank-border">
+          <Sparkles className="w-8 h-8 text-pulse-500" />
         </div>
-        <p className="text-sm font-mono text-pulse-400 animate-pulse">
-          INITIALIZING AI-ASSISTED CREDIT ASSESSMENT...
+        <p className="text-sm font-mono text-pulse-500 animate-pulse">
+          INITIALIZING EVIDENCE-LINKED CREDIT ASSESSMENT...
         </p>
       </div>
     );
@@ -354,13 +354,11 @@ export default function CaseEvaluationPage() {
       </div>
 
       {/* Hero Header Banner */}
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-pulse-500/30 bg-gradient-to-r from-navy-800 via-navy-800/80 to-navy-900 relative overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-pulse-500/10 rounded-full blur-3xl pointer-events-none" />
-
+      <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-bank-border relative shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pulse-600 to-navy-700 flex items-center justify-center text-white shrink-0 shadow-lg shadow-pulse-500/20 border border-pulse-400/30">
-              <Building2 className="w-7 h-7 text-pulse-400" />
+            <div className="w-14 h-14 rounded-lg bg-navy-700 flex items-center justify-center text-white shrink-0 border border-bank-border">
+              <Building2 className="w-7 h-7 text-pulse-500" />
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
@@ -369,7 +367,7 @@ export default function CaseEvaluationPage() {
                     caseData.business_name ||
                     "Applicant Business"}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-navy-700 text-pulse-500 border border-bank-border">
                   {caseData.status || "UNDER_REVIEW"}
                 </span>
               </div>
@@ -386,9 +384,9 @@ export default function CaseEvaluationPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-navy-900/60 border border-white/5 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-navy-900/60 border border-bank-border shrink-0">
             <div>
-              <div className="text-[10px] font-mono text-slate-400">
+              <div className="text-[10px] text-bank-secondary">
                 REQUESTED LIMIT
               </div>
               <div className="text-lg font-bold text-white font-mono mt-0.5">
@@ -397,11 +395,11 @@ export default function CaseEvaluationPage() {
             </div>
 
             <div className="col-span-2 sm:col-span-1">
-              <div className="text-[10px] font-mono text-slate-400">
+              <div className="text-[10px] text-bank-secondary">
                 SUPPORTABLE LIMIT
               </div>
-              <div className="text-lg font-bold text-emerald-400 font-mono mt-0.5">
-                {formatCurrency(supportLimit)}
+              <div className="text-lg font-bold text-pulse-500 font-mono mt-0.5">
+                {evalResult ? formatCurrency(supportLimit) : "Not yet evaluated"}
               </div>
             </div>
           </div>
@@ -475,13 +473,13 @@ export default function CaseEvaluationPage() {
           {/* Main Grid: 3 Pillars (CAS Score, Reconciliation, CAM) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Pillar 1: MSME Credit Twin */}
-            <div className="glass-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+            <div className="glass-card p-6 rounded-2xl border border-bank-border flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                  <span className="text-xs text-bank-secondary uppercase tracking-wider">
                     Pillar 1: MSME Credit Twin
                   </span>
-                  <Database className="w-5 h-5 text-pulse-400" />
+                  <Database className="w-5 h-5 text-pulse-500" />
                 </div>
                 
                 {twinLoading ? (
@@ -497,41 +495,41 @@ export default function CaseEvaluationPage() {
                     No Credit Twin data available.
                   </div>
                 ) : (
-                  <div className="space-y-3 pt-4 border-t border-white/10 text-xs">
+                  <div className="space-y-3 pt-4 border-t border-bank-border text-xs">
                     <div>
-                      <div className="flex justify-between text-slate-300 mb-1">
+                      <div className="flex justify-between text-bank-secondary mb-1">
                         <span>DSCR</span>
-                        <span className="font-mono text-emerald-400 font-bold">
-                          {creditTwin.dscr !== null ? `${creditTwin.dscr}x` : "-"}
+                        <span className="font-mono text-pulse-500 font-bold">
+                          {creditTwin.dscr !== null && creditTwin.dscr !== undefined ? `${creditTwin.dscr}x` : "-"}
                         </span>
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-slate-300 mb-1">
+                      <div className="flex justify-between text-bank-secondary mb-1">
                         <span>Latest Binding Limit</span>
-                        <span className="font-mono text-pulse-400 font-bold">
-                          {creditTwin.binding_limit !== null ? formatCurrency(creditTwin.binding_limit) : "-"}
+                        <span className="font-mono text-pulse-500 font-bold">
+                          {creditTwin.binding_limit !== null && creditTwin.binding_limit !== undefined ? formatCurrency(creditTwin.binding_limit) : "-"}
                         </span>
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-slate-300 mb-1">
+                      <div className="flex justify-between text-bank-secondary mb-1">
                         <span>Recommendation</span>
-                        <span className="font-mono text-blue-400 font-bold">
+                        <span className="font-mono text-bank-info font-bold">
                           {creditTwin.recommendation || "-"}
                         </span>
                       </div>
                     </div>
                     <div>
-                      <div className="flex justify-between text-slate-300 mb-1">
+                      <div className="flex justify-between text-bank-secondary mb-1">
                         <span>Evidence Completeness</span>
-                        <span className="font-mono text-purple-400 font-bold">
+                        <span className="font-mono text-white font-bold">
                           {creditTwin.evidence_completeness_score !== undefined && creditTwin.evidence_completeness_score !== null ? `${creditTwin.evidence_completeness_score}%` : "-"}
                         </span>
                       </div>
-                      <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden mt-1">
+                      <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden mt-1 border border-bank-border">
                         <div
-                          className="bg-purple-400 h-full"
+                          className="bg-pulse-500 h-full"
                           style={{
                             width: `${creditTwin.evidence_completeness_score || 0}%`,
                           }}
@@ -542,22 +540,22 @@ export default function CaseEvaluationPage() {
                 )}
               </div>
 
-              <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+              <div className="mt-6 pt-4 border-t border-bank-border text-[11px] font-mono text-bank-secondary flex items-center justify-between">
                 <span>Model: {creditTwin?.calculation_version || "-"}</span>
-                <span className="text-emerald-400 truncate ml-2 text-right">
+                <span className="text-pulse-500 truncate ml-2 text-right">
                   {creditTwin?.evaluated_at ? new Date(creditTwin.evaluated_at).toLocaleString() : "Never evaluated"}
                 </span>
               </div>
             </div>
 
             {/* Pillar 2: Automated GST & Bank Reconciliation */}
-            <div className="glass-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+            <div className="glass-card p-6 rounded-2xl border border-bank-border flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                  <span className="text-xs text-bank-secondary uppercase tracking-wider">
                     Pillar 2: Reconciliation
                   </span>
-                  <Scale className="w-5 h-5 text-blue-400" />
+                  <Scale className="w-5 h-5 text-bank-info" />
                 </div>
 
                 <div className="space-y-4 py-2">
@@ -606,80 +604,82 @@ export default function CaseEvaluationPage() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+              <div className="mt-6 pt-4 border-t border-bank-border text-[11px] font-mono text-bank-secondary flex items-center justify-between">
                 <span>Reconciliation Engine</span>
-                <span className="text-pulse-400">Automated Reconciliation</span>
+                <span className="text-bank-info">Deterministic Reconciliation</span>
               </div>
             </div>
 
             {/* Pillar 3: AI-Assisted Memo */}
-            <div className="glass-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
+            <div className="glass-card p-6 rounded-2xl border border-bank-border flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-                    Pillar 3: AI-Assisted Memo
+                  <span className="text-xs text-bank-secondary uppercase tracking-wider">
+                    Pillar 3: Memo Preparation
                   </span>
-                  <FileText className="w-5 h-5 text-emerald-400" />
+                  <FileText className="w-5 h-5 text-pulse-500" />
                 </div>
 
-                <div className="space-y-3 py-2 text-xs text-slate-300 leading-relaxed">
-                  <div className="p-3.5 rounded-xl bg-navy-800/80 border border-white/5 space-y-2">
+                <div className="space-y-3 py-2 text-xs text-bank-secondary leading-relaxed">
+                  <div className="p-3.5 rounded-xl bg-navy-800/80 border border-bank-border space-y-2">
                     <div className="font-bold text-white text-sm">
-                      Credit Assessment Memo Summary
+                      Evidence-linked Summary
                     </div>
-                    <p className="text-slate-300">
+                    <p className="text-bank-secondary">
                       {evalResult
-                        ? `${caseData.business?.legal_name || "Applicant"} AI-assisted credit assessment indicates a ${recVal.toString().toLowerCase()} status based on verified GST and banking data.`
-                        : "Case not yet evaluated. Run CAS Engine evaluation to generate summary."}
+                        ? `${caseData.business?.legal_name || "Applicant"} evidence-linked credit assessment indicates a ${recVal.toString().toLowerCase()} status based on verified GST and banking data.`
+                        : "Assessment recommendation unavailable. Run evaluation to generate summary."}
                     </p>
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5 font-mono text-[11px]">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-bank-border font-mono text-[11px]">
                       <div>
                         DSCR:{" "}
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-pulse-500 font-bold">
                           {dscrVal !== "-" ? `${dscrVal}x` : "-"}
                         </span>
                       </div>
                       <div>
                         EBITDA:{" "}
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-pulse-500 font-bold">
                           {evalResult?.features?.ebitda || "-"}
                         </span>
                       </div>
                       <div>
                         Gearing:{" "}
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-pulse-500 font-bold">
                           {evalResult?.features?.gearing || "-"}
                         </span>
                       </div>
                       <div>
                         Collateral:{" "}
-                        <span className="text-emerald-400 font-bold">
+                        <span className="text-pulse-500 font-bold">
                           {evalResult?.features?.collateral || "-"}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-gradient-to-r from-pulse-500/10 to-transparent border-l-2 border-pulse-500">
-                    <div className="font-semibold text-pulse-300 text-xs">
-                      AI-Assisted Sanction Recommendation:
+                  {evalResult && (
+                    <div className="p-3 rounded-xl bg-navy-800 border-l-2 border-pulse-500">
+                      <div className="font-semibold text-white text-xs">
+                        Evidence-Linked Recommendation:
+                      </div>
+                      <div className="text-[11px] text-bank-secondary mt-0.5">
+                        Recommendation:{" "}
+                        <strong className="text-white font-mono">{recVal}</strong>{" "}
+                        of{" "}
+                        <strong className="text-white font-mono">
+                          {formatCurrency(supportLimit)}
+                        </strong>
+                        .
+                      </div>
                     </div>
-                    <div className="text-[11px] text-slate-300 mt-0.5">
-                      Recommendation:{" "}
-                      <strong className="text-white font-mono">{recVal}</strong>{" "}
-                      of{" "}
-                      <strong className="text-white font-mono">
-                        {formatCurrency(supportLimit)}
-                      </strong>
-                      .
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
+              <div className="mt-6 pt-4 border-t border-bank-border text-[11px] font-mono text-bank-secondary flex items-center justify-between">
                 <span>CAM Status:</span>
-                <span className="text-emerald-400 font-bold">
+                <span className="text-pulse-500 font-bold">
                   {evalResult ? "Ready for Review" : "Pending Evaluation"}
                 </span>
               </div>
@@ -687,24 +687,24 @@ export default function CaseEvaluationPage() {
           </div>
 
           {/* BOLA Governance & Role-Based Action Portal */}
-          <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-white/10 shadow-2xl relative">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+          <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-bank-border shadow-sm relative">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-bank-border">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <div className="w-10 h-10 rounded-lg bg-navy-700 border border-bank-border flex items-center justify-center text-bank-info">
                   <Lock className="w-5 h-5" />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-white">
                     BOLA Governance & Decision Portal
                   </h2>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-bank-secondary">
                     Logged in as{" "}
                     <strong className="text-white">{user?.full_name}</strong> (
                     {user?.role}) • Scoped to Originating Branch
                   </p>
                 </div>
               </div>
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-white/10 text-xs font-mono text-emerald-400">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-bank-border text-xs text-pulse-500">
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>Mandate Verified</span>
               </div>
@@ -758,12 +758,12 @@ export default function CaseEvaluationPage() {
                       {canSubmitAnalystRec && (
                         <button
                           onClick={handleSubmitAnalystRec}
-                          disabled={evaluating}
-                          className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                          disabled={evaluating || !evalResult}
+                          className="px-4 py-2.5 bg-pulse-500 hover:bg-pulse-600 text-white font-bold text-xs rounded-xl shadow-sm border border-pulse-400 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
                         >
                           <Send className="w-4 h-4" />
                           <span>
-                            Submit Rec ({formatCurrency(supportLimit)})
+                            Submit Rec ({evalResult ? formatCurrency(supportLimit) : "N/A"})
                           </span>
                         </button>
                       )}

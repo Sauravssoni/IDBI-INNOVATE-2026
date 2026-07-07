@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import {
   FolderKanban,
   Search,
@@ -33,6 +34,7 @@ export default function CaseInventoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const { user } = useAuth();
 
   const loadCases = async () => {
     setLoading(true);
@@ -102,17 +104,31 @@ export default function CaseInventoryPage() {
     return matchesSearch && matchesStatus;
   });
 
+  const getActionLabel = (role?: string) => {
+    if (role === "CREDIT_ANALYST") return "Evaluate";
+    if (role === "SANCTIONING_AUTHORITY") return "Review Case";
+    return "View Case";
+  };
+
+  if (user?.role === "SYSTEM_ADMIN") {
+    return (
+      <div className="flex items-center justify-center h-64 text-bank-muted">
+        System Administrators do not have access to case inventory.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-white/10 text-xs text-slate-300 font-mono mb-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-pulse-400" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-bank-border text-xs text-bank-secondary mb-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-pulse-500" />
             <span>BOLA GOVERNANCE ENABLED • ROLE SCOPED VIEW</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            <FolderKanban className="w-8 h-8 text-pulse-400" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
+            <FolderKanban className="w-8 h-8 text-pulse-500" />
             <span>SME Case Inventory</span>
           </h1>
           <p className="text-slate-400 text-sm mt-1">
@@ -151,10 +167,10 @@ export default function CaseInventoryPage() {
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 statusFilter === status
-                  ? "bg-pulse-500 text-navy-900 font-bold shadow-sm"
-                  : "bg-navy-800/60 text-slate-400 hover:text-white hover:bg-navy-800 border border-white/5"
+                  ? "bg-pulse-500 text-white font-bold shadow-sm"
+                  : "bg-navy-800/60 text-bank-muted hover:text-white hover:bg-navy-800 border border-bank-border"
               }`}
             >
               {status.replace("_", " ")}
@@ -215,7 +231,7 @@ export default function CaseInventoryPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/10 bg-navy-800/50 text-[11px] font-mono uppercase text-slate-400 tracking-wider">
+                <tr className="border-b border-bank-border bg-navy-800/50 text-[11px] uppercase text-bank-secondary tracking-wider">
                   <th className="py-4 px-6">SME Business & Ref</th>
                   <th className="py-4 px-6">Requested Product</th>
                   <th className="py-4 px-6">Amount</th>
@@ -235,21 +251,21 @@ export default function CaseInventoryPage() {
                     >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm bg-navy-800 text-slate-300 border border-white/5">
-                            <Building2 className="w-5 h-5 text-pulse-400" />
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm bg-navy-800 text-bank-secondary border border-bank-border">
+                            <Building2 className="w-5 h-5 text-pulse-500" />
                           </div>
                           <div>
                             <div className="font-bold text-white flex items-center gap-2">
                               <span>{c.business_name || "SME Borrower"}</span>
                             </div>
-                            <div className="text-[11px] font-mono text-slate-400">
+                            <div className="text-[11px] font-mono text-bank-muted">
                               REF: {c.id.slice(0, 8)}...{c.id.slice(-4)}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-navy-800/80 border border-white/5 text-xs font-mono text-slate-300">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-navy-800/80 border border-bank-border text-xs text-bank-secondary">
                           {c.requested_product || "-"}
                         </span>
                       </td>
@@ -267,9 +283,9 @@ export default function CaseInventoryPage() {
                       <td className="py-4 px-6 text-right">
                         <Link
                           href={`/cases/${c.id}`}
-                          className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-navy-800 hover:bg-pulse-500 hover:text-navy-900 text-xs font-bold text-slate-300 border border-white/10 hover:border-pulse-500 transition-all shadow-sm group-hover:scale-105"
+                          className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-navy-800 hover:bg-pulse-500 hover:text-white text-xs font-bold text-bank-main border border-bank-border hover:border-pulse-500 transition-all shadow-sm group-hover:scale-105"
                         >
-                          <span>Evaluate</span>
+                          <span>{getActionLabel(user?.role)}</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />
                         </Link>
                       </td>

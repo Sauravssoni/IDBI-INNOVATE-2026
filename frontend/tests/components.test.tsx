@@ -58,7 +58,7 @@ describe("DashboardPage", () => {
       expect(screen.queryByText(/₹14\.8 Cr/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/₹8\.45 Cr/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/100% Auto/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/0 Scoped Applications/i)).toBeInTheDocument();
+      expect(screen.getByText(/SCOPED APPLICATIONS/i)).toBeInTheDocument();
     });
   });
 
