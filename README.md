@@ -37,7 +37,26 @@ Please refer to the `docs/` directory for mandatory banking and security documen
 - `docs/models/SCORING_METHODOLOGY.md`
 - `docs/privacy/RESPONSIBLE_AI.md`
 
-## Getting Started
+## Differentiators
+
+Unlike standard dashboards or LLM-wrappers, Vyapar Pulse is an **Evidence-First** engine:
+1. **Deterministic Bounded Scoring:** Financial Health, Evidence, and Resilience scores are mathematically bounded `[0, 100]`.
+2. **Monotonic Stress Response:** As risk factors (e.g., buyer concentration, payment delays) increase, resilience scores strictly decrease or remain stable.
+3. **No LLM Hallucinations in Core Logic:** Authoritative credit decisions, policy constraints, and offer generation are 100% deterministic code. LLMs are strictly bounded to generating explainable narrative summaries of the numeric data.
+4. **Idempotent Audit Trails:** Every system action and human decision is immutably logged with cryptographic hashing, ensuring complete BOLA (Broken Object Level Authorization) protection.
+
+## Demo Personas
+
+The prototype includes four distinct MSME archetypes to demonstrate the decision engine's edge cases:
+
+| Legal Name | Persona Profile | Key Constraint | System Recommendation |
+| :--- | :--- | :--- | :--- |
+| **Shakti Precision Components** | Ideal "Credit-Invisible" MSME. 18 months of GST & AA data. | None | **CONDITIONAL_OFFER** / **READY_FOR_REVIEW** |
+| **Navprerna Tech Solutions** | Genuinely missing periods or source evidence. | Low Evidence Confidence | **ADDITIONAL_EVIDENCE_REQUIRED** |
+| **Rangrez Textiles** | Viable but highly seasonal cash flows. | High Revenue CV | **READY_FOR_REVIEW** (or CONDITIONAL_OFFER) |
+| **Aarohan Infrastructure** | High existing debt obligations. | Low DSCR (< 1.15) | **DECLINE_RECOMMENDED** |
+
+## Quick Start & Credentials
 
 ### Prerequisites
 - Docker & Docker Compose
@@ -60,37 +79,39 @@ pip install -r requirements.txt
 alembic upgrade head
 ```
 
-3. **Generate Synthetic Data (Shakti Precision Components)**
+3. **Generate Synthetic Data (All 4 Personas)**
 ```bash
-make seed
+DEMO_USER_PASSWORD=demopassword ALLOW_DANGEROUS_CORS=true PYTHONPATH=. python -m app.seed.seed_all_demo
 ```
-*(This generates 18 months of deterministic evidence: GST, Bank, Invoices, EPFO).*
 
 4. **Run the Backend API**
 ```bash
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8001
+DEMO_USER_PASSWORD=demopassword ALLOW_DANGEROUS_CORS=true uvicorn app.main:app --host 0.0.0.0 --port 8001
 ```
 
-5. **Test the Evaluation Engine**
+5. **Run the Frontend (In a new terminal)**
 ```bash
-# Get the case ID
-curl -s http://localhost:8001/api/cases/
-# Example evaluation:
-# curl -s -X POST http://localhost:8001/api/cases/<case_id>/evaluate
+cd frontend
+npm install
+npm run dev
 ```
 
-## Distinguishing Business Archetypes
-The Decision Policy automatically categorizes MSMEs into four distinct profiles based on evidence:
-1. **Financially Weak:** Low financial health score (e.g., declining revenue, poor bank reconciliation).
-2. **Healthy but Credit Invisible:** High financial health, but low evidence score (insufficient months of data).
-3. **Viable but Seasonal:** Good health but high revenue coefficient of variation (CV).
-4. **Suspicious:** E.g., High declared GST revenue but extremely low corresponding bank credits.
+### Demo Credentials
+
+| Role | Email | Password | Allowed Actions |
+| :--- | :--- | :--- | :--- |
+| **Relationship Manager (RM)** | `rm@vyaparpulse.com` | `demopassword` | View cases, View read-only assessment, Acknowledge decisions |
+| **Credit Analyst (CA)** | `ca@vyaparpulse.com` | `demopassword` | Run assessment, View full details, Submit recommendation |
+| **Sanctioning Authority (SA)** | `sa@vyaparpulse.com` | `demopassword` | Review CA recommendations, Approve/Decline |
+
+## Known Limitations & Future Work
+- **Sandbox Rules:** The credit policies and limits in `SafeLimitEngine` (e.g. 20% Nayak Committee heuristic) are illustrative prototype assumptions, not exact IDBI production policies.
+- **LLM Connectivity:** The generative explanation feature requires an active OpenAI API key or Azure OpenAI configuration to operate.
+- **Mock Aggregator:** The Account Aggregator implementation uses synthetic seeded data rather than a live Sahamati sandbox connection.
 
 ## Repository Quality Standards
 This repository enforces:
 - Clean Architecture (API, Core, Domain, DB layers isolated)
 - SQLAlchemy ORM with Alembic schema migrations
 - Deterministic data seeding for reproducibility
-- Security by design (threat models and access controls documented)
+- Security by design (threat models, access controls, BOLA checks)

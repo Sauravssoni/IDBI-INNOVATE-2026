@@ -54,6 +54,22 @@ class DecisionPolicy:
                 "binding_limit": Decimal("0"),
             }
 
+        # 1.5 Basic DSCR Check
+        bank_metrics = self.features.get("bank_metrics", {})
+        monthly_inflows = Decimal(str(bank_metrics.get("avg_monthly_credits", 0)))
+        monthly_outflows = Decimal(str(bank_metrics.get("avg_monthly_debits", 0)))
+        if monthly_outflows > 0:
+            dscr = monthly_inflows / monthly_outflows
+            if dscr < Decimal("1.15"):
+                return {
+                    "decision": SystemRecommendation.DECLINE_RECOMMENDED.value,
+                    "reasons": [
+                        f"Debt Service Coverage Ratio (DSCR) of {dscr:.2f} is below minimum requirement of 1.15"
+                    ],
+                    "offers": [],
+                    "binding_limit": Decimal("0"),
+                }
+
         # 2. Capacity & Limits Calculation
         applicable_limits = SafeLimitEngine.calculate_all_limits(self.features)
 

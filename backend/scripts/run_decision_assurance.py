@@ -27,6 +27,22 @@ def run():
                 "recommendation": case.recommendation.value if case.recommendation else None
             }
         })
+        
+        if b.business_id == "SHAKTI_PRECISION_001":
+            assert float(case.requested_amount) == 5000000, "Shakti should request 50 lakh"
+            assert case.status.value == "EVIDENCE_GATHERING" or case.status.value == "INITIATED", f"Shakti should be in EVIDENCE_GATHERING, got {case.status.value}"
+            
+        if b.business_id == "NAVPRERNA_TECH_001":
+            assert case.status.value == "ASSESSMENT_COMPLETED", f"Navprerna should be ASSESSMENT_COMPLETED, got {case.status.value}"
+            assert case.recommendation and case.recommendation.value == "ADDITIONAL_EVIDENCE_REQUIRED", f"Navprerna should be ADDITIONAL_EVIDENCE_REQUIRED, got {case.recommendation.value if case.recommendation else None}"
+            
+        if b.business_id == "RANGREZ_TEXTILES_001":
+            assert case.status.value == "DECISION_PENDING", f"Rangrez should be DECISION_PENDING, got {case.status.value}"
+            # Because run_evaluations submits analyst recommendation
+            
+        if b.business_id == "AAROHAN_INFRA_001":
+            assert case.status.value == "ASSESSMENT_COMPLETED", f"Aarohan should be ASSESSMENT_COMPLETED, got {case.status.value}"
+            assert case.recommendation and case.recommendation.value == "DECLINE_RECOMMENDED", f"Aarohan should be DECLINE_RECOMMENDED, got {case.recommendation.value if case.recommendation else None}"
 
     assurance_data = {
         "title": "Decision Assurance Report",
