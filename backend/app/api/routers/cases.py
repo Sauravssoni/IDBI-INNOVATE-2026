@@ -303,44 +303,32 @@ def get_cases_summary(
     approved_amount = Decimal(0)
 
     for c in cases:
-        if (
-            c.status
-            in [
-                CaseStatus.INITIATED,
-                CaseStatus.EVIDENCE_GATHERING,
-                CaseStatus.ASSESSMENT_COMPLETED,
-            ]
-            and not c.analyst_recommendation
-        ):
+        if c.status in [CaseStatus.INITIATED, CaseStatus.EVIDENCE_GATHERING, CaseStatus.ASSESSMENT_COMPLETED]:
             awaiting_analyst += 1
-        elif (
-            c.status == CaseStatus.DECISION_PENDING or c.analyst_recommendation
-        ) and not c.human_decision:
+        elif c.status == CaseStatus.DECISION_PENDING:
             awaiting_human += 1
-        elif c.status == CaseStatus.HUMAN_APPROVED or c.human_decision in [
-            HumanDecisionAction.APPROVE_AS_REQUESTED,
-            HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE,
-        ]:
+        elif c.status in [CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED]:
             approved_cases += 1
-            latest_dec = (
-                db.query(AuditEvent)
-                .filter(
-                    AuditEvent.case_id == c.id,
-                    AuditEvent.event_type == "human_decision",
+            if c.status == CaseStatus.HUMAN_APPROVED:
+                latest_dec = (
+                    db.query(AuditEvent)
+                    .filter(
+                        AuditEvent.case_id == c.id,
+                        AuditEvent.event_type == "human_decision",
+                    )
+                    .order_by(AuditEvent.created_at.desc())
+                    .first()
                 )
-                .order_by(AuditEvent.created_at.desc())
-                .first()
-            )
-            if (
-                latest_dec
-                and latest_dec.metadata_json
-                and "approved_amount" in latest_dec.metadata_json
-            ):
-                approved_amount += Decimal(
-                    str(latest_dec.metadata_json["approved_amount"])
-                )
-            else:
-                approved_amount += c.requested_amount or Decimal(0)
+                if (
+                    latest_dec
+                    and latest_dec.metadata_json
+                    and "approved_amount" in latest_dec.metadata_json
+                ):
+                    approved_amount += Decimal(
+                        str(latest_dec.metadata_json["approved_amount"])
+                    )
+                else:
+                    approved_amount += c.requested_amount or Decimal(0)
 
     return {
         "active_cases": active_cases,
@@ -498,9 +486,14 @@ def evaluate_case(
             "decision": decision,
         }
 
+        dscr_val = None
+        if "bank_metrics" in features and "dscr" in features["bank_metrics"] and features["bank_metrics"]["dscr"] is not None:
+            dscr_val = Decimal(str(features["bank_metrics"]["dscr"]))
+
         update_values = {
             "recommendation": decision["decision"],
             "status": CaseStatus.ASSESSMENT_COMPLETED.value,
+            "dscr": dscr_val,
         }
 
         cas_update_case_and_audit(

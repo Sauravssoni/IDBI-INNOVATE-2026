@@ -1,5 +1,7 @@
 # VYAPAR PULSE AI
 
+![Vyapar Pulse Hero](https://via.placeholder.com/1200x400.png?text=Vyapar+Pulse+AI+-+Evidence-First+Credit+Twin)
+
 An Evidence-First Financial Health Card, MSME Credit Twin, and Safe-Offer Engine for credit-invisible Indian MSMEs. Built for the **IDBI Innovate 2026 Track 03** submission by **Syntheon Technology Private Limited**.
 
 ## Mission
@@ -25,18 +27,6 @@ graph TD
     F --> |Synthetic Evidence| C
 ```
 
-## Documentation
-Please refer to the `docs/` directory for mandatory banking and security documentation:
-- `docs/security/SECURITY_ARCHITECTURE.md`
-- `docs/security/THREAT_MODEL.md`
-- `docs/security/PRIVACY_AND_CONSENT.md`
-- `docs/security/INCIDENT_RESPONSE.md`
-- `docs/security/SECURITY_TEST_REPORT.md`
-- `docs/models/MODEL_CARD.md`
-- `docs/models/DATA_CARD.md`
-- `docs/models/SCORING_METHODOLOGY.md`
-- `docs/privacy/RESPONSIBLE_AI.md`
-
 ## Differentiators
 
 Unlike standard dashboards or LLM-wrappers, Vyapar Pulse is an **Evidence-First** engine:
@@ -53,60 +43,53 @@ The prototype includes four distinct MSME archetypes to demonstrate the decision
 | :--- | :--- | :--- | :--- |
 | **Shakti Precision Components** | Ideal "Credit-Invisible" MSME. 18 months of GST & AA data. | None | **CONDITIONAL_OFFER** / **READY_FOR_REVIEW** |
 | **Navprerna Tech Solutions** | Genuinely missing periods or source evidence. | Low Evidence Confidence | **ADDITIONAL_EVIDENCE_REQUIRED** |
-| **Rangrez Textiles** | Viable but highly seasonal cash flows. | High Revenue CV | **READY_FOR_REVIEW** (or CONDITIONAL_OFFER) |
+| **Rangrez Textiles** | Viable but highly seasonal cash flows. | High Revenue CV | **READY_FOR_REVIEW** |
 | **Aarohan Infrastructure** | High existing debt obligations. | Low DSCR (< 1.15) | **DECLINE_RECOMMENDED** |
 
-## Quick Start & Credentials
+## One-Command Demo
+
+We provide a streamlined makefile for evaluators to run the entire stack and verify the decision logic.
 
 ### Prerequisites
 - Docker & Docker Compose
-- Python 3.10+
-- Node.js 18+
+- `make`
 
-### Setup Instructions
+### Commands
 
-1. **Start the Database**
+1. **Start the environment (detached)**
 ```bash
-docker-compose up -d db
+make demo-up
 ```
 
-2. **Initialize Backend & Run Migrations**
+2. **Reset the database and seed exactly 4 personas**
 ```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-alembic upgrade head
+make demo-reset
 ```
 
-3. **Generate Synthetic Data (All 4 Personas)**
+3. **Verify the decision logic (Decision Assurance)**
 ```bash
-DEMO_USER_PASSWORD=demopassword ALLOW_DANGEROUS_CORS=true PYTHONPATH=. python -m app.seed.seed_all_demo
+make verify
 ```
 
-4. **Run the Backend API**
+4. **Tear down everything**
 ```bash
-DEMO_USER_PASSWORD=demopassword ALLOW_DANGEROUS_CORS=true uvicorn app.main:app --host 0.0.0.0 --port 8001
+make demo-down
 ```
 
-5. **Run the Frontend (In a new terminal)**
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## Demo Credentials
 
-### Demo Credentials
+> **Note:** As a bank-internal underwriting platform, there is no public self-registration. Users are strictly provisioned by an administrator. Use the credentials below to log in.
 
 | Role | Email | Password | Allowed Actions |
 | :--- | :--- | :--- | :--- |
-| **Relationship Manager (RM)** | `rm@vyaparpulse.com` | `demopassword` | View cases, View read-only assessment, Acknowledge decisions |
-| **Credit Analyst (CA)** | `ca@vyaparpulse.com` | `demopassword` | Run assessment, View full details, Submit recommendation |
-| **Sanctioning Authority (SA)** | `sa@vyaparpulse.com` | `demopassword` | Review CA recommendations, Approve/Decline |
+| **Relationship Manager (RM)** | `rm@bank.example` | `demopassword` | View cases, View read-only assessment, Acknowledge decisions |
+| **Credit Analyst (CA)** | `credit@bank.example` | `demopassword` | Run assessment, View full details, Submit recommendation |
+| **Sanctioning Authority (SA)** | `sa@bank.example` | `demopassword` | Review CA recommendations, Approve/Decline |
+| **Auditor** | `auditor@bank.example` | `demopassword` | View tamper-evident logs |
+| **System/Admin** | `system@bank.example` / `admin@bank.example` | `demopassword` | Administration tasks |
 
 ## Known Limitations & Future Work
-- **Sandbox Rules:** The credit policies and limits in `SafeLimitEngine` (e.g. 20% Nayak Committee heuristic) are illustrative prototype assumptions, not exact IDBI production policies.
-- **LLM Connectivity:** The generative explanation feature requires an active OpenAI API key or Azure OpenAI configuration to operate.
+- **Sandbox Rules:** The credit policies and limits in `SafeLimitEngine` (e.g. 20% Nayak Committee heuristic) are illustrative prototype assumptions, not exact production policies.
 - **Mock Aggregator:** The Account Aggregator implementation uses synthetic seeded data rather than a live Sahamati sandbox connection.
 
 ## Repository Quality Standards
