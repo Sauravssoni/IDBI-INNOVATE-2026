@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #08111C;
-  --foreground: #F4F7FA;
+  --background: #F4F6F8;
+  --foreground: #10243E;
 }
 
 body {
@@ -17,20 +17,20 @@ body {
 /* Institutional flat utilities */
 @layer utilities {
   .glass-panel {
-    background: #0C1623;
-    border: 1px solid #26384B;
+    background: #FFFFFF;
+    border: 1px solid #D7E0E8;
   }
 
   .glass-card {
-    background: #111E2D;
-    border: 1px solid #26384B;
+    background: #FFFFFF;
+    border: 1px solid #D7E0E8;
     border-radius: 8px;
     transition: all 0.2s ease-in-out;
   }
 
   .glass-card:hover {
-    background: #152537;
-    border-color: #527A9D;
+    background: #F9FAFB;
+    border-color: #0E7C66;
   }
 
   .glow-pulse {

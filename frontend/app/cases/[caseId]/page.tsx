@@ -11,7 +11,6 @@ import AssessmentHistoryTab from "./tabs/AssessmentHistoryTab";
 import {
   Sparkles,
   Building2,
-  ShieldCheck,
   TrendingUp,
   CheckCircle2,
   AlertTriangle,
@@ -21,15 +20,13 @@ import {
   Lock,
   UserCheck,
   Clock,
-  DollarSign,
   Play,
   Send,
   Check,
   RefreshCw,
-  BarChart3,
   Scale,
-  Award,
   Database,
+  ShieldCheck,
 } from "lucide-react";
 
 export default function CaseEvaluationPage() {
@@ -69,6 +66,11 @@ export default function CaseEvaluationPage() {
     if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
     if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
     return `₹${num.toLocaleString("en-IN")}`;
+  };
+
+  const humaniseEnum = (str: string) => {
+    if (!str) return "-";
+    return str.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
   };
 
   const loadCase = async () => {
@@ -121,7 +123,7 @@ export default function CaseEvaluationPage() {
             foundCase = match;
           }
         } else {
-          setError("Case not found in current BOLA scope.");
+          setError("Case not found in current scope.");
         }
       } else {
         setError(listErr || "Failed to load case inventory.");
@@ -181,14 +183,14 @@ export default function CaseEvaluationPage() {
       setEvalResult(data);
       const decision = data?.decision?.decision ?? "-";
       setActionSuccess(
-        `AI-assisted credit assessment completed successfully! Recommendation: ${decision}`,
+        `AI-assisted credit assessment completed successfully! Recommendation: ${humaniseEnum(decision)}`,
       );
       if (data?.decision?.binding_limit) {
         setApprovedAmount(data.decision.binding_limit);
       }
       loadCase();
     } else {
-      setActionError(error || "CAS evaluation failed.");
+      setActionError(error || "Assessment Service evaluation failed.");
     }
     setEvaluating(false);
   };
@@ -224,7 +226,7 @@ export default function CaseEvaluationPage() {
 
     if (status === 200 || status === 201) {
       setActionSuccess(
-        `Analyst recommendation (${recAction}) submitted! Case forwarded to Sanctioning Authority.`,
+        `Analyst recommendation (${humaniseEnum(recAction)}) submitted! Case forwarded to Sanctioning Authority.`,
       );
       loadCase();
     } else {
@@ -262,13 +264,13 @@ export default function CaseEvaluationPage() {
 
     if (status === 200 || status === 201) {
       setActionSuccess(
-        `Sanction decision recorded successfully! Status updated to ${decisionAction}.`,
+        `Sanction decision recorded successfully! Status updated to ${humaniseEnum(decisionAction)}.`,
       );
       loadCase();
     } else {
       setActionError(
         error ||
-          "Sanction decision failed. Verify BOLA mandate limits and assignment.",
+          "Sanction decision failed. Verify mandate limits and assignment.",
       );
     }
     setSubmittingDecision(false);
@@ -277,11 +279,11 @@ export default function CaseEvaluationPage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-        <div className="w-16 h-16 rounded-lg bg-navy-700 flex items-center justify-center animate-bounce shadow-sm border border-bank-border">
-          <Sparkles className="w-8 h-8 text-pulse-500" />
+        <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center animate-bounce shadow-sm border border-light-border">
+          <Sparkles className="w-8 h-8 text-brand-teal" />
         </div>
-        <p className="text-sm font-mono text-pulse-500 animate-pulse">
-          INITIALIZING EVIDENCE-LINKED CREDIT ASSESSMENT...
+        <p className="text-sm font-medium text-brand-teal animate-pulse">
+          INITIALIZING ASSESSMENT WORKSPACE...
         </p>
       </div>
     );
@@ -289,15 +291,15 @@ export default function CaseEvaluationPage() {
 
   if (error || !caseData) {
     return (
-      <div className="glass-panel p-8 rounded-2xl border border-rose-500/30 text-center max-w-md mx-auto my-12 space-y-4">
-        <AlertTriangle className="w-12 h-12 text-rose-400 mx-auto" />
-        <h3 className="text-lg font-bold text-white">Case Access Error</h3>
-        <p className="text-xs text-slate-400">
+      <div className="glass-card p-8 text-center max-w-md mx-auto my-12 space-y-4">
+        <AlertTriangle className="w-12 h-12 text-brand-red mx-auto" />
+        <h3 className="text-lg font-bold text-light-text">Case Access Error</h3>
+        <p className="text-sm text-light-secondary">
           {error || "Case details unavailable."}
         </p>
         <Link
           href="/cases"
-          className="inline-block px-4 py-2 bg-navy-800 hover:bg-navy-700 text-white text-xs font-mono rounded-xl border border-white/10 transition-colors"
+          className="inline-block px-4 py-2 bg-white hover:bg-light-elevated text-light-text text-sm font-medium rounded-lg border border-light-border transition-colors"
         >
           RETURN TO INVENTORY
         </Link>
@@ -307,15 +309,15 @@ export default function CaseEvaluationPage() {
 
   if (user?.role === "SYSTEM_ADMIN") {
     return (
-      <div className="glass-panel p-8 rounded-2xl border border-rose-500/30 text-center max-w-md mx-auto my-12 space-y-4">
-        <AlertTriangle className="w-12 h-12 text-rose-400 mx-auto" />
-        <h3 className="text-lg font-bold text-white">Access Restricted</h3>
-        <p className="text-xs text-slate-400">
+      <div className="glass-card p-8 text-center max-w-md mx-auto my-12 space-y-4">
+        <AlertTriangle className="w-12 h-12 text-brand-red mx-auto" />
+        <h3 className="text-lg font-bold text-light-text">Access Restricted</h3>
+        <p className="text-sm text-light-secondary">
           System Administrators do not have access to case workspace content.
         </p>
         <Link
           href="/dashboard"
-          className="inline-block px-4 py-2 bg-navy-800 hover:bg-navy-700 text-white text-xs font-mono rounded-xl border border-white/10 transition-colors"
+          className="inline-block px-4 py-2 bg-white hover:bg-light-elevated text-light-text text-sm font-medium rounded-lg border border-light-border transition-colors"
         >
           RETURN TO DASHBOARD
         </Link>
@@ -329,85 +331,59 @@ export default function CaseEvaluationPage() {
   const canSubmitHumanDecision = allowedActions.record_human_decision === true;
 
   const reqAmount = caseData.requested_amount || 0;
-  const recVal = creditTwin?.recommendation || "-";
+  const isEvaluated = creditTwin && creditTwin.evaluated_at;
+  const recVal = creditTwin?.recommendation ? humaniseEnum(creditTwin.recommendation) : "-";
   const supportLimit = creditTwin?.binding_limit ?? "-";
   const dscrVal = creditTwin?.dscr ?? "-";
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16">
       {/* Top Nav & Breadcrumb */}
       <div className="flex items-center justify-between">
         <Link
           href="/cases"
-          className="inline-flex items-center gap-2 text-xs font-mono text-slate-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-medium text-light-secondary hover:text-light-text transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>BACK TO CASE INVENTORY</span>
         </Link>
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pulse-500/10 border border-pulse-500/30 text-xs font-mono text-pulse-400">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded bg-brand-softTeal text-xs font-medium text-brand-teal">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>
-            Built for IDBI Innovate 2026 • Hackathon prototype—not an official
-            IDBI Bank production system
-          </span>
+          <span>Hackathon prototype—not an official IDBI Bank production system</span>
         </div>
       </div>
 
       {/* Hero Header Banner */}
-      <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-bank-border relative shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+      <div className="glass-card p-6 sm:p-8 relative">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-lg bg-navy-700 flex items-center justify-center text-white shrink-0 border border-bank-border">
-              <Building2 className="w-7 h-7 text-pulse-500" />
+            <div className="w-14 h-14 rounded-xl bg-light-elevated border border-light-border flex items-center justify-center shrink-0">
+              <Building2 className="w-7 h-7 text-brand-teal" />
             </div>
             <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              <div className="flex items-center gap-3 flex-wrap mb-1">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-light-text tracking-tight">
                   {caseData.business?.legal_name ||
                     caseData.business_name ||
                     "Applicant Business"}
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-navy-700 text-pulse-500 border border-bank-border">
-                  {caseData.status || "UNDER_REVIEW"}
+                <span className="px-2.5 py-1 rounded text-xs font-bold bg-light-elevated border border-light-border text-light-secondary">
+                  {humaniseEnum(caseData.status) || "Under Review"}
                 </span>
               </div>
-              <p className="text-slate-400 text-sm mt-1 flex items-center gap-3 font-mono">
-                <span>ID: {caseData.id?.slice(0, 8)}...</span> •
-                <span>GSTIN: {caseData.business?.gstin || "-"}</span> •
-                <span>
-                  Branch:{" "}
-                  {caseData.originating_branch_id
-                    ? `Branch ${caseData.originating_branch_id.slice(0, 8)}`
-                    : "-"}
-                </span>
+              <p className="text-light-secondary text-sm flex items-center gap-3">
+                <span className="font-mono">ID: {caseData.id?.slice(0, 8)}...</span> •
+                {caseData.business?.gstin && <span className="font-mono">GSTIN: {caseData.business.gstin}</span>}
+                {caseData.business?.gstin && <span>•</span>}
+                {caseData.originating_branch_id && <span>Branch: {caseData.originating_branch_id.slice(0, 8)}</span>}
               </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-navy-900/60 border border-bank-border shrink-0">
-            <div>
-              <div className="text-[10px] text-bank-secondary">
-                REQUESTED LIMIT
-              </div>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">
-                {formatCurrency(reqAmount)}
-              </div>
-            </div>
-
-            <div className="col-span-2 sm:col-span-1">
-              <div className="text-[10px] text-bank-secondary">
-                SUPPORTABLE LIMIT
-              </div>
-              <div className="text-lg font-bold text-pulse-500 font-mono mt-0.5">
-                {evalResult ? formatCurrency(supportLimit) : "Not yet evaluated"}
-              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center gap-6 border-b border-white/10 overflow-x-auto pb-[1px]">
+      <div className="flex items-center gap-6 border-b border-light-border overflow-x-auto">
         {[
           { id: "overview", label: "Overview", icon: Activity },
           { id: "evidence", label: "Evidence Data", icon: Database },
@@ -420,10 +396,10 @@ export default function CaseEvaluationPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-1 py-3 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-2 py-3 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
                 isActive
-                  ? "border-pulse-400 text-pulse-400"
-                  : "border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-500/30"
+                  ? "border-brand-teal text-brand-teal"
+                  : "border-transparent text-light-secondary hover:text-light-text"
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -440,273 +416,182 @@ export default function CaseEvaluationPage() {
       {activeTab === "history" && <AssessmentHistoryTab caseId={caseData.id} />}
 
       {activeTab === "overview" && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Action Feedback Banners */}
           {actionSuccess && (
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 text-emerald-300 text-sm animate-fade-in shadow-lg">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-xl flex items-center gap-3 text-brand-teal text-sm shadow-sm">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
               <span className="font-medium">{actionSuccess}</span>
             </div>
           )}
           {actionError && (
-            <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-300 text-sm animate-shake shadow-lg">
+            <div className="p-4 bg-brand-softRed border border-brand-red rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-brand-red text-sm shadow-sm">
               <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
+                <AlertTriangle className="w-5 h-5 shrink-0" />
                 <span className="font-medium">{actionError}</span>
               </div>
               {actionError.includes("STALE_VERSION") && (
                 <button
                   onClick={() => loadCase()}
-                  className="px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 rounded-lg text-xs font-semibold text-rose-200 transition-colors shrink-0"
+                  className="px-3 py-1.5 bg-white border border-brand-red rounded-lg text-xs font-semibold hover:bg-brand-softRed transition-colors shrink-0"
                 >
                   Refresh Case
                 </button>
               )}
-              {actionError.includes("IDEMPOTENCY_IN_PROGRESS") && (
-                <span className="text-xs text-rose-300 font-mono shrink-0">
-                  Please wait 5s and try again
-                </span>
+            </div>
+          )}
+
+          {isEvaluated ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="glass-card p-4">
+                <span className="text-xs text-light-secondary uppercase font-medium">Requested Amount</span>
+                <div className="font-bold text-light-text font-mono mt-1 text-lg">{formatCurrency(reqAmount)}</div>
+              </div>
+              <div className="glass-card p-4">
+                <span className="text-xs text-light-secondary uppercase font-medium">Supportable Amount</span>
+                <div className="font-bold text-brand-teal font-mono mt-1 text-lg">{formatCurrency(supportLimit)}</div>
+              </div>
+              <div className="glass-card p-4">
+                <span className="text-xs text-light-secondary uppercase font-medium">DSCR</span>
+                <div className="font-bold text-brand-teal font-mono mt-1 text-lg">{dscrVal !== "-" ? `${dscrVal}x` : "-"}</div>
+              </div>
+              <div className="glass-card p-4 col-span-2 md:col-span-1 lg:col-span-2">
+                <span className="text-xs text-light-secondary uppercase font-medium">Recommendation</span>
+                <div className="font-bold text-brand-teal mt-1 text-lg">{recVal}</div>
+              </div>
+              <div className="glass-card p-4">
+                <span className="text-xs text-light-secondary uppercase font-medium">Evidence Confidence</span>
+                <div className="font-bold text-light-text mt-1 text-lg">{creditTwin?.evidence_confidence_score ?? "-"}%</div>
+              </div>
+            </div>
+          ) : (
+            <div className="glass-card p-8 text-center space-y-4 shadow-sm border border-light-border">
+              <div className="w-16 h-16 rounded-full bg-light-elevated flex items-center justify-center mx-auto text-brand-teal">
+                <Activity className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-light-text">Assessment not yet run</h3>
+              <p className="text-sm text-light-secondary max-w-md mx-auto">
+                The AI-assisted credit assessment has not been executed for this case. Run the evaluation to generate the MSME Credit Twin, reconcile evidence, and produce a recommendation.
+              </p>
+              {canRunAssessment && (
+                <button
+                  onClick={handleRunEvaluation}
+                  disabled={evaluating}
+                  className="px-6 py-3 bg-brand-teal text-white hover:bg-brand-tealHover font-medium rounded-lg inline-flex items-center gap-2 transition-all shadow-sm"
+                >
+                  {evaluating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+                  Run Assessment Engine
+                </button>
               )}
             </div>
           )}
 
-          {/* Main Grid: 3 Pillars (CAS Score, Reconciliation, CAM) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Pillar 1: MSME Credit Twin */}
-            <div className="glass-card p-6 rounded-2xl border border-bank-border flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs text-bank-secondary uppercase tracking-wider">
-                    Pillar 1: MSME Credit Twin
-                  </span>
-                  <Database className="w-5 h-5 text-pulse-500" />
-                </div>
-                
-                {twinLoading ? (
-                  <div className="py-8 text-center text-slate-400 font-mono text-[11px] animate-pulse">
-                    Loading Credit Twin...
+          {isEvaluated && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* MSME Credit Twin Summary */}
+              <div className="glass-card p-6 border border-light-border flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-light-border">
+                    <span className="text-sm font-bold text-light-text">
+                      MSME Credit Twin
+                    </span>
+                    <Database className="w-5 h-5 text-brand-teal" />
                   </div>
-                ) : twinError ? (
-                  <div className="py-8 text-center text-rose-400 font-mono text-[11px]">
-                    {twinError}
-                  </div>
-                ) : !creditTwin ? (
-                  <div className="py-8 text-center text-slate-500 font-mono text-[11px]">
-                    No Credit Twin data available.
-                  </div>
-                ) : (
-                  <div className="space-y-3 pt-4 border-t border-bank-border text-xs">
-                    <div>
-                      <div className="flex justify-between text-bank-secondary mb-1">
-                        <span>DSCR</span>
-                        <span className="font-mono text-pulse-500 font-bold">
-                          {creditTwin.dscr !== null && creditTwin.dscr !== undefined ? `${creditTwin.dscr}x` : "-"}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-bank-secondary mb-1">
-                        <span>Latest Binding Limit</span>
-                        <span className="font-mono text-pulse-500 font-bold">
-                          {creditTwin.binding_limit !== null && creditTwin.binding_limit !== undefined ? formatCurrency(creditTwin.binding_limit) : "-"}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-bank-secondary mb-1">
-                        <span>Recommendation</span>
-                        <span className="font-mono text-bank-info font-bold">
-                          {creditTwin.recommendation || "-"}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-bank-secondary mb-1">
-                        <span>Evidence Completeness</span>
-                        <span className="font-mono text-white font-bold">
-                          {creditTwin.evidence_completeness_score !== undefined && creditTwin.evidence_completeness_score !== null ? `${creditTwin.evidence_completeness_score}%` : "-"}
-                        </span>
-                      </div>
-                      <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden mt-1 border border-bank-border">
-                        <div
-                          className="bg-pulse-500 h-full"
-                          style={{
-                            width: `${creditTwin.evidence_completeness_score || 0}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-6 pt-4 border-t border-bank-border text-[11px] font-mono text-bank-secondary flex items-center justify-between">
-                <span>Model: {creditTwin?.calculation_version || "-"}</span>
-                <span className="text-pulse-500 truncate ml-2 text-right">
-                  {creditTwin?.evaluated_at ? new Date(creditTwin.evaluated_at).toLocaleString() : "Never evaluated"}
-                </span>
-              </div>
-            </div>
-
-            {/* Pillar 2: Automated GST & Bank Reconciliation */}
-            <div className="glass-card p-6 rounded-2xl border border-bank-border flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs text-bank-secondary uppercase tracking-wider">
-                    Pillar 2: Reconciliation
-                  </span>
-                  <Scale className="w-5 h-5 text-bank-info" />
-                </div>
-
-                <div className="space-y-4 py-2">
-                  <div className="p-3.5 rounded-xl bg-navy-800/80 border border-white/5 space-y-2">
-                    <div className="text-xs font-semibold text-white flex justify-between">
-                      <span>Revenue Matching</span>
-                      <span className="text-emerald-400 font-mono">
-                        {evalResult?.features?.reconciliation_metrics?.gst_bank_ratio
-                          ? `${(Number(evalResult.features.reconciliation_metrics.gst_bank_ratio) * 100).toFixed(1)}% Match`
-                          : "-"}
+                  
+                  <div className="space-y-4 text-sm">
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
+                      <span className="text-light-secondary font-medium">Evidence Completeness</span>
+                      <span className="font-bold text-light-text">
+                        {creditTwin?.evidence_completeness_score !== undefined && creditTwin?.evidence_completeness_score !== null ? `${creditTwin.evidence_completeness_score}%` : "-"}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono text-slate-300">
-                      <div>
-                        GST Turnover:{" "}
-                        {evalResult?.features?.gst_metrics?.avg_monthly_revenue
-                          ? formatCurrency(
-                              Number(evalResult.features.gst_metrics.avg_monthly_revenue) *
-                                (evalResult.features.gst_metrics.months_filed || 12),
-                            )
-                          : "-"}
-                      </div>
-                      <div>
-                        Bank Credits:{" "}
-                        {evalResult?.features?.bank_metrics?.total_credits
-                          ? formatCurrency(evalResult.features.bank_metrics.total_credits)
-                          : "-"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center gap-3">
-                    <Activity className="w-5 h-5 text-blue-400 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold text-white">
-                        Cash Flow Velocity
-                      </div>
-                      <div className="text-[10px] text-slate-300">
-                        Average monthly balance:{" "}
-                        {evalResult?.features?.bank_metrics?.avg_monthly_credits
-                          ? formatCurrency(evalResult.features.bank_metrics.avg_monthly_credits)
-                          : "-"}
-                      </div>
+                    <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-brand-teal h-full"
+                        style={{
+                          width: `${creditTwin?.evidence_completeness_score || 0}%`,
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-6 pt-4 border-t border-bank-border text-[11px] font-mono text-bank-secondary flex items-center justify-between">
-                <span>Reconciliation Engine</span>
-                <span className="text-bank-info">Deterministic Reconciliation</span>
-              </div>
-            </div>
-
-            {/* Pillar 3: AI-Assisted Memo */}
-            <div className="glass-card p-6 rounded-2xl border border-bank-border flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs text-bank-secondary uppercase tracking-wider">
-                    Pillar 3: Memo Preparation
+                <div className="mt-6 pt-4 border-t border-light-border text-xs text-light-secondary flex items-center justify-between">
+                  <span>Model: {creditTwin?.calculation_version || "-"}</span>
+                  <span className="text-light-text">
+                    Evaluated: {creditTwin?.evaluated_at ? new Date(creditTwin.evaluated_at).toLocaleString() : "Never"}
                   </span>
-                  <FileText className="w-5 h-5 text-pulse-500" />
                 </div>
+              </div>
 
-                <div className="space-y-3 py-2 text-xs text-bank-secondary leading-relaxed">
-                  <div className="p-3.5 rounded-xl bg-navy-800/80 border border-bank-border space-y-2">
-                    <div className="font-bold text-white text-sm">
-                      Evidence-linked Summary
-                    </div>
-                    <p className="text-bank-secondary">
-                      {evalResult
-                        ? `${caseData.business?.legal_name || "Applicant"} evidence-linked credit assessment indicates a ${recVal.toString().toLowerCase()} status based on verified GST and banking data.`
-                        : "Assessment recommendation unavailable. Run evaluation to generate summary."}
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-bank-border font-mono text-[11px]">
-                      <div>
-                        DSCR:{" "}
-                        <span className="text-pulse-500 font-bold">
-                          {dscrVal !== "-" ? `${dscrVal}x` : "-"}
+              {/* Automated GST & Bank Reconciliation */}
+              <div className="glass-card p-6 border border-light-border flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-light-border">
+                    <span className="text-sm font-bold text-light-text">
+                      Evidence Reconciliation
+                    </span>
+                    <Scale className="w-5 h-5 text-brand-teal" />
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-lg bg-light-bg border border-light-border space-y-2">
+                      <div className="text-sm font-semibold text-light-text flex justify-between">
+                        <span>Revenue Matching</span>
+                        <span className="text-brand-teal">
+                          {evalResult?.features?.reconciliation_metrics?.gst_bank_ratio
+                            ? `${(Number(evalResult.features.reconciliation_metrics.gst_bank_ratio) * 100).toFixed(1)}% Match`
+                            : "-"}
                         </span>
                       </div>
-                      <div>
-                        EBITDA:{" "}
-                        <span className="text-pulse-500 font-bold">
-                          {evalResult?.features?.ebitda || "-"}
-                        </span>
-                      </div>
-                      <div>
-                        Gearing:{" "}
-                        <span className="text-pulse-500 font-bold">
-                          {evalResult?.features?.gearing || "-"}
-                        </span>
-                      </div>
-                      <div>
-                        Collateral:{" "}
-                        <span className="text-pulse-500 font-bold">
-                          {evalResult?.features?.collateral || "-"}
-                        </span>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-light-secondary">
+                        <div>
+                          GST Turnover:{" "}
+                          <span className="font-medium text-light-text">
+                            {evalResult?.features?.gst_metrics?.avg_monthly_revenue
+                              ? formatCurrency(
+                                  Number(evalResult.features.gst_metrics.avg_monthly_revenue) *
+                                    (evalResult.features.gst_metrics.months_filed || 12),
+                                )
+                              : "-"}
+                          </span>
+                        </div>
+                        <div>
+                          Bank Credits:{" "}
+                          <span className="font-medium text-light-text">
+                            {evalResult?.features?.bank_metrics?.total_credits
+                              ? formatCurrency(evalResult.features.bank_metrics.total_credits)
+                              : "-"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {evalResult && (
-                    <div className="p-3 rounded-xl bg-navy-800 border-l-2 border-pulse-500">
-                      <div className="font-semibold text-white text-xs">
-                        Evidence-Linked Recommendation:
-                      </div>
-                      <div className="text-[11px] text-bank-secondary mt-0.5">
-                        Recommendation:{" "}
-                        <strong className="text-white font-mono">{recVal}</strong>{" "}
-                        of{" "}
-                        <strong className="text-white font-mono">
-                          {formatCurrency(supportLimit)}
-                        </strong>
-                        .
-                      </div>
-                    </div>
-                  )}
+                <div className="mt-6 pt-4 border-t border-light-border text-xs text-light-secondary flex items-center justify-between">
+                  <span>Reconciliation Engine</span>
+                  <span className="text-brand-teal font-medium">Deterministic Reconciliation</span>
                 </div>
               </div>
-
-              <div className="mt-6 pt-4 border-t border-bank-border text-[11px] font-mono text-bank-secondary flex items-center justify-between">
-                <span>CAM Status:</span>
-                <span className="text-pulse-500 font-bold">
-                  {evalResult ? "Ready for Review" : "Pending Evaluation"}
-                </span>
-              </div>
             </div>
-          </div>
+          )}
 
-          {/* BOLA Governance & Role-Based Action Portal */}
-          <div className="glass-panel p-6 sm:p-8 rounded-2xl border border-bank-border shadow-sm relative">
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-bank-border">
+          {/* Assessment Summary / Action Portal */}
+          <div className="glass-card p-6 sm:p-8 border border-light-border shadow-sm">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-light-border">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-navy-700 border border-bank-border flex items-center justify-center text-bank-info">
-                  <Lock className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-lg bg-light-bg border border-light-border flex items-center justify-center text-light-secondary">
+                  <ShieldCheck className="w-5 h-5 text-brand-teal" />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-white">
-                    BOLA Governance & Decision Portal
+                  <h2 className="text-lg font-bold text-light-text">
+                    Governance & Access Controls
                   </h2>
-                  <p className="text-xs text-bank-secondary">
-                    Logged in as{" "}
-                    <strong className="text-white">{user?.full_name}</strong> (
-                    {user?.role}) • Scoped to Originating Branch
+                  <p className="text-xs text-light-secondary">
+                    Logged in as <strong className="text-light-text">{user?.full_name}</strong> ({humaniseEnum(user?.role || "")}) • Scoped Access
                   </p>
                 </div>
-              </div>
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-bank-border text-xs text-pulse-500">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Mandate Verified</span>
               </div>
             </div>
 
@@ -714,52 +599,44 @@ export default function CaseEvaluationPage() {
             {!canRunAssessment &&
             !canSubmitAnalystRec &&
             !canSubmitHumanDecision ? (
-              <div className="p-6 text-center space-y-2 bg-navy-800/60 rounded-xl border border-white/5">
-                <Lock className="w-8 h-8 text-slate-500 mx-auto" />
-                <div className="text-xs font-bold text-slate-300">
+              <div className="p-6 text-center space-y-2 bg-light-bg rounded-xl border border-light-border">
+                <Lock className="w-8 h-8 text-light-muted mx-auto" />
+                <div className="text-sm font-bold text-light-text">
                   Read-Only Workspace Access
                 </div>
-                <p className="text-[11px] text-slate-500 max-w-md mx-auto">
-                  Your role ({user?.role}) has read-only access to this case
-                  workspace. Mutation workflows (evaluations, recommendations,
-                  and sanction decisions) are restricted to assigned Credit
-                  Analysts and Sanctioning Authorities.
+                <p className="text-xs text-light-secondary max-w-md mx-auto">
+                  Your role ({humaniseEnum(user?.role || "")}) has read-only access to this case. Mutation workflows are restricted to assigned Credit Analysts and Sanctioning Authorities.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left: Analyst Workflows */}
-                {canRunAssessment || canSubmitAnalystRec ? (
-                  <div className="p-5 rounded-xl bg-navy-800/60 border border-white/5 space-y-4">
-                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-blue-400" />
+                {(canRunAssessment || canSubmitAnalystRec) && (
+                  <div className="p-5 rounded-xl bg-light-bg border border-light-border space-y-4">
+                    <h3 className="text-sm font-bold text-light-text flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-brand-teal" />
                       <span>Credit Analyst Workflows</span>
                     </h3>
-                    <p className="text-xs text-slate-400">
-                      Trigger live CAS evaluation engine or submit formal
-                      recommendation to the Sanctioning Authority.
+                    <p className="text-xs text-light-secondary">
+                      Submit formal recommendation to the Sanctioning Authority based on the assessment.
                     </p>
 
                     <div className="flex flex-wrap gap-3 pt-2">
-                      {canRunAssessment && (
+                      {canRunAssessment && isEvaluated && (
                         <button
                           onClick={handleRunEvaluation}
                           disabled={evaluating}
-                          className="px-4 py-2.5 bg-navy-800 hover:bg-blue-500/20 text-blue-300 font-semibold text-xs rounded-xl border border-blue-500/30 flex items-center gap-2 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                          className="px-4 py-2.5 bg-white hover:bg-light-elevated text-light-text font-medium text-xs rounded-lg border border-light-border flex items-center gap-2 transition-all shadow-sm disabled:opacity-50"
                         >
-                          {evaluating ? (
-                            <RefreshCw className="w-4 h-4 animate-spin text-blue-400" />
-                          ) : (
-                            <Play className="w-4 h-4 fill-current" />
-                          )}
-                          <span>Run CAS Engine Evaluation</span>
+                          {evaluating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                          <span>Re-run Assessment</span>
                         </button>
                       )}
                       {canSubmitAnalystRec && (
                         <button
                           onClick={handleSubmitAnalystRec}
                           disabled={evaluating || !evalResult}
-                          className="px-4 py-2.5 bg-pulse-500 hover:bg-pulse-600 text-white font-bold text-xs rounded-xl shadow-sm border border-pulse-400 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                          className="px-4 py-2.5 bg-brand-teal hover:bg-brand-tealHover text-white font-medium text-xs rounded-lg shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
                         >
                           <Send className="w-4 h-4" />
                           <span>
@@ -769,30 +646,27 @@ export default function CaseEvaluationPage() {
                       )}
                     </div>
                   </div>
-                ) : null}
+                )}
 
                 {/* Right: Sanctioning Authority Decision Gate */}
-                {canSubmitHumanDecision ? (
-                  <div className="p-5 rounded-xl bg-navy-800/60 border border-amber-500/20 space-y-4 relative overflow-hidden">
+                {canSubmitHumanDecision && (
+                  <div className="p-5 rounded-xl bg-brand-softAmber border border-brand-amber space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                        <UserCheck className="w-4 h-4 text-amber-400" />
+                      <h3 className="text-sm font-bold text-brand-amber flex items-center gap-2">
+                        <UserCheck className="w-4 h-4" />
                         <span>Sanctioning Authority Gate</span>
                       </h3>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        SA MANDATE REQUIRED
-                      </span>
                     </div>
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-mono text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-brand-amber mb-1">
                           DECISION ACTION
                         </label>
                         <select
                           value={decisionAction}
                           onChange={(e) => setDecisionAction(e.target.value)}
-                          className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white border border-brand-amber rounded-lg text-sm text-light-text focus:outline-none focus:ring-1 focus:ring-brand-amber"
                         >
                           <option value="APPROVE_AS_REQUESTED">
                             Approve as Requested ({formatCurrency(reqAmount)})
@@ -815,7 +689,7 @@ export default function CaseEvaluationPage() {
 
                       {decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE" && (
                         <div>
-                          <label className="block text-xs font-mono text-slate-300 mb-1">
+                          <label className="block text-xs font-medium text-brand-amber mb-1">
                             APPROVED AMOUNT (₹)
                           </label>
                           <input
@@ -824,13 +698,13 @@ export default function CaseEvaluationPage() {
                             onChange={(e) =>
                               setApprovedAmount(Number(e.target.value))
                             }
-                            className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-amber-500"
+                            className="w-full px-3 py-2 bg-white border border-brand-amber rounded-lg text-sm font-mono text-light-text focus:outline-none focus:ring-1 focus:ring-brand-amber"
                           />
                         </div>
                       )}
 
                       <div>
-                        <label className="block text-xs font-mono text-slate-300 mb-1">
+                        <label className="block text-xs font-medium text-brand-amber mb-1">
                           SANCTION NOTES / RATIONALE
                         </label>
                         <input
@@ -838,25 +712,25 @@ export default function CaseEvaluationPage() {
                           value={sanctionNotes}
                           onChange={(e) => setSanctionNotes(e.target.value)}
                           placeholder="Enter sanction rationale or conditions..."
-                          className="w-full px-3 py-2 bg-navy-900 border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-amber-500"
+                          className="w-full px-3 py-2 bg-white border border-brand-amber rounded-lg text-sm text-light-text focus:outline-none focus:ring-1 focus:ring-brand-amber"
                         />
                       </div>
 
                       <button
                         onClick={handleRecordSanctionDecision}
                         disabled={submittingDecision}
-                        className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-navy-900 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                        className="w-full py-2.5 bg-brand-amber hover:bg-amber-600 text-white font-medium text-sm rounded-lg shadow-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                       >
                         {submittingDecision ? (
                           <RefreshCw className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Check className="w-4 h-4 stroke-[3]" />
+                          <Check className="w-4 h-4" />
                         )}
-                        <span>Execute Sanction Decision (Prototype)</span>
+                        <span>Execute Sanction Decision</span>
                       </button>
                     </div>
                   </div>
-                ) : null}
+                )}
               </div>
             )}
           </div>
