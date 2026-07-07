@@ -48,7 +48,7 @@ describe('Frontend Contract Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
-      expect(screen.queryByText('Run CAS Engine Evaluation')).not.toBeInTheDocument();
+      expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
   });
 
@@ -69,7 +69,7 @@ describe('Frontend Contract Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
-      expect(screen.queryByText('Run CAS Engine Evaluation')).not.toBeInTheDocument();
+      expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
   });
 
@@ -91,7 +91,7 @@ describe('Frontend Contract Tests', () => {
     await waitFor(() => {
       expect(screen.getByText('Sanctioning Authority Gate')).toBeInTheDocument();
       expect(screen.queryByText('Credit Analyst Workflows')).not.toBeInTheDocument();
-      expect(screen.queryByText('Run CAS Engine Evaluation')).not.toBeInTheDocument();
+      expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
   });
 
@@ -112,7 +112,7 @@ describe('Frontend Contract Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
-      expect(screen.queryByText('Run CAS Engine Evaluation')).not.toBeInTheDocument();
+      expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
     unmount();
 
@@ -158,7 +158,7 @@ describe('Frontend Contract Tests', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Case Access Error')).toBeInTheDocument();
-      expect(screen.getByText('Case not found in current BOLA scope.')).toBeInTheDocument();
+      expect(screen.getByText('Case not found in current scope.')).toBeInTheDocument();
     });
   });
 
@@ -191,10 +191,10 @@ describe('Frontend Contract Tests', () => {
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Run CAS Engine Evaluation')).toBeInTheDocument();
+      expect(screen.getByText('Run Assessment Engine')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText('Run CAS Engine Evaluation'));
+    fireEvent.click(screen.getByText('Run Assessment Engine'));
 
     await waitFor(() => {
       expect(screen.getByText(/AI-assisted credit assessment completed successfully/i)).toBeInTheDocument();

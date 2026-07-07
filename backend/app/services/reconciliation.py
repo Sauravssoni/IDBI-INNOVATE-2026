@@ -26,7 +26,7 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
 
     business_id = case.business_id_fk
 
-    checks = []
+    checks: list[dict] = []
 
     # 1. GST vs Bank Credits
     gst_periods = (
