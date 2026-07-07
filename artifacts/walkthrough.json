@@ -1,0 +1,47 @@
+{
+  "title": "Vyapar Pulse - Final Demo Walkthrough",
+  "scenarios": [
+    {
+      "persona": "Credit Analyst (credit.analyst@bank.example)",
+      "flow": [
+        "Login as Credit Analyst",
+        "View assigned cases in queue",
+        "Click 'Evaluate' on NavPrerna Tech Solutions",
+        "Observe reduced evidence confidence and missing GST periods",
+        "System outputs recommendation: ADDITIONAL_EVIDENCE_REQUIRED",
+        "Action taken: Analyst marks case to request additional documents from RM."
+      ]
+    },
+    {
+      "persona": "Relationship Manager (rm@bank.example)",
+      "flow": [
+        "Login as RM",
+        "View assigned cases in queue",
+        "Click 'View Case' on Shakti Precision",
+        "Observe stable evidence, DSCR 1.85, Supportable Structure 35.7 Lakhs",
+        "System outputs recommendation: CONDITIONAL_OFFER",
+        "Observe NavPrerna case in 'Action Required' status."
+      ]
+    },
+    {
+      "persona": "Sanctioning Authority (sa@bank.example)",
+      "flow": [
+        "Login as Sanctioning Authority",
+        "View queued cases ready for review",
+        "Click 'Review Case' on Rangrez Textiles",
+        "Observe seasonal cash-flow patterns and annual capacity",
+        "System recommendation is CONDITIONAL_OFFER",
+        "Action taken: Approve or return for rework based on policy parameters."
+      ]
+    },
+    {
+      "persona": "Risk Admin (risk.admin@bank.example) & Auditor (auditor@bank.example)",
+      "flow": [
+        "Login as Risk Admin / Auditor",
+        "View read-only dashboard across portfolio branches",
+        "No evaluation actions available (only 'View Case' CTA)",
+        "Audit logs confirm immutable actions taken by CA and SA."
+      ]
+    }
+  ]
+}

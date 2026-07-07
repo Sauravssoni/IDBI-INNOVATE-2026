@@ -70,32 +70,28 @@ export default function CaseInventoryPage() {
 
   const getStatusBadge = (statusStr: string) => {
     switch (statusStr?.toUpperCase()) {
-      case "SANCTIONED":
-      case "APPROVED":
       case "HUMAN_APPROVED":
-      case "CONDITIONAL_OFFER":
         return {
           label: humaniseEnum(statusStr),
           color: "bg-brand-softTeal border-brand-teal text-brand-teal",
           icon: CheckCircle2,
         };
-      case "REJECTED":
-      case "DECLINED":
+      case "HUMAN_DECLINED":
         return {
           label: humaniseEnum(statusStr),
           color: "bg-brand-softRed border-brand-red text-brand-red",
           icon: XCircle,
         };
-      case "UNDER_REVIEW":
-      case "ESCALATED":
+      case "HUMAN_DEFERRED":
+      case "ASSESSMENT_COMPLETED":
       case "DECISION_PENDING":
-      case "ENHANCED_DUE_DILIGENCE":
-      case "ADDITIONAL_EVIDENCE_REQUIRED":
         return {
           label: humaniseEnum(statusStr),
           color: "bg-brand-softAmber border-brand-amber text-brand-amber",
           icon: Clock,
         };
+      case "INITIATED":
+      case "EVIDENCE_GATHERING":
       default:
         return {
           label: humaniseEnum(statusStr) || "Initiated",
@@ -174,7 +170,7 @@ export default function CaseInventoryPage() {
 
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
           <Filter className="w-4 h-4 text-light-secondary shrink-0 mr-1 hidden sm:inline" />
-          {["ALL", "INITIATED", "SUBMITTED", "PENDING", "RECOMMENDED", "SANCTIONED", "REJECTED"].map((status) => (
+          {["ALL", "INITIATED", "EVIDENCE_GATHERING", "ASSESSMENT_COMPLETED", "DECISION_PENDING", "HUMAN_APPROVED", "HUMAN_DECLINED", "HUMAN_DEFERRED"].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}

@@ -1,9 +1,6 @@
 import os
 
 def seed_all_demo():
-    os.environ["DEMO_USER_PASSWORD"] = "demopassword"
-    os.environ["ALLOW_DANGEROUS_CORS"] = "true"
-
     print("Seeding Shakti Precision...")
     from app.seed.seed_shakti import seed_shakti
     seed_shakti()
