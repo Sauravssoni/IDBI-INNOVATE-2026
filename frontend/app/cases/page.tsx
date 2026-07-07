@@ -15,9 +15,13 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  Sparkles,
   RefreshCw,
 } from "lucide-react";
+
+const humaniseEnum = (str: string) => {
+  if (!str) return "-";
+  return str.split('_').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ');
+};
 
 interface CaseItem {
   id: string;
@@ -26,6 +30,7 @@ interface CaseItem {
   requested_amount: number;
   business_name: string;
   requested_product?: string;
+  facility_type?: string;
 }
 
 export default function CaseInventoryPage() {
@@ -43,7 +48,7 @@ export default function CaseInventoryPage() {
     if (status === 200 && Array.isArray(data)) {
       setCases(data);
     } else {
-      setError(fetchErr || "Failed to load case inventory from BOLA endpoint.");
+      setError(fetchErr || "Failed to load case inventory.");
     }
     setLoading(false);
   };
@@ -67,29 +72,32 @@ export default function CaseInventoryPage() {
     switch (statusStr?.toUpperCase()) {
       case "SANCTIONED":
       case "APPROVED":
+      case "CONDITIONAL_OFFER":
         return {
-          label: "Sanctioned",
-          color: "bg-emerald-500/15 border-emerald-500/40 text-emerald-300",
+          label: humaniseEnum(statusStr),
+          color: "bg-brand-softTeal border-brand-teal text-brand-teal",
           icon: CheckCircle2,
         };
       case "REJECTED":
       case "DECLINED":
         return {
-          label: "Declined",
-          color: "bg-rose-500/15 border-rose-500/40 text-rose-300",
+          label: humaniseEnum(statusStr),
+          color: "bg-brand-softRed border-brand-red text-brand-red",
           icon: XCircle,
         };
       case "UNDER_REVIEW":
       case "ESCALATED":
+      case "ENHANCED_DUE_DILIGENCE":
+      case "ADDITIONAL_EVIDENCE_REQUIRED":
         return {
-          label: "In Review / SA",
-          color: "bg-amber-500/15 border-amber-500/40 text-amber-300",
+          label: humaniseEnum(statusStr),
+          color: "bg-brand-softAmber border-brand-amber text-brand-amber",
           icon: Clock,
         };
       default:
         return {
-          label: statusStr || "Initiated",
-          color: "bg-blue-500/15 border-blue-500/40 text-blue-300",
+          label: humaniseEnum(statusStr) || "Initiated",
+          color: "bg-light-elevated border-light-border text-light-secondary",
           icon: Clock,
         };
     }
@@ -99,7 +107,8 @@ export default function CaseInventoryPage() {
     const matchesSearch =
       c.business_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.requested_product?.toLowerCase().includes(searchQuery.toLowerCase());
+      c.requested_product?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.facility_type?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || c.status?.toUpperCase() === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -112,7 +121,7 @@ export default function CaseInventoryPage() {
 
   if (user?.role === "SYSTEM_ADMIN") {
     return (
-      <div className="flex items-center justify-center h-64 text-bank-muted">
+      <div className="flex items-center justify-center h-64 text-light-muted">
         System Administrators do not have access to case inventory.
       </div>
     );
@@ -123,16 +132,16 @@ export default function CaseInventoryPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-navy-800 border border-bank-border text-xs text-bank-secondary mb-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-pulse-500" />
-            <span>BOLA GOVERNANCE ENABLED • ROLE SCOPED VIEW</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-light-elevated border border-light-border text-xs text-light-secondary mb-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-brand-teal" />
+            <span>ROLE SCOPED VIEW</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-3">
-            <FolderKanban className="w-8 h-8 text-pulse-500" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-light-text flex items-center gap-3 tracking-tight">
+            <FolderKanban className="w-8 h-8 text-brand-teal" />
             <span>SME Case Inventory</span>
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            Real-time pipeline of loan applications within your geographic and authorization boundaries.
+          <p className="text-light-secondary text-sm mt-1">
+            Real-time pipeline of loan applications within your assigned authorization scope.
           </p>
         </div>
 
@@ -140,40 +149,40 @@ export default function CaseInventoryPage() {
           <button
             onClick={loadCases}
             disabled={loading}
-            className="px-4 py-2.5 bg-navy-800 hover:bg-navy-700 text-white text-xs font-semibold rounded-xl border border-white/10 flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+            className="px-4 py-2 bg-white hover:bg-light-elevated text-light-text text-sm font-medium rounded-lg border border-light-border flex items-center gap-2 transition-all shadow-sm"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-pulse-400" : ""}`} />
-            <span>Refresh Pipeline</span>
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-brand-teal" : ""}`} />
+            <span>Refresh</span>
           </button>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="glass-panel p-4 rounded-2xl border border-white/10 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className="glass-card p-4 rounded-xl border border-light-border flex flex-col md:flex-row gap-4 items-center justify-between">
         <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-light-muted" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search company name, product..."
-            className="w-full pl-10 pr-4 py-2 bg-navy-800/80 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-pulse-500 focus:ring-1 focus:ring-pulse-500 transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-light-bg border border-light-border rounded-lg text-sm text-light-text placeholder-light-muted focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          <Filter className="w-4 h-4 text-slate-400 shrink-0 mr-1 hidden sm:inline" />
-          {["ALL", "INITIATED", "UNDER_REVIEW", "SANCTIONED", "REJECTED"].map((status) => (
+          <Filter className="w-4 h-4 text-light-secondary shrink-0 mr-1 hidden sm:inline" />
+          {["ALL", "INITIATED", "SUBMITTED", "PENDING", "RECOMMENDED", "SANCTIONED", "REJECTED"].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
                 statusFilter === status
-                  ? "bg-pulse-500 text-white font-bold shadow-sm"
-                  : "bg-navy-800/60 text-bank-muted hover:text-white hover:bg-navy-800 border border-bank-border"
+                  ? "bg-brand-teal text-white shadow-sm"
+                  : "bg-light-bg text-light-secondary hover:text-light-text hover:bg-light-elevated border border-light-border"
               }`}
             >
-              {status.replace("_", " ")}
+              {status === "ALL" ? "All" : humaniseEnum(status)}
             </button>
           ))}
         </div>
@@ -181,8 +190,8 @@ export default function CaseInventoryPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-center gap-3 text-rose-300 text-sm">
-          <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+        <div className="p-4 bg-brand-softRed border border-brand-red rounded-xl flex items-center gap-3 text-brand-red text-sm">
+          <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -191,28 +200,28 @@ export default function CaseInventoryPage() {
       {loading ? (
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="glass-card p-6 rounded-2xl border border-white/5 animate-pulse flex items-center justify-between">
+            <div key={i} className="glass-card p-6 rounded-xl border border-light-border animate-pulse flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-navy-800" />
+                <div className="w-12 h-12 rounded-lg bg-light-elevated" />
                 <div className="space-y-2">
-                  <div className="w-48 h-4 bg-navy-800 rounded" />
-                  <div className="w-32 h-3 bg-navy-800 rounded" />
+                  <div className="w-48 h-4 bg-light-elevated rounded" />
+                  <div className="w-32 h-3 bg-light-elevated rounded" />
                 </div>
               </div>
-              <div className="w-24 h-8 bg-navy-800 rounded-xl" />
+              <div className="w-24 h-8 bg-light-elevated rounded-lg" />
             </div>
           ))}
         </div>
       ) : filteredCases.length === 0 ? (
-        <div className="glass-panel p-12 rounded-2xl border border-white/10 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-navy-800 mx-auto flex items-center justify-center text-slate-500 border border-white/5">
+        <div className="glass-card p-12 text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-light-bg mx-auto flex items-center justify-center text-light-muted border border-light-border">
             <FolderKanban className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-white">No Cases Found</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
+          <h3 className="text-lg font-bold text-light-text">No Cases Found</h3>
+          <p className="text-sm text-light-secondary max-w-md mx-auto">
             {searchQuery || statusFilter !== "ALL"
               ? "No credit cases match your current filter criteria."
-              : "No cases are currently assigned within your BOLA geographic or mandate scope."}
+              : "No cases are currently assigned within your scope."}
           </p>
           {(searchQuery || statusFilter !== "ALL") && (
             <button
@@ -220,26 +229,26 @@ export default function CaseInventoryPage() {
                 setSearchQuery("");
                 setStatusFilter("ALL");
               }}
-              className="px-4 py-2 bg-navy-800 text-pulse-400 hover:text-white text-xs font-semibold rounded-xl border border-white/10 transition-all"
+              className="px-4 py-2 bg-white text-light-text hover:bg-light-elevated text-sm font-medium rounded-lg border border-light-border transition-all"
             >
               Reset Filters
             </button>
           )}
         </div>
       ) : (
-        <div className="glass-panel rounded-2xl border border-white/10 overflow-hidden shadow-xl">
+        <div className="glass-card overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-bank-border bg-navy-800/50 text-[11px] uppercase text-bank-secondary tracking-wider">
+                <tr className="border-b border-light-border bg-light-bg text-xs uppercase text-light-secondary font-medium">
                   <th className="py-4 px-6">SME Business & Ref</th>
                   <th className="py-4 px-6">Requested Product</th>
                   <th className="py-4 px-6">Amount</th>
-                  <th className="py-4 px-6">Status & BOLA Scope</th>
+                  <th className="py-4 px-6">Status & Scope</th>
                   <th className="py-4 px-6 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5 text-sm">
+              <tbody className="divide-y divide-light-border text-sm bg-white">
                 {filteredCases.map((c) => {
                   const statusInfo = getStatusBadge(c.status);
                   const StatusIcon = statusInfo.icon;
@@ -247,35 +256,35 @@ export default function CaseInventoryPage() {
                   return (
                     <tr
                       key={c.id}
-                      className="hover:bg-white/[0.02] transition-colors group"
+                      className="hover:bg-light-bg transition-colors group"
                     >
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm bg-navy-800 text-bank-secondary border border-bank-border">
-                            <Building2 className="w-5 h-5 text-pulse-500" />
+                          <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm bg-light-elevated text-brand-teal border border-light-border">
+                            <Building2 className="w-5 h-5" />
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-2">
+                            <div className="font-bold text-light-text flex items-center gap-2">
                               <span>{c.business_name || "SME Borrower"}</span>
                             </div>
-                            <div className="text-[11px] font-mono text-bank-muted">
+                            <div className="text-xs font-mono text-light-muted">
                               REF: {c.id.slice(0, 8)}...{c.id.slice(-4)}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-navy-800/80 border border-bank-border text-xs text-bank-secondary">
-                          {c.requested_product || "-"}
+                        <span className="inline-flex items-center px-2.5 py-1 rounded border border-light-border bg-light-elevated text-[11px] font-medium text-light-secondary">
+                          {c.facility_type ? humaniseEnum(c.facility_type) : (c.requested_product || "-")}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="font-bold text-white font-mono">
+                        <span className="font-bold text-light-text font-mono">
                           {formatCurrency(c.requested_amount)}
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${statusInfo.color}`}>
+                        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-medium border ${statusInfo.color}`}>
                           <StatusIcon className="w-3.5 h-3.5" />
                           <span>{statusInfo.label}</span>
                         </div>
@@ -283,7 +292,7 @@ export default function CaseInventoryPage() {
                       <td className="py-4 px-6 text-right">
                         <Link
                           href={`/cases/${c.id}`}
-                          className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-navy-800 hover:bg-pulse-500 hover:text-white text-xs font-bold text-bank-main border border-bank-border hover:border-pulse-500 transition-all shadow-sm group-hover:scale-105"
+                          className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-white hover:bg-light-elevated text-sm font-medium text-brand-teal border border-light-border transition-all shadow-sm"
                         >
                           <span>{getActionLabel(user?.role)}</span>
                           <ArrowUpRight className="w-3.5 h-3.5" />

@@ -21,12 +21,12 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   if (loading) {
-    return <div className="text-center p-8 text-slate-400 font-mono text-sm">Loading Reconciliation Data...</div>;
+    return <div className="text-center p-8 text-light-secondary font-mono text-sm">Loading Reconciliation Data...</div>;
   }
 
   if (!reconData) {
     return (
-      <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+      <div className="p-4 bg-light-bg rounded-xl border border-dashed border-light-border text-center text-sm text-light-secondary">
         Reconciliation data not available.
       </div>
     );
@@ -35,56 +35,56 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
   const renderStatusIcon = (status: string) => {
     switch(status) {
       case "MATCHED":
-        return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
+        return <CheckCircle2 className="w-5 h-5 text-emerald-600" />;
       case "VARIANCE":
-        return <AlertTriangle className="w-5 h-5 text-amber-400" />;
+        return <AlertTriangle className="w-5 h-5 text-brand-amber" />;
       case "MISSING_EVIDENCE":
-        return <FileSearch className="w-5 h-5 text-rose-400" />;
+        return <FileSearch className="w-5 h-5 text-brand-red" />;
       case "REVIEW_REQUIRED":
-        return <AlertCircle className="w-5 h-5 text-blue-400" />;
+        return <AlertCircle className="w-5 h-5 text-brand-teal" />;
       default:
-        return <span className="text-slate-400">-</span>;
+        return <span className="text-light-secondary">-</span>;
     }
   };
 
   const renderStatusBadge = (status: string) => {
     switch(status) {
       case "MATCHED":
-        return <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono">MATCHED</span>;
+        return <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-600 border border-emerald-200 text-[10px] font-mono">MATCHED</span>;
       case "VARIANCE":
-        return <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-mono">VARIANCE</span>;
+        return <span className="px-2 py-0.5 rounded bg-brand-softAmber text-brand-amber border border-brand-amber/30 text-[10px] font-mono">VARIANCE</span>;
       case "MISSING_EVIDENCE":
-        return <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[10px] font-mono">MISSING EVIDENCE</span>;
+        return <span className="px-2 py-0.5 rounded bg-brand-softRed text-brand-red border border-brand-red/30 text-[10px] font-mono">MISSING EVIDENCE</span>;
       case "REVIEW_REQUIRED":
-        return <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-mono">REVIEW REQUIRED</span>;
+        return <span className="px-2 py-0.5 rounded bg-brand-softTeal text-brand-teal border border-brand-teal/30 text-[10px] font-mono">REVIEW REQUIRED</span>;
       default:
-        return <span className="px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30 text-[10px] font-mono">{status}</span>;
+        return <span className="px-2 py-0.5 rounded bg-light-elevated text-light-secondary border border-light-border text-[10px] font-mono">{status}</span>;
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-          <Scale className="w-5 h-5 text-blue-400" />
+      <div className="glass-card p-6 border border-light-border shadow-sm">
+        <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-6">
+          <Scale className="w-5 h-5 text-brand-teal" />
           Deterministic Reconciliation Checks
         </h3>
         
         <div className="space-y-4">
           {reconData.checks?.map((check: any, i: number) => (
-            <div key={i} className="p-4 rounded-xl bg-navy-800/80 border border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors">
+            <div key={i} className="p-4 rounded-xl bg-light-bg border border-light-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-light-elevated transition-colors">
               <div className="flex items-start gap-4">
                 <div className="mt-1">{renderStatusIcon(check.status)}</div>
                 <div>
-                  <div className="text-sm font-bold text-white mb-1">{check.name}</div>
-                  <div className="text-xs text-slate-400 max-w-xl">{check.explanation}</div>
+                  <div className="text-sm font-bold text-light-text mb-1">{check.name}</div>
+                  <div className="text-xs text-light-secondary max-w-xl">{check.explanation}</div>
                   {(check.observed_value !== undefined || check.reference_value !== undefined) && check.observed_value !== null && (
-                    <div className="mt-2 text-[10px] font-mono text-slate-500">
+                    <div className="mt-2 text-[10px] font-mono text-light-muted">
                       Observed: {check.observed_value} | Reference: {check.reference_value} | Variance: {check.variance_amount} ({check.variance_percentage}%)
                     </div>
                   )}
                   {check.evidence_references && check.evidence_references.length > 0 && (
-                    <div className="mt-1 text-[10px] font-mono text-slate-500">
+                    <div className="mt-1 text-[10px] font-mono text-light-muted">
                       Refs: {check.evidence_references.length} evidence items
                     </div>
                   )}
@@ -92,7 +92,7 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
               </div>
               <div className="shrink-0 flex flex-col items-end gap-1">
                 {renderStatusBadge(check.status)}
-                <span className="text-[9px] text-slate-600 font-mono">v{check.rule_version}</span>
+                <span className="text-[9px] text-light-secondary font-mono">v{check.rule_version}</span>
               </div>
             </div>
           ))}
