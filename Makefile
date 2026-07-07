@@ -17,38 +17,11 @@ dev:
 	done
 	docker-compose up backend frontend
 
-dev-detached:
-	@echo "Starting development environment in background..."
-	docker-compose up -d db
-	@echo "Waiting for database to be ready and running migrations..."
-	@cd backend && for i in 1 2 3 4 5 6; do \
-		source .venv/bin/activate && alembic upgrade head && break || (echo "Retrying..." && sleep 5); \
-	done
-	docker-compose up -d backend frontend
+
 
 seed:
 	@echo "Seeding deterministic data..."
 	cd backend && source .venv/bin/activate && python -m app.seed.seed_all
-
-test:
-	@echo "Running backend tests..."
-	cd backend && source .venv/bin/activate && pytest -v
-
-lint:
-	@echo "Linting backend..."
-	cd backend && source .venv/bin/activate && ruff check .
-	@echo "Linting frontend..."
-	cd frontend && npm run lint
-
-typecheck:
-	@echo "Typechecking backend..."
-	cd backend && source .venv/bin/activate && mypy app/
-	@echo "Typechecking frontend..."
-	cd frontend && npm run type-check
-
-security:
-	@echo "Running security scans..."
-	cd backend && source .venv/bin/activate && bandit -r app/
 
 build:
 	@echo "Building frontend for production..."
@@ -57,29 +30,35 @@ build:
 	docker-compose build backend
 
 demo-up:
+	@if [ ! -f .env ] || ! grep -q "^DEMO_USER_PASSWORD=" .env; then echo "ERROR: DEMO_USER_PASSWORD must be set in .env"; exit 1; fi
 	@echo "Starting PostgreSQL..."
-	docker-compose up -d db
+	docker-compose up -d db || exit 1
 	@echo "Waiting for PostgreSQL..."
 	@sleep 5
 	@echo "Running migrations inside backend container..."
-	docker-compose run --rm backend alembic upgrade head
+	docker-compose run --rm backend alembic upgrade head || exit 1
 	@echo "Running demo reset inside backend container..."
-	docker-compose run --rm -e DEMO_USER_PASSWORD="$${DEMO_USER_PASSWORD:-demopassword}" backend python -m app.seed.run_demo_reset
+	export $$(grep -v '^#' .env | xargs) && docker-compose run --rm -e DEMO_USER_PASSWORD backend python -m app.seed.run_demo_reset || exit 1
 	@echo "Starting backend and frontend..."
-	docker-compose up -d backend
+	docker-compose up -d backend || exit 1
 	@echo "Waiting for backend health check..."
 	@for i in {1..15}; do \
 		curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/health | grep -q 200 && break || sleep 2; \
 		if [ $$i -eq 15 ]; then echo "Backend failed to start"; exit 1; fi \
 	done
-	docker-compose up -d frontend
+	docker-compose up -d frontend || exit 1
+	@echo "Waiting for frontend to start..."
+	@for i in {1..15}; do \
+		curl -s -o /dev/null -w "%{http_code}" http://localhost:3005 | grep -q 200 && break || sleep 2; \
+		if [ $$i -eq 15 ]; then echo "Frontend failed to start"; exit 1; fi \
+	done
 	@echo "=========================================="
 	@echo "🚀 VYAPAR PULSE AI DEMO IS RUNNING!"
 	@echo "=========================================="
 	@echo "Frontend URL: http://localhost:3005"
 	@echo "Backend API:  http://localhost:8000/docs"
 	@echo ""
-	@echo "Demo Credentials (Password: demopassword):"
+	@echo "Demo Credentials (Password: $$DEMO_USER_PASSWORD):"
 	@echo "  RM:      rm@bank.example"
 	@echo "  Analyst: credit@bank.example"
 	@echo "  SA:      sa@bank.example"
@@ -88,26 +67,18 @@ demo-up:
 	@echo "=========================================="
 
 demo-reset:
+	@if [ ! -f .env ] || ! grep -q "^DEMO_USER_PASSWORD=" .env; then echo "ERROR: DEMO_USER_PASSWORD must be set in .env"; exit 1; fi
 	@echo "Resetting demo environment..."
-	docker-compose exec -e DEMO_USER_PASSWORD="$${DEMO_USER_PASSWORD:-demopassword}" backend python -m app.seed.run_demo_reset
+	export $$(grep -v '^#' .env | xargs) && docker-compose exec -e DEMO_USER_PASSWORD backend python -m app.seed.run_demo_reset || exit 1
 
 verify:
-	@echo "Running decision assurance verification..."
-	docker-compose exec -e DEMO_USER_PASSWORD="$${DEMO_USER_PASSWORD:-demopassword}" backend python scripts/run_decision_assurance.py
+	@if [ ! -f .env ] || ! grep -q "^DEMO_USER_PASSWORD=" .env; then echo "ERROR: DEMO_USER_PASSWORD must be set in .env"; exit 1; fi
+	@echo "Running canonical tests (Ensure Node 20 and Python 3.12 are available)..."
+	./scripts/all_tests.sh
 
 demo-down:
 	@echo "Stopping demo environment and destroying volumes..."
 	docker-compose down -v
-
-clean-room:
-	@echo "Starting isolated clean-room verification..."
-	COMPOSE_PROJECT_NAME=vyapar_pulse_cleanroom docker-compose up -d db
-	@echo "Waiting for clean-room database..."
-	@cd backend && for i in 1 2 3 4 5 6; do \
-		source .venv/bin/activate && alembic upgrade head && break || (echo "Retrying..." && sleep 5); \
-	done
-	COMPOSE_PROJECT_NAME=vyapar_pulse_cleanroom docker-compose up -d backend frontend
-	@echo "Clean-room verification started. Run 'COMPOSE_PROJECT_NAME=vyapar_pulse_cleanroom docker-compose down -v' when done."
 
 down:
 	@echo "Stopping services and preserving volumes..."
@@ -120,8 +91,4 @@ purge:
 	fi
 	@echo "Purging all project resources..."
 	docker-compose down -v --rmi all --remove-orphans
-
-docs-check:
-	@echo "Running documentation quality gates..."
-	./scripts/docs_check.sh
 

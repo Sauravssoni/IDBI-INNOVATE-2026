@@ -14,7 +14,7 @@ from app.db.orm.evidence import (
     EmploymentPeriod,
     Obligation,
 )
-from app.db.orm.users import User, UserRole
+from app.db.orm.users import User
 from app.db.orm.org import (
     Branch,
     ProductType,
@@ -71,8 +71,8 @@ def seed_rangrez():
         db.commit()
 
     malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
-    rm_user = db.query(User).filter(User.role == UserRole.RELATIONSHIP_MANAGER).first()
-    ca_user = db.query(User).filter(User.role == UserRole.CREDIT_ANALYST).first()
+    rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
+    ca_user = db.query(User).filter(User.email == "credit@bank.example").first()
 
     random.seed(102)
     rangrez = Business(

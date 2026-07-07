@@ -12,14 +12,18 @@ def run_evaluations():
     client = TestClient(app)
     db = SessionLocal()
 
+    import os
+
+    demo_password = os.environ.get("DEMO_USER_PASSWORD", "demopassword")
+
     ca_login = client.post(
         "/api/auth/login",
-        json={"email": "credit@bank.example", "password": "demopassword"},
+        json={"email": "credit@bank.example", "password": demo_password},
     )
     ca_cookies = ca_login.cookies
 
     client.post(
-        "/api/auth/login", json={"email": "sa@bank.example", "password": "demopassword"}
+        "/api/auth/login", json={"email": "sa@bank.example", "password": demo_password}
     )
 
     cases = db.query(Case).join(Business).all()
