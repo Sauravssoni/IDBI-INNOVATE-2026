@@ -1,12 +1,12 @@
+import uuid
 from sqlalchemy.orm import Session
 from decimal import Decimal
-from datetime import date, timedelta
-from typing import List, Dict, Any
+from typing import Dict, Any
+from dateutil.relativedelta import relativedelta
 
 from app.db.orm.cases import Case
-from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation
+from app.db.orm.evidence import GSTPeriod, BankTransaction, Obligation
 
-# Statuses
 MATCHED = "MATCHED"
 VARIANCE = "VARIANCE"
 MISSING_EVIDENCE = "MISSING_EVIDENCE"
@@ -19,116 +19,137 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
         
     business_id = case.business_id_fk
     
-    # Check GST vs Bank Credits
+    checks = []
+    
+    # 1. GST vs Bank Credits
     gst_periods = db.query(GSTPeriod).filter(GSTPeriod.business_id_fk == business_id).all()
-    bank_credits = db.query(BankTransaction).filter(
-        BankTransaction.business_id_fk == business_id, 
-        BankTransaction.transaction_type == "CREDIT"
-    ).all()
-    
-    total_gst_rev = sum((p.declared_revenue for p in gst_periods), Decimal("0.0"))
-    total_bank_credits = sum((t.amount for t in bank_credits), Decimal("0.0"))
-    
-    gst_bank_status = MATCHED
-    if not gst_periods or not bank_credits:
-        gst_bank_status = MISSING_EVIDENCE
-    elif abs(total_gst_rev - total_bank_credits) / max(total_gst_rev, Decimal("1.0")) > Decimal("0.10"):
-        gst_bank_status = VARIANCE
-        
-    # Check Invoices vs Payments
-    invoices = db.query(Invoice).filter(Invoice.business_id_fk == business_id).all()
-    invoice_payments = db.query(InvoicePayment).join(Invoice).filter(Invoice.business_id_fk == business_id).all()
-    
-    total_invoice_amt = sum((i.amount for i in invoices if i.status == "PAID"), Decimal("0.0"))
-    total_payment_amt = sum((p.amount for p in invoice_payments), Decimal("0.0"))
-    
-    invoice_status = MATCHED
-    if not invoices:
-        invoice_status = MISSING_EVIDENCE
-    elif abs(total_invoice_amt - total_payment_amt) > Decimal("1.0"):
-        invoice_status = VARIANCE
-        
-    # Check Payroll vs Employment
-    employment = db.query(EmploymentPeriod).filter(EmploymentPeriod.business_id_fk == business_id).all()
-    salary_debits = db.query(BankTransaction).filter(
-        BankTransaction.business_id_fk == business_id,
-        BankTransaction.category == "SALARY"
-    ).all()
-    
-    payroll_status = MATCHED
-    if not employment or not salary_debits:
-        payroll_status = MISSING_EVIDENCE
+    if not gst_periods:
+        checks.append({
+            "check_id": str(uuid.uuid4()),
+            "name": "GST vs Bank Credits",
+            "status": MISSING_EVIDENCE,
+            "observed_value": None,
+            "reference_value": None,
+            "variance_amount": None,
+            "variance_percentage": None,
+            "evidence_references": [],
+            "explanation": "No GST periods found.",
+            "rule_version": "1.1"
+        })
     else:
-        # PF is roughly 12% of salary
-        total_pf = sum((e.total_pf_remittance for e in employment), Decimal("0.0"))
-        total_salary = sum((s.amount for s in salary_debits), Decimal("0.0"))
-        if total_salary > Decimal("0.0"):
-            implied_pf = total_salary * Decimal("0.12")
-            if abs(total_pf - implied_pf) / implied_pf > Decimal("0.10"):
-                payroll_status = VARIANCE
-                
-    # Obligations vs Debt Service
-    obligations = db.query(Obligation).filter(Obligation.business_id_fk == business_id).all()
-    debt_service_debits = db.query(BankTransaction).filter(
-        BankTransaction.business_id_fk == business_id,
-        BankTransaction.category == "DEBT_SERVICE"
-    ).all()
-    
-    obligation_status = MATCHED
-    if not obligations and not debt_service_debits:
-        obligation_status = MISSING_EVIDENCE
-    elif obligations and not debt_service_debits:
-        obligation_status = MISSING_EVIDENCE
-    elif debt_service_debits and not obligations:
-        obligation_status = MISSING_EVIDENCE
-    else:
-        monthly_emi = sum((o.monthly_emi for o in obligations), Decimal("0.0"))
-        # We assume 18 months seeded
-        total_expected_debt_service = monthly_emi * Decimal("18")
-        total_actual_debt_service = sum((d.amount for d in debt_service_debits), Decimal("0.0"))
-        if abs(total_expected_debt_service - total_actual_debt_service) > Decimal("1.0"):
-            obligation_status = VARIANCE
+        min_date = min(g.period_month for g in gst_periods)
+        max_date = max(g.period_month for g in gst_periods)
+        end_date = max_date + relativedelta(months=1)
+        
+        bank_credits = db.query(BankTransaction).filter(
+            BankTransaction.business_id_fk == business_id, 
+            BankTransaction.transaction_type == "CREDIT",
+            BankTransaction.category == "BUYER_RECEIPT",
+            BankTransaction.transaction_date >= min_date,
+            BankTransaction.transaction_date < end_date
+        ).all()
+        
+        total_gst_rev = sum((p.declared_revenue for p in gst_periods), Decimal("0.0"))
+        total_bank_credits = sum((t.amount for t in bank_credits), Decimal("0.0"))
+        
+        variance_amount = abs(total_gst_rev - total_bank_credits)
+        variance_percentage = (variance_amount / max(total_gst_rev, Decimal("1.0"))) * 100
+        
+        status = MATCHED if variance_percentage <= Decimal("10.0") else VARIANCE
+        if not bank_credits:
+            status = MISSING_EVIDENCE
+            
+        checks.append({
+            "check_id": str(uuid.uuid4()),
+            "name": "GST vs Bank Credits",
+            "status": status,
+            "observed_value": float(total_bank_credits),
+            "reference_value": float(total_gst_rev),
+            "variance_amount": float(variance_amount),
+            "variance_percentage": float(variance_percentage),
+            "evidence_references": [str(g.id) for g in gst_periods] + [str(t.id) for t in bank_credits],
+            "explanation": "Aligned GST periods with BUYER_RECEIPT bank credits.",
+            "rule_version": "1.1"
+        })
 
-    # Duplicate / Missing Periods / Circular
-    # Simple check for duplicates
-    txn_ids = [t.source_record_id for t in bank_credits]
-    has_duplicates = len(txn_ids) != len(set(txn_ids))
-    
-    missing_periods = False
-    if len(gst_periods) < 12: # Expect at least 12 months
-        missing_periods = True
+    # 2. Obligations vs Debt Service
+    obligations = db.query(Obligation).filter(Obligation.business_id_fk == business_id).all()
+    if not obligations:
+        checks.append({
+            "check_id": str(uuid.uuid4()),
+            "name": "Obligations vs Debt Service",
+            "status": MISSING_EVIDENCE,
+            "observed_value": None,
+            "reference_value": None,
+            "variance_amount": None,
+            "variance_percentage": None,
+            "evidence_references": [],
+            "explanation": "No obligations found.",
+            "rule_version": "1.1"
+        })
+    else:
+        debt_service_debits = db.query(BankTransaction).filter(
+            BankTransaction.business_id_fk == business_id,
+            BankTransaction.category == "DEBT_SERVICE"
+        ).all()
         
-    anomaly_status = MATCHED
-    if has_duplicates or missing_periods:
-        anomaly_status = REVIEW_REQUIRED
-        
+        if not debt_service_debits:
+            checks.append({
+                "check_id": str(uuid.uuid4()),
+                "name": "Obligations vs Debt Service",
+                "status": MISSING_EVIDENCE,
+                "observed_value": None,
+                "reference_value": None,
+                "variance_amount": None,
+                "variance_percentage": None,
+                "evidence_references": [str(o.id) for o in obligations],
+                "explanation": "No debt service debits found.",
+                "rule_version": "1.1"
+            })
+        else:
+            min_txn_date = min(t.transaction_date for t in debt_service_debits)
+            max_txn_date = max(t.transaction_date for t in debt_service_debits)
+            months_diff = (max_txn_date.year - min_txn_date.year) * 12 + max_txn_date.month - min_txn_date.month + 1
+            if months_diff == 0:
+                months_diff = 1
+                
+            monthly_emi = sum((o.monthly_emi for o in obligations), Decimal("0.0"))
+            total_expected_debt_service = monthly_emi * Decimal(months_diff)
+            total_actual_debt_service = sum((d.amount for d in debt_service_debits), Decimal("0.0"))
+            
+            variance_amount = abs(total_expected_debt_service - total_actual_debt_service)
+            variance_percentage = (variance_amount / max(total_expected_debt_service, Decimal("1.0"))) * 100
+            
+            status = MATCHED if variance_percentage <= Decimal("10.0") else VARIANCE
+            
+            checks.append({
+                "check_id": str(uuid.uuid4()),
+                "name": "Obligations vs Debt Service",
+                "status": status,
+                "observed_value": float(total_actual_debt_service),
+                "reference_value": float(total_expected_debt_service),
+                "variance_amount": float(variance_amount),
+                "variance_percentage": float(variance_percentage),
+                "evidence_references": [str(o.id) for o in obligations] + [str(t.id) for t in debt_service_debits],
+                "explanation": f"Compared {months_diff} months of debt service debits to bureau EMIs.",
+                "rule_version": "1.1"
+            })
+
+    # 3. Circular Flow Analysis
+    checks.append({
+        "check_id": str(uuid.uuid4()),
+        "name": "Circular Flow Analysis",
+        "status": MISSING_EVIDENCE,
+        "observed_value": None,
+        "reference_value": None,
+        "variance_amount": None,
+        "variance_percentage": None,
+        "evidence_references": [],
+        "explanation": "Awaiting adequate counterparty/reference data.",
+        "rule_version": "1.1"
+    })
+
     return {
         "case_id": str(case_id),
-        "checks": [
-            {
-                "name": "GST vs Bank Credits",
-                "status": gst_bank_status,
-                "description": f"GST: {total_gst_rev:,.2f} | Bank: {total_bank_credits:,.2f}"
-            },
-            {
-                "name": "Invoices vs Payments",
-                "status": invoice_status,
-                "description": f"Invoices: {total_invoice_amt:,.2f} | Payments: {total_payment_amt:,.2f}"
-            },
-            {
-                "name": "Payroll Consistency",
-                "status": payroll_status,
-                "description": "Cross-checked EPFO PF remittance vs Salary Debits"
-            },
-            {
-                "name": "Obligations vs Debt Service",
-                "status": obligation_status,
-                "description": "Cross-checked Bureau EMI vs Debt Service Debits"
-            },
-            {
-                "name": "Anomalies",
-                "status": anomaly_status,
-                "description": f"Duplicates: {has_duplicates} | Missing Periods: {missing_periods}"
-            }
-        ]
+        "checks": checks
     }

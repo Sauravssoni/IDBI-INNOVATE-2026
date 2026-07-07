@@ -22,7 +22,7 @@ from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
 from app.api.dependencies import get_current_user
-from app.db.orm.users import User, UserRole
+from app.db.orm.users import User
 from app.services.authz import (
     apply_case_list_scope,
     can_view_case,
@@ -35,7 +35,6 @@ import hashlib
 import json
 import datetime
 from fastapi.encoders import jsonable_encoder
-from app.db.orm.cases import HumanDecisionAction
 
 def check_can_run_assessment(db: Session, case: Case, user: User) -> bool:
     try:

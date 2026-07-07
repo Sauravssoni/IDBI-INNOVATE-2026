@@ -76,16 +76,24 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
               <div className="flex items-start gap-4">
                 <div className="mt-1">{renderStatusIcon(check.status)}</div>
                 <div>
-                  <div className="text-sm font-bold text-white mb-1">{check.rule_name}</div>
-                  <div className="text-xs text-slate-400 max-w-xl">{check.description}</div>
-                  {check.details && Object.keys(check.details).length > 0 && (
+                  <div className="text-sm font-bold text-white mb-1">{check.name}</div>
+                  <div className="text-xs text-slate-400 max-w-xl">{check.explanation}</div>
+                  {(check.observed_value !== undefined || check.reference_value !== undefined) && check.observed_value !== null && (
                     <div className="mt-2 text-[10px] font-mono text-slate-500">
-                      {JSON.stringify(check.details)}
+                      Observed: {check.observed_value} | Reference: {check.reference_value} | Variance: {check.variance_amount} ({check.variance_percentage}%)
+                    </div>
+                  )}
+                  {check.evidence_references && check.evidence_references.length > 0 && (
+                    <div className="mt-1 text-[10px] font-mono text-slate-500">
+                      Refs: {check.evidence_references.length} evidence items
                     </div>
                   )}
                 </div>
               </div>
-              <div className="shrink-0">{renderStatusBadge(check.status)}</div>
+              <div className="shrink-0 flex flex-col items-end gap-1">
+                {renderStatusBadge(check.status)}
+                <span className="text-[9px] text-slate-600 font-mono">v{check.rule_version}</span>
+              </div>
             </div>
           ))}
         </div>

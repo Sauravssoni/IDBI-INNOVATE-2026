@@ -57,6 +57,9 @@ export default function CaseEvaluationPage() {
   const [approvedAmount, setApprovedAmount] = useState<number>(0);
   const [sanctionNotes, setSanctionNotes] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
+  const [creditTwin, setCreditTwin] = useState<any | null>(null);
+  const [twinLoading, setTwinLoading] = useState(true);
+  const [twinError, setTwinError] = useState<string | null>(null);
 
   const formatCurrency = (val: any) => {
     if (val === "-" || val === null || val === undefined) return "-";
@@ -135,6 +138,20 @@ export default function CaseEvaluationPage() {
       } else if (foundCase.requested_amount) {
         setApprovedAmount(foundCase.requested_amount);
       }
+      
+      // Fetch credit twin
+      setTwinLoading(true);
+      const { data: twinData, status: twinStatus, error: twinErr } = await apiFetch(`/api/cases/${foundCase.id}/credit-twin`);
+      if (twinStatus === 200) {
+        setCreditTwin(twinData);
+        setTwinError(null);
+      } else {
+        setCreditTwin(null);
+        setTwinError(twinErr || "Failed to load credit twin");
+      }
+      setTwinLoading(false);
+    } else {
+      setTwinLoading(false);
     }
 
     setLoading(false);
@@ -308,14 +325,13 @@ export default function CaseEvaluationPage() {
 
   const allowedActions = caseData.allowed_actions || {};
   const canRunAssessment = allowedActions.run_assessment === true;
-  const canSubmitAnalystRec =
-    allowedActions.submit_analyst_recommendation === true;
+  const canSubmitAnalystRec = allowedActions.submit_analyst_recommendation === true;
   const canSubmitHumanDecision = allowedActions.record_human_decision === true;
 
   const reqAmount = caseData.requested_amount || 0;
-  const recVal = evalResult?.decision?.decision ?? "-";
-  const supportLimit = evalResult?.decision?.binding_limit ?? "-";
-  const dscrVal = evalResult?.features?.dscr ?? "-";
+  const recVal = creditTwin?.recommendation || "-";
+  const supportLimit = creditTwin?.binding_limit ?? "-";
+  const dscrVal = creditTwin?.dscr ?? "-";
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16">
@@ -458,78 +474,78 @@ export default function CaseEvaluationPage() {
 
           {/* Main Grid: 3 Pillars (CAS Score, Reconciliation, CAM) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Pillar 1: Assessment Scores */}
+            {/* Pillar 1: MSME Credit Twin */}
             <div className="glass-card p-6 rounded-2xl border border-white/10 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-mono text-slate-400 uppercase tracking-wider">
-                    Pillar 1: Assessment Scores
+                    Pillar 1: MSME Credit Twin
                   </span>
-                  <Award className="w-5 h-5 text-pulse-400" />
+                  <Database className="w-5 h-5 text-pulse-400" />
                 </div>
-
-                <div className="space-y-3 pt-4 border-t border-white/10 text-xs">
-                  <div>
-                    <div className="flex justify-between text-slate-300 mb-1">
-                      <span>Financial Strength & DSCR</span>
-                      <span className="font-mono text-emerald-400">
-                        {evalResult?.scores?.financial_health_score
-                          ? `${evalResult.scores.financial_health_score} / 100`
-                          : "-"}
-                      </span>
+                
+                {twinLoading ? (
+                  <div className="py-8 text-center text-slate-400 font-mono text-[11px] animate-pulse">
+                    Loading Credit Twin...
+                  </div>
+                ) : twinError ? (
+                  <div className="py-8 text-center text-rose-400 font-mono text-[11px]">
+                    {twinError}
+                  </div>
+                ) : !creditTwin ? (
+                  <div className="py-8 text-center text-slate-500 font-mono text-[11px]">
+                    No Credit Twin data available.
+                  </div>
+                ) : (
+                  <div className="space-y-3 pt-4 border-t border-white/10 text-xs">
+                    <div>
+                      <div className="flex justify-between text-slate-300 mb-1">
+                        <span>DSCR</span>
+                        <span className="font-mono text-emerald-400 font-bold">
+                          {creditTwin.dscr !== null ? `${creditTwin.dscr}x` : "-"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-emerald-400 h-full"
-                        style={{
-                          width: `${evalResult?.scores?.financial_health_score || 0}%`,
-                        }}
-                      />
+                    <div>
+                      <div className="flex justify-between text-slate-300 mb-1">
+                        <span>Latest Binding Limit</span>
+                        <span className="font-mono text-pulse-400 font-bold">
+                          {creditTwin.binding_limit !== null ? formatCurrency(creditTwin.binding_limit) : "-"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-slate-300 mb-1">
+                        <span>Recommendation</span>
+                        <span className="font-mono text-blue-400 font-bold">
+                          {creditTwin.recommendation || "-"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-slate-300 mb-1">
+                        <span>Evidence Completeness</span>
+                        <span className="font-mono text-purple-400 font-bold">
+                          {creditTwin.evidence_completeness}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden mt-1">
+                        <div
+                          className="bg-purple-400 h-full"
+                          style={{
+                            width: `${creditTwin.evidence_completeness || 0}%`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-slate-300 mb-1">
-                      <span>GST & Tax Compliance</span>
-                      <span className="font-mono text-pulse-400">
-                        {evalResult?.scores?.evidence_confidence_score
-                          ? `${evalResult.scores.evidence_confidence_score} / 100`
-                          : "-"}
-                      </span>
-                    </div>
-                    <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-pulse-400 h-full"
-                        style={{
-                          width: `${evalResult?.scores?.evidence_confidence_score || 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-slate-300 mb-1">
-                      <span>Bank Statement Consistency</span>
-                      <span className="font-mono text-blue-400">
-                        {evalResult?.scores?.resilience_score
-                          ? `${evalResult.scores.resilience_score} / 100`
-                          : "-"}
-                      </span>
-                    </div>
-                    <div className="w-full bg-navy-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-blue-400 h-full"
-                        style={{
-                          width: `${evalResult?.scores?.resilience_score || 0}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="mt-6 pt-4 border-t border-white/10 text-[11px] font-mono text-slate-400 flex items-center justify-between">
-                <span>Model: CAS v1.1.3</span>
-                <span className="text-emerald-400">
-                  Deterministic evidence-linked recommendation
+                <span>Model: {creditTwin?.calculation_version || "-"}</span>
+                <span className="text-emerald-400 truncate ml-2 text-right">
+                  {creditTwin?.last_updated ? new Date(creditTwin.last_updated).toLocaleString() : "Never evaluated"}
                 </span>
               </div>
             </div>
@@ -549,8 +565,7 @@ export default function CaseEvaluationPage() {
                     <div className="text-xs font-semibold text-white flex justify-between">
                       <span>Revenue Matching</span>
                       <span className="text-emerald-400 font-mono">
-                        {evalResult?.features?.reconciliation_metrics
-                          ?.gst_bank_ratio
+                        {evalResult?.features?.reconciliation_metrics?.gst_bank_ratio
                           ? `${(Number(evalResult.features.reconciliation_metrics.gst_bank_ratio) * 100).toFixed(1)}% Match`
                           : "-"}
                       </span>
@@ -560,34 +575,16 @@ export default function CaseEvaluationPage() {
                         GST Turnover:{" "}
                         {evalResult?.features?.gst_metrics?.avg_monthly_revenue
                           ? formatCurrency(
-                              Number(
-                                evalResult.features.gst_metrics
-                                  .avg_monthly_revenue,
-                              ) *
-                                (evalResult.features.gst_metrics.months_filed ||
-                                  12),
+                              Number(evalResult.features.gst_metrics.avg_monthly_revenue) *
+                                (evalResult.features.gst_metrics.months_filed || 12),
                             )
                           : "-"}
                       </div>
                       <div>
                         Bank Credits:{" "}
                         {evalResult?.features?.bank_metrics?.total_credits
-                          ? formatCurrency(
-                              evalResult.features.bank_metrics.total_credits,
-                            )
+                          ? formatCurrency(evalResult.features.bank_metrics.total_credits)
                           : "-"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <div>
-                      <div className="text-xs font-bold text-white">
-                        0 Circular Trading Flags
-                      </div>
-                      <div className="text-[10px] text-slate-300">
-                        Tamper-evident prototype audit chain checked
                       </div>
                     </div>
                   </div>
@@ -601,10 +598,7 @@ export default function CaseEvaluationPage() {
                       <div className="text-[10px] text-slate-300">
                         Average monthly balance:{" "}
                         {evalResult?.features?.bank_metrics?.avg_monthly_credits
-                          ? formatCurrency(
-                              evalResult.features.bank_metrics
-                                .avg_monthly_credits,
-                            )
+                          ? formatCurrency(evalResult.features.bank_metrics.avg_monthly_credits)
                           : "-"}
                       </div>
                     </div>

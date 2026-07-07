@@ -17,17 +17,26 @@ const formatCurrency = (val: any) => {
 export default function EvidenceTab({ caseId }: { caseId: string }) {
   const [gstRecords, setGstRecords] = useState<any[]>([]);
   const [bankRecords, setBankRecords] = useState<any[]>([]);
+  const [invoiceRecords, setInvoiceRecords] = useState<any[]>([]);
+  const [employmentRecords, setEmploymentRecords] = useState<any[]>([]);
+  const [obligationRecords, setObligationRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchEvidence() {
       setLoading(true);
-      const [gstRes, bankRes] = await Promise.all([
+      const [gstRes, bankRes, invoiceRes, empRes, obRes] = await Promise.all([
         apiFetch(`/api/cases/${caseId}/evidence/gst`),
-        apiFetch(`/api/cases/${caseId}/evidence/bank`)
+        apiFetch(`/api/cases/${caseId}/evidence/bank`),
+        apiFetch(`/api/cases/${caseId}/evidence/invoices`),
+        apiFetch(`/api/cases/${caseId}/evidence/employment`),
+        apiFetch(`/api/cases/${caseId}/evidence/obligations`)
       ]);
       if (gstRes.status === 200) setGstRecords(gstRes.data || []);
       if (bankRes.status === 200) setBankRecords(bankRes.data || []);
+      if (invoiceRes.status === 200) setInvoiceRecords(invoiceRes.data || []);
+      if (empRes.status === 200) setEmploymentRecords(empRes.data || []);
+      if (obRes.status === 200) setObligationRecords(obRes.data || []);
       setLoading(false);
     }
     fetchEvidence();
@@ -37,12 +46,16 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
     return <div className="text-center p-8 text-slate-400 font-mono text-sm">Loading Evidence Data...</div>;
   }
 
-  const renderProvenanceMarker = (mode: string) => {
+  const renderProvenanceMarker = (metadata: any) => {
+    const mode = metadata?.ingestion_mode;
+    if (!mode) return <span className="px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30 text-[10px] font-mono">UNKNOWN</span>;
     switch(mode) {
       case "SEEDED_PROTOTYPE":
         return <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-mono">SEEDED (SANDBOX)</span>;
       case "CONNECTED_SOURCE":
         return <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono"><CheckCircle2 className="w-3 h-3 inline mr-1" />VERIFIED SOURCE</span>;
+      case "UPLOADED_DOCUMENT":
+        return <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-mono">UPLOADED</span>;
       default:
         return <span className="px-2 py-0.5 rounded bg-slate-500/20 text-slate-400 border border-slate-500/30 text-[10px] font-mono">{mode}</span>;
     }
@@ -82,7 +95,7 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                     <td className="px-4 py-3">
                       <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs">{r.status}</span>
                     </td>
-                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata?.ingestion_mode)}</td>
+                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -127,7 +140,122 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-400">{r.category || "-"}</td>
-                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata?.ingestion_mode)}</td>
+                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Invoices Evidence Table */}
+      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+          <FileText className="w-5 h-5 text-amber-400" />
+          Invoices
+        </h3>
+        
+        {invoiceRecords.length === 0 ? (
+          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+            No invoices found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+                <tr>
+                  <th className="px-4 py-3 rounded-l-xl">Date</th>
+                  <th className="px-4 py-3">Counterparty</th>
+                  <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 rounded-r-xl">Provenance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {invoiceRecords.map((r, i) => (
+                  <tr key={i} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-mono text-slate-300">{r.date}</td>
+                    <td className="px-4 py-3 text-slate-300 font-mono">{r.counterparty}</td>
+                    <td className="px-4 py-3 text-emerald-400 font-mono">{formatCurrency(r.amount)}</td>
+                    <td className="px-4 py-3 text-slate-400">{r.status}</td>
+                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Employment Evidence Table */}
+      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+          <FileText className="w-5 h-5 text-purple-400" />
+          Employment (EPFO)
+        </h3>
+        
+        {employmentRecords.length === 0 ? (
+          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+            No employment records found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+                <tr>
+                  <th className="px-4 py-3 rounded-l-xl">Period</th>
+                  <th className="px-4 py-3">Employee Count</th>
+                  <th className="px-4 py-3">PF Remittance</th>
+                  <th className="px-4 py-3 rounded-r-xl">Provenance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {employmentRecords.map((r, i) => (
+                  <tr key={i} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-mono text-slate-300">{r.period}</td>
+                    <td className="px-4 py-3 text-slate-300 font-mono">{r.employee_count}</td>
+                    <td className="px-4 py-3 text-emerald-400 font-mono">{formatCurrency(r.pf_remittance)}</td>
+                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Obligations Evidence Table */}
+      <div className="glass-panel p-6 rounded-2xl border border-white/10 shadow-lg">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4">
+          <ShieldAlert className="w-5 h-5 text-rose-400" />
+          Credit Obligations (Bureau)
+        </h3>
+        
+        {obligationRecords.length === 0 ? (
+          <div className="p-4 bg-navy-800/50 rounded-xl border border-dashed border-white/10 text-center text-sm text-slate-400">
+            No active obligations found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs font-mono text-slate-400 bg-navy-800/80">
+                <tr>
+                  <th className="px-4 py-3 rounded-l-xl">Lender</th>
+                  <th className="px-4 py-3">Facility Type</th>
+                  <th className="px-4 py-3">Outstanding Balance</th>
+                  <th className="px-4 py-3">Monthly EMI</th>
+                  <th className="px-4 py-3 rounded-r-xl">Provenance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {obligationRecords.map((r, i) => (
+                  <tr key={i} className="hover:bg-white/[0.02]">
+                    <td className="px-4 py-3 font-mono text-slate-300">{r.lender}</td>
+                    <td className="px-4 py-3 text-slate-300">{r.facility_type}</td>
+                    <td className="px-4 py-3 text-rose-400 font-mono">{formatCurrency(r.outstanding_balance)}</td>
+                    <td className="px-4 py-3 text-rose-400 font-mono">{formatCurrency(r.monthly_emi)}</td>
+                    <td className="px-4 py-3">{renderProvenanceMarker(r.metadata)}</td>
                   </tr>
                 ))}
               </tbody>

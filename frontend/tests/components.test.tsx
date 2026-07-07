@@ -284,6 +284,15 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
       if (url === "/api/cases/CASE-001/evidence/bank") {
         return { status: 200, data: [] };
       }
+      if (url === "/api/cases/CASE-001/evidence/invoices") {
+        return { status: 200, data: [] };
+      }
+      if (url === "/api/cases/CASE-001/evidence/employment") {
+        return { status: 200, data: [] };
+      }
+      if (url === "/api/cases/CASE-001/evidence/obligations") {
+        return { status: 200, data: [] };
+      }
       if (url === "/api/cases/CASE-001/reconciliation") {
         return { status: 200, data: { status: "PENDING" } };
       }
@@ -309,13 +318,13 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
     });
 
     // Check Overview is visible
-    expect(screen.getByText(/Pillar 1: Assessment Scores/i)).toBeInTheDocument();
+    expect(screen.getByText(/Pillar 1: MSME Credit Twin/i)).toBeInTheDocument();
 
     // Click Evidence
     fireEvent.click(screen.getByText("Evidence Data"));
     await waitFor(() => {
       expect(
-        screen.queryByText(/Pillar 1: Assessment Scores/i),
+        screen.queryByText(/Pillar 1: MSME Credit Twin/i),
       ).not.toBeInTheDocument();
       expect(screen.getByText("GST Filings (GSTR-3B)")).toBeInTheDocument();
       expect(screen.getByText("Primary Bank Account Transactions")).toBeInTheDocument();
