@@ -56,19 +56,21 @@ build:
 	@echo "Building backend container..."
 	docker-compose build backend
 
-demo-reset:
-	@echo "WARNING: This will DESTROY all local database volumes for this project."
-	@echo "Waiting 5 seconds before proceeding... (Ctrl+C to cancel)"
-	@sleep 5
-	@echo "Resetting demo environment..."
-	docker-compose down -v
-	make dev-detached
-	make seed
+demo-up:
+	@echo "Starting demo environment..."
+	docker-compose up --build -d
 
-demo:
-	@echo "Starting non-destructive demo environment..."
-	make dev-detached
-	@echo "Demo environment is ready."
+demo-reset:
+	@echo "Resetting demo environment..."
+	cd backend && source .venv/bin/activate && DEMO_USER_PASSWORD=demopassword python -m app.seed.run_demo_reset
+
+verify:
+	@echo "Running decision assurance verification..."
+	cd backend && source .venv/bin/activate && DEMO_USER_PASSWORD=demopassword python scripts/run_decision_assurance.py
+
+demo-down:
+	@echo "Stopping demo environment and destroying volumes..."
+	docker-compose down -v
 
 clean-room:
 	@echo "Starting isolated clean-room verification..."

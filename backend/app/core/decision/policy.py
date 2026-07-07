@@ -56,10 +56,9 @@ class DecisionPolicy:
 
         # 1.5 Basic DSCR Check
         bank_metrics = self.features.get("bank_metrics", {})
-        monthly_inflows = Decimal(str(bank_metrics.get("avg_monthly_credits", 0)))
-        monthly_outflows = Decimal(str(bank_metrics.get("avg_monthly_debits", 0)))
-        if monthly_outflows > 0:
-            dscr = monthly_inflows / monthly_outflows
+        dscr_str = bank_metrics.get("dscr")
+        if dscr_str is not None:
+            dscr = Decimal(dscr_str)
             if dscr < Decimal("1.15"):
                 return {
                     "decision": SystemRecommendation.DECLINE_RECOMMENDED.value,
