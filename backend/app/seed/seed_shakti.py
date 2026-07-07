@@ -282,7 +282,8 @@ def seed_shakti():
 
         # Bank
         bank_credits = round(
-            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))), 2  # nosec B311
+            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))),
+            2,  # nosec B311
         )
         db.add(
             BankTransaction(
@@ -423,7 +424,9 @@ def seed_shakti():
                         source_record_id=f"PAY-{m}-{idx}-{shakti.id}",
                         ingestion_mode="SEEDED_PROTOTYPE",
                         consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
-                        data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
+                        data_connection_id_fk=connections_by_source[
+                            "ACCOUNT_AGGREGATOR"
+                        ],
                     )
                 )
 

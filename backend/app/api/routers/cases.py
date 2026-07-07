@@ -36,6 +36,7 @@ import json
 import datetime
 from fastapi.encoders import jsonable_encoder
 
+
 def check_can_run_assessment(db: Session, case: Case, user: User) -> bool:
     try:
         can_run_assessment(db, case, user)
@@ -43,12 +44,16 @@ def check_can_run_assessment(db: Session, case: Case, user: User) -> bool:
     except HTTPException:
         return False
 
-def check_can_submit_analyst_recommendation(db: Session, case: Case, user: User) -> bool:
+
+def check_can_submit_analyst_recommendation(
+    db: Session, case: Case, user: User
+) -> bool:
     try:
         can_submit_analyst_recommendation(db, case, user)
         return True
     except HTTPException:
         return False
+
 
 def check_can_record_human_decision(db: Session, case: Case, user: User) -> bool:
     try:
@@ -58,12 +63,14 @@ def check_can_record_human_decision(db: Session, case: Case, user: User) -> bool
     except HTTPException:
         return False
 
+
 def check_can_view_audit(db: Session, case: Case, user: User) -> bool:
     try:
         can_view_audit(db, case, user)
         return True
     except HTTPException:
         return False
+
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -318,7 +325,8 @@ def get_cases_summary(
             latest_dec = (
                 db.query(AuditEvent)
                 .filter(
-                    AuditEvent.case_id == c.id, AuditEvent.event_type == "human_decision"
+                    AuditEvent.case_id == c.id,
+                    AuditEvent.event_type == "human_decision",
                 )
                 .order_by(AuditEvent.created_at.desc())
                 .first()
@@ -346,14 +354,19 @@ def get_cases_summary(
 
 @router.get("/")
 def list_cases(
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
     limit: int = Query(50, ge=1),
     offset: int = Query(0, ge=0),
 ):
     now = utc_now()
     query = apply_case_list_scope(db, db.query(Case), user, now)
-    cases = query.order_by(Case.created_at.desc(), Case.id).offset(offset).limit(limit).all()
+    cases = (
+        query.order_by(Case.created_at.desc(), Case.id)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     results = []
     for c in cases:
         latest_eval = (
@@ -371,7 +384,9 @@ def list_cases(
                 "requested_amount": c.requested_amount,
                 "currency": c.currency,
                 "recommendation": c.recommendation.value if c.recommendation else None,
-                "analyst_recommendation": c.analyst_recommendation.value if c.analyst_recommendation else None,
+                "analyst_recommendation": c.analyst_recommendation.value
+                if c.analyst_recommendation
+                else None,
                 "human_decision": c.human_decision.value if c.human_decision else None,
                 "business_name": c.business.legal_name,
                 "requested_product": c.requested_product.value
@@ -412,14 +427,18 @@ def get_case(
         "currency": case.currency,
         "status": case.status.value,
         "recommendation": case.recommendation.value if case.recommendation else None,
-        "analyst_recommendation": case.analyst_recommendation.value if case.analyst_recommendation else None,
+        "analyst_recommendation": case.analyst_recommendation.value
+        if case.analyst_recommendation
+        else None,
         "human_decision": case.human_decision.value if case.human_decision else None,
         "evaluation_result": evaluation_result,
         "allowed_actions": {
             "run_assessment": check_can_run_assessment(db, case, user),
-            "submit_analyst_recommendation": check_can_submit_analyst_recommendation(db, case, user),
+            "submit_analyst_recommendation": check_can_submit_analyst_recommendation(
+                db, case, user
+            ),
             "record_human_decision": check_can_record_human_decision(db, case, user),
-            "view_audit": check_can_view_audit(db, case, user)
+            "view_audit": check_can_view_audit(db, case, user),
         },
         "version": case.version,
         "created_at": case.created_at,
@@ -533,10 +552,8 @@ def record_analyst_recommendation(
         )
 
     if req.recommendation not in AnalystRecommendationAction:
-        raise HTTPException(
-            status_code=400, detail="Invalid recommendation action"
-        )
-    
+        raise HTTPException(status_code=400, detail="Invalid recommendation action")
+
     rec_enum = req.recommendation
 
     case = can_view_case(db, user, case_id)
@@ -618,9 +635,7 @@ def record_human_decision(
         )
 
     if req.decision not in HumanDecisionAction:
-        raise HTTPException(
-            status_code=400, detail="Invalid decision action"
-        )
+        raise HTTPException(status_code=400, detail="Invalid decision action")
 
     dec_enum = req.decision
 
