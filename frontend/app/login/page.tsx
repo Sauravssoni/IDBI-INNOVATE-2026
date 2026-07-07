@@ -48,9 +48,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-navy-900 text-foreground flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute top-10 left-1/4 w-[500px] h-[500px] bg-pulse-500/10 rounded-full blur-3xl pointer-events-none animate-pulse" />
-      <div className="absolute bottom-10 right-1/4 w-[450px] h-[450px] bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Background removed for institutional look */}
       
       {/* Header Branding */}
       <div className="text-center mb-8 z-10">
@@ -61,8 +59,8 @@ export default function LoginPage() {
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-2">
           Vyapar <span className="text-gradient">Pulse</span>
         </h1>
-        <p className="text-slate-400 text-sm sm:text-base max-w-md mx-auto">
-          AI-assisted credit assessment, BOLA Governance & Real-Time Decisioning Engine
+        <p className="text-bank-secondary text-sm sm:text-base max-w-md mx-auto">
+          Evidence-linked MSME credit assessment and governed human decision support
         </p>
       </div>
 
@@ -70,7 +68,7 @@ export default function LoginPage() {
       <div className="glass-panel w-full max-w-lg p-8 rounded-2xl shadow-2xl border border-white/10 z-10">
         <h2 className="text-xl font-semibold text-white mb-6 flex items-center justify-between">
           <span>Sign in to Vyapar Pulse</span>
-          <span className="text-xs font-mono text-slate-400 font-normal">CAS v1.1.3</span>
+          <span className="text-xs text-bank-muted font-normal">Prototype release 1.1.3</span>
         </h2>
 
         {/* 1-Click Demo Role Selector */}
@@ -209,7 +207,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-pulse-600 to-pulse-500 hover:from-pulse-500 hover:to-pulse-400 text-navy-900 font-bold rounded-xl shadow-lg shadow-pulse-500/25 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full mt-2 py-3 px-4 bg-pulse-500 hover:bg-pulse-600 text-white font-bold rounded-xl border border-pulse-400 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? (
               <span className="inline-block w-5 h-5 border-2 border-navy-900 border-t-transparent rounded-full animate-spin" />
