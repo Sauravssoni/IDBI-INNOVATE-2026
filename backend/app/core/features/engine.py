@@ -105,7 +105,7 @@ class FeatureEngine:
 
         # Assumes 18 months based on standard pulling
         months = Decimal("18.0")
-        
+
         # Calculate authoritative DSCR
         today = datetime.date(2026, 7, 1)
         dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, today)

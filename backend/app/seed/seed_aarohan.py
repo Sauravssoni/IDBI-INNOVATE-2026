@@ -15,31 +15,54 @@ from app.db.orm.evidence import (
 )
 from app.db.orm.users import User, UserRole
 from app.db.orm.org import (
-    Region,
     Branch,
     ProductType,
 )
-import os
-import sys
+
 
 def seed_aarohan():
     db = SessionLocal()
-    existing_business = db.query(Business).filter(Business.business_id == "AAROHAN_INFRA_001").first()
+    existing_business = (
+        db.query(Business).filter(Business.business_id == "AAROHAN_INFRA_001").first()
+    )
     if existing_business:
-        db.query(GSTPeriod).filter(GSTPeriod.business_id_fk == existing_business.id).delete()
-        db.query(BankTransaction).filter(BankTransaction.business_id_fk == existing_business.id).delete()
-        invoices = db.query(Invoice).filter(Invoice.business_id_fk == existing_business.id).all()
+        db.query(GSTPeriod).filter(
+            GSTPeriod.business_id_fk == existing_business.id
+        ).delete()
+        db.query(BankTransaction).filter(
+            BankTransaction.business_id_fk == existing_business.id
+        ).delete()
+        invoices = (
+            db.query(Invoice)
+            .filter(Invoice.business_id_fk == existing_business.id)
+            .all()
+        )
         for inv in invoices:
-            db.query(InvoicePayment).filter(InvoicePayment.invoice_id_fk == inv.id).delete()
-        db.query(Invoice).filter(Invoice.business_id_fk == existing_business.id).delete()
-        db.query(Obligation).filter(Obligation.business_id_fk == existing_business.id).delete()
-        db.query(EmploymentPeriod).filter(EmploymentPeriod.business_id_fk == existing_business.id).delete()
-        db.query(Consent).filter(Consent.business_id_fk == existing_business.id).delete()
-        db.query(DataConnection).filter(DataConnection.business_id_fk == existing_business.id).delete()
+            db.query(InvoicePayment).filter(
+                InvoicePayment.invoice_id_fk == inv.id
+            ).delete()
+        db.query(Invoice).filter(
+            Invoice.business_id_fk == existing_business.id
+        ).delete()
+        db.query(Obligation).filter(
+            Obligation.business_id_fk == existing_business.id
+        ).delete()
+        db.query(EmploymentPeriod).filter(
+            EmploymentPeriod.business_id_fk == existing_business.id
+        ).delete()
+        db.query(Consent).filter(
+            Consent.business_id_fk == existing_business.id
+        ).delete()
+        db.query(DataConnection).filter(
+            DataConnection.business_id_fk == existing_business.id
+        ).delete()
         for c in existing_business.cases:
             from app.db.orm.cases import AuditEvent, IdempotencyRecord
+
             db.query(AuditEvent).filter(AuditEvent.case_id == c.id).delete()
-            db.query(IdempotencyRecord).filter(IdempotencyRecord.case_id == c.id).delete()
+            db.query(IdempotencyRecord).filter(
+                IdempotencyRecord.case_id == c.id
+            ).delete()
         db.query(Case).filter(Case.business_id_fk == existing_business.id).delete()
         db.delete(existing_business)
         db.commit()
@@ -63,9 +86,19 @@ def seed_aarohan():
     consents_by_source = {}
     connections_by_source = {}
     for source in sources:
-        c = Consent(business_id_fk=aarohan.id, source_type=source, status=ConsentStatus.ACTIVE, valid_until=today + timedelta(days=90))
+        c = Consent(
+            business_id_fk=aarohan.id,
+            source_type=source,
+            status=ConsentStatus.ACTIVE,
+            valid_until=today + timedelta(days=90),
+        )
         db.add(c)
-        d = DataConnection(business_id_fk=aarohan.id, source_type=source, status="CONNECTED", last_sync_at=today)
+        d = DataConnection(
+            business_id_fk=aarohan.id,
+            source_type=source,
+            status="CONNECTED",
+            last_sync_at=today,
+        )
         db.add(d)
         db.flush()
         consents_by_source[source] = c.id
@@ -89,7 +122,9 @@ def seed_aarohan():
             bank_credits = round(monthly_rev * Decimal("0.3"), 2)
         else:
             gst_revenue = monthly_rev
-            bank_credits = round(monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2)
+            bank_credits = round(
+                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2
+            )
 
         db.add(
             GSTPeriod(
@@ -184,13 +219,14 @@ def seed_aarohan():
         requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=Decimal("20000000.00"),
         currency="INR",
-        status=CaseStatus.INITIATED, # NOTE: will be advanced later by evaluating
+        status=CaseStatus.INITIATED,  # NOTE: will be advanced later by evaluating
         originating_branch_id=malviya_nagar_branch.id,
         assigned_relationship_manager_id=rm_user.id,
         assigned_credit_analyst_id=ca_user.id,
     )
     db.add(case)
     db.commit()
+
 
 if __name__ == "__main__":
     seed_aarohan()
