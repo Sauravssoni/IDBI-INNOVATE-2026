@@ -23,6 +23,19 @@ class EvidenceMetadata:
     data_quality_status = Column(String, nullable=False, default="VALID")
     provenance_hash = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=False, default=utc_now)
+    consent_id_fk = Column(
+        UUID(as_uuid=True),
+        ForeignKey("consents.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    data_connection_id_fk = Column(
+        UUID(as_uuid=True),
+        ForeignKey("dataconnections.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    ingestion_mode = Column(String, nullable=False, default="SEEDED_PROTOTYPE")
 
 
 class GSTPeriod(Base, EvidenceMetadata):

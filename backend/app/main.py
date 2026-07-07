@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import hashlib
 import secrets
-from app.api.routers import cases, audit
+from app.api.routers import cases, audit, evidence
 from app.api import auth
 from app.core.config import get_settings
 
@@ -80,6 +80,7 @@ async def csrf_middleware(request: Request, call_next):
 app.include_router(auth.router)
 app.include_router(cases.router)
 app.include_router(audit.router)
+app.include_router(evidence.router)
 
 
 @app.get("/health")

@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 
 backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
+
 def test_migration_upgrade_downgrade():
     if os.environ.get("APP_ENV") == "production":
         pytest.skip("Refusing to run migration test in production")
@@ -45,7 +46,11 @@ def test_migration_upgrade_downgrade():
     env = os.environ.copy()
     env["DATABASE_URL"] = db_url
     proc = subprocess.run(
-        ["alembic", "upgrade", "05f0b4de641c"], capture_output=True, text=True, env=env, cwd=backend_dir
+        ["alembic", "upgrade", "05f0b4de641c"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=backend_dir,
     )
     if proc.returncode != 0:
         print("Alembic upgrade stdout:", proc.stdout)
@@ -103,7 +108,11 @@ def test_migration_upgrade_downgrade():
 
     # 4. Run alembic upgrade to phase 1.1.3
     proc = subprocess.run(
-        ["alembic", "upgrade", "7c35182cf1b8"], capture_output=True, text=True, env=env, cwd=backend_dir
+        ["alembic", "upgrade", "7c35182cf1b8"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=backend_dir,
     )
     if proc.returncode != 0:
         print("Alembic upgrade 7c35 stdout:", proc.stdout)
@@ -220,9 +229,13 @@ def test_migration_upgrade_downgrade():
             "requested_facility_type not restored properly"
         )
 
-    # 8. Run alembic upgrade to 8a45193de2c9 (head)
+    # 8. Run alembic upgrade to fc4c9edd7015 (head)
     proc = subprocess.run(
-        ["alembic", "upgrade", "8a45193de2c9"], capture_output=True, text=True, env=env, cwd=backend_dir
+        ["alembic", "upgrade", "fc4c9edd7015"],
+        capture_output=True,
+        text=True,
+        env=env,
+        cwd=backend_dir,
     )
     if proc.returncode != 0:
         print(proc.stdout)
@@ -236,13 +249,13 @@ def test_migration_upgrade_downgrade():
             text("""
             UPDATE cases SET analyst_recommendation = 'RECOMMEND_AS_REQUESTED' WHERE id = :case_id
             """),
-            {"case_id": case_id}
+            {"case_id": case_id},
         )
         conn.commit()
-        
+
         res = conn.execute(
             text("SELECT analyst_recommendation FROM cases WHERE id = :case_id"),
-            {"case_id": case_id}
+            {"case_id": case_id},
         ).fetchone()
         assert res[0] == "RECOMMEND_AS_REQUESTED"
 
@@ -251,18 +264,20 @@ def test_migration_upgrade_downgrade():
             text("""
             UPDATE cases SET analyst_recommendation = 'RECOMMEND_DECLINE' WHERE id = :case_id
             """),
-            {"case_id": case_id}
+            {"case_id": case_id},
         )
         conn.commit()
 
         res2 = conn.execute(
             text("SELECT analyst_recommendation FROM cases WHERE id = :case_id"),
-            {"case_id": case_id}
+            {"case_id": case_id},
         ).fetchone()
         assert res2[0] == "RECOMMEND_DECLINE"
 
     # 9. Run alembic check
-    proc = subprocess.run(["alembic", "check"], capture_output=True, text=True, env=env, cwd=backend_dir)
+    proc = subprocess.run(
+        ["alembic", "check"], capture_output=True, text=True, env=env, cwd=backend_dir
+    )
     assert proc.returncode == 0, f"Alembic check failed: {proc.stderr} {proc.stdout}"
     assert (
         "No new upgrade operations detected" in proc.stdout
