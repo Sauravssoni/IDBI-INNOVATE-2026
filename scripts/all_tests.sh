@@ -1,25 +1,23 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-# Export test database URL for pytest
-export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test"
-export PYTHONPATH=.:${PYTHONPATH:-}
-
-# Make sure the test DB exists
-docker-compose exec -T db psql -U vyapar_local -d postgres -c "CREATE DATABASE vyapar_pulse_test;" 2>/dev/null || true
-
+echo "==============================="
+echo "Running BACKEND verification..."
+echo "==============================="
 cd backend
-# Assume virtualenv is loaded if running locally, otherwise rely on system python
-source .venv/bin/activate || true
-
-pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
-ruff check app tests scripts
-ruff format --check app tests scripts
-mypy app
-bandit -r app -ll
-pip-audit -r requirements.txt
+pip install -q -r requirements.txt
+export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@localhost:5433/vyapar_pulse_test"
+python -m pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
+python -m ruff check app tests scripts
+python -m ruff format --check app tests scripts
+python -m mypy app
+python -m bandit -r app -ll
+python -m pip_audit -r requirements.txt
 cd ..
 
+echo "==============================="
+echo "Running FRONTEND verification..."
+echo "==============================="
 cd frontend
 npm ci
 npm audit --audit-level=high
@@ -29,23 +27,18 @@ npm test -- --reporter=verbose
 npm run build
 cd ..
 
-# Ensure the demo DB is reset for assurance tests
-export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse"
+echo "==============================="
+echo "Running PROOF (End-to-End)..."
+echo "==============================="
 cd backend
-source .venv/bin/activate || true
-DEMO_USER_PASSWORD="demopassword" python -m app.seed.run_demo_reset
+if [ -f ../.env ]; then
+  export $(grep -v '^#' ../.env | xargs)
+fi
+python -m app.seed.run_demo_reset
+python scripts/run_decision_assurance.py
+python scripts/run_demo_walkthrough.py
 cd ..
 
-# Wait for backend to be ready if needed, or we can just run the scripts which use TestClient
-# Note: Since they use TestClient, they access the DB directly without needing the server to be running.
-export DEMO_USER_PASSWORD="demopassword"
-
-echo "Running decision assurance..."
-python backend/scripts/run_decision_assurance.py
-
-echo "Running demo walkthrough..."
-python backend/scripts/run_demo_walkthrough.py
-
-echo "====================================="
-echo "✅ ALL VERIFICATIONS PASSED"
-echo "====================================="
+echo "==============================="
+echo "✅ All canonical verifications passed!"
+echo "==============================="

@@ -306,7 +306,6 @@ def get_cases_summary(
         if c.status in [
             CaseStatus.INITIATED,
             CaseStatus.EVIDENCE_GATHERING,
-            CaseStatus.ASSESSMENT_COMPLETED,
         ]:
             awaiting_analyst += 1
         elif c.status == CaseStatus.DECISION_PENDING:

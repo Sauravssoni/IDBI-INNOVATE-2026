@@ -67,7 +67,7 @@ export default function DashboardPage() {
   const totalCasesCount = summary?.active_cases ?? cases.length;
 
   const analystReviewCount = summary?.awaiting_analyst ?? cases.filter(
-    (c) => ["INITIATED", "EVIDENCE_GATHERING", "ASSESSMENT_COMPLETED"].includes(c.status)
+    (c) => ["INITIATED", "EVIDENCE_GATHERING"].includes(c.status)
   ).length;
 
   const sanctionReviewCount = summary?.awaiting_human_decision ?? cases.filter(

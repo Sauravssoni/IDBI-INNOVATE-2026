@@ -23,6 +23,11 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    turbopack: {
+      root: '.'
+    }
+  },
   async headers() {
     return [
       {
