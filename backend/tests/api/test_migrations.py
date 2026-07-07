@@ -14,7 +14,7 @@ def test_migration_upgrade_downgrade():
 
     db_url = os.environ.get(
         "DATABASE_URL",
-        "postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_test",
+        "postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test",
     )
     parsed_url = urllib.parse.urlparse(db_url)
     datname = parsed_url.path.lstrip("/")
