@@ -1,54 +1,35 @@
-# Decision Assurance
+# Decision Assurance Report
 
-The Vyapar Pulse Starter includes a stringent, deterministic mechanism to verify that our credit evaluation logic consistently arrives at the intended outcomes and abides by all security, safety, and business rules across the four core personas. 
+**Final SHA:** `09c3aeb2f00234341edf2aa43c0054cbbae1ea93`
+**Timestamp:** 2026-07-08T06:00:02.453320
+**Policy Version:** 1
+**Calculation Version:** 1
 
-This ensures that any modifications to the system (database schemas, evaluation logic, or migration scripts) do not inadvertently break the required business rules or security models. The assurance script acts as an executable proof of correctness.
+**Total Assertions:** 16
+**Passed:** 16
+**Failed:** 0
+**Overall Result:** PASS
 
-## Required Assertions
+## Exact Persona Outputs
+- **SHAKTI_PRECISION_001:** {'recommendation': 'CONDITIONAL_OFFER', 'limit': 3569042.496}
+- **NAVPRERNA_TECH_001:** {'recommendation': 'ADDITIONAL_EVIDENCE_REQUIRED'}
+- **RANGREZ_TEXTILES_001:** {'recommendation': 'READY_FOR_REVIEW'}
+- **AAROHAN_INFRA_001:** {'recommendation': 'DECLINE_RECOMMENDED'}
 
-The `run_decision_assurance.py` script rigorously checks the following guarantees every time it runs. **Every mismatch causes an immediate failure.**
-
-### 1. The Core Personas
-1. **Exactly four unique personas** are seeded and verified.
-2. **Shakti Precision**
-   - Condition: Strong business.
-   - Outcome: DSCR is exactly `1.85`.
-   - Recommendation: `CONDITIONAL_OFFER`.
-   - Binding Limit: Supportable amount is approximately ₹35.7 lakh (`3500000 <= limit <= 3600000`).
-3. **Navprerna Tech Solutions**
-   - Condition: Missing required evidence or lack of confidence.
-   - Recommendation: `ADDITIONAL_EVIDENCE_REQUIRED`.
-4. **Rangrez Textiles**
-   - Condition: Seasonal cash-flow patterns.
-   - Recommendation: Exact frozen recommendation verified (`READY_FOR_REVIEW` or `CONDITIONAL_OFFER`).
-5. **Aarohan Infrastructure**
-   - Condition: High existing debt obligations leading to low DSCR (1.05).
-   - Recommendation: `DECLINE_RECOMMENDED`.
-
-### 2. Monotonicity & Mathematical Consistency
-- **Cash-flow/limit monotonicity**: Increasing revenue (cash-inflow) must strictly yield a higher or equal binding limit.
-- **Obligation/DSCR monotonicity**: Increasing existing obligations must strictly yield a lower or equal DSCR.
-- **Evidence-confidence monotonicity**: A drop in evidence confidence score (e.g., to 30.0) forces the decision outcome to `ADDITIONAL_EVIDENCE_REQUIRED`, regardless of financials.
-
-### 3. System Guarantees
-- **Deterministic Replay**: Calling evaluate multiple times with the same idempotency key must return the exact same cached payload and status.
-- **Check-and-Set (CAS) Protection**: Attempting a state transition with a stale version number must return a `409 Conflict`.
-- **LLM Isolation**: Scoring and policy evaluation is deterministic. The LLM is explicitly mocked and asserted to **never** be called during core policy execution.
-- **Continuous Audit Hash Chain**: Every state transition maintains a cryptographic hash chain. The assurance script verifies that `prior_event_hash` perfectly matches the preceding event's `event_hash` for the entire case history.
-
-### 4. RBAC Guarantees
-- **RM cannot evaluate**: Relationship Managers are blocked from triggering automated evaluation.
-- **Analyst cannot sanction**: Credit Analysts are blocked from making human sanction decisions.
-- **SA Mandate Enforced**: System Administrators or appropriately scoped Sanctioning Authorities are required to sanction.
-
-## Verification
-
-To run the verification suite locally:
-
-```bash
-cd backend
-python -m app.seed.run_demo_reset
-PYTHONPATH=. python scripts/run_decision_assurance.py
-```
-
-If the underlying logic is tampered with, `run_decision_assurance.py` will fail with a non-zero exit code. This creates a reproducible, automated proof of correctness for the Vyapar Pulse architecture.
+## Assertions Details
+- [PASS] **Persona Count**: Found 4 businesses
+- [PASS] **Case Count**: Found 4 cases
+- [PASS] **Shakti Limit**: Shakti Supportable Amount ~35.7 lakh. Got 3569042.496
+- [PASS] **Navprerna Recommendation**: Navprerna got ADDITIONAL_EVIDENCE_REQUIRED
+- [PASS] **Rangrez Recommendation**: Rangrez got READY_FOR_REVIEW
+- [PASS] **Aarohan Recommendation**: Aarohan got DECLINE_RECOMMENDED
+- [PASS] **Idempotency Replay**: Deterministic Idempotency replay
+- [PASS] **CAS STALE_VERSION**: CAS STALE_VERSION verified
+- [PASS] **Cash-flow/limit Monotonicity**: cash-flow/limit monotonicity verified
+- [PASS] **Obligation/DSCR Monotonicity**: obligation/DSCR monotonicity verified
+- [PASS] **Evidence-confidence Monotonicity**: evidence-confidence monotonicity verified
+- [PASS] **RM RBAC**: RM cannot evaluate verified
+- [PASS] **Analyst RBAC**: Analyst cannot sanction verified
+- [PASS] **SA Mandate**: SA mandate enforced verified
+- [PASS] **LLM Isolation**: LLM not called in scoring/policy verified
+- [PASS] **Audit Hash Chain**: Continuous audit hash chain verified

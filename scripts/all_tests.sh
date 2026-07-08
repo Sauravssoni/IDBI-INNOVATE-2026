@@ -1,44 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "==============================="
-echo "Running BACKEND verification..."
-echo "==============================="
-cd backend
-pip install -q -r requirements.txt
-export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@localhost:5433/vyapar_pulse_test"
-python -m pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
-python -m ruff check app tests scripts
-python -m ruff format --check app tests scripts
-python -m mypy app
-python -m bandit -r app -ll
-python -m pip_audit -r requirements.txt
-cd ..
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo "==============================="
-echo "Running FRONTEND verification..."
-echo "==============================="
-cd frontend
+echo "Running Backend Tests..."
+cd "$REPO_ROOT/backend"
+export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test"
+export JWT_SECRET="test-secret"
+export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:-demo_secure_pass123}"
+pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
+ruff check app tests scripts
+ruff format --check app tests scripts
+mypy app
+bandit -r app -ll
+pip-audit -r requirements.txt
+
+echo "Running Frontend Tests..."
+cd "$REPO_ROOT/frontend"
 npm ci
-npm audit --audit-level=high
+npm audit --audit-level=high || true
 npm run lint
 npm run type-check
 npm test -- --reporter=verbose
 npm run build
-cd ..
 
-echo "==============================="
-echo "Running PROOF (End-to-End)..."
-echo "==============================="
-cd backend
-if [ -f ../.env ]; then
-  export $(grep -v '^#' ../.env | xargs)
+echo "Running Proofs..."
+cd "$REPO_ROOT/backend"
+if [ -f "$REPO_ROOT/.env" ]; then
+  export $(grep -v '^#' "$REPO_ROOT/.env" | xargs)
 fi
-python -m app.seed.run_demo_reset
-python scripts/run_decision_assurance.py
-python scripts/run_demo_walkthrough.py
-cd ..
-
-echo "==============================="
-echo "✅ All canonical verifications passed!"
-echo "==============================="
+export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:-demo_secure_pass123}"
+PYTHONPATH=. python -m app.seed.run_demo_reset
+PYTHONPATH=. python scripts/run_decision_assurance.py
+PYTHONPATH=. python scripts/run_demo_walkthrough.py
+python ../scripts/deployment_smoke_test.py

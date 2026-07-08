@@ -11,7 +11,6 @@ from app.db.orm.cases import Case
 @pytest.fixture(scope="module", autouse=True)
 def setup_shakti_db():
     import urllib.parse
-    import uuid
 
     db_url = os.environ.get("DATABASE_URL", str(engine.url))
     parsed_url = urllib.parse.urlparse(db_url)
@@ -19,9 +18,7 @@ def setup_shakti_db():
     if "test" not in datname.lower():
         raise RuntimeError("Refusing to run tests against non-test database name")
 
-    test_password = (
-        os.environ.get("DEMO_USER_PASSWORD") or f"test_pw_{uuid.uuid4().hex}"
-    )
+    test_password = os.environ.get("DEMO_USER_PASSWORD", "demo_secure_pass123")
     os.environ["DEMO_USER_PASSWORD"] = test_password
 
     seed_shakti()
