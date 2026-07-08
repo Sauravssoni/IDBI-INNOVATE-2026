@@ -279,8 +279,10 @@ def cas_update_case_and_audit(
 
     metadata["prior_version"] = prior_version
     metadata["resulting_version"] = resulting_version
+    metadata["audit_hash"] = event_hash
     metadata_enc["prior_version"] = prior_version
     metadata_enc["resulting_version"] = resulting_version
+    metadata_enc["audit_hash"] = event_hash
 
     fulfill_idempotency(db, idempotency_record_id, 200, metadata_enc)
 
