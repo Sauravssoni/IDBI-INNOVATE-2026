@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { Scale, CheckCircle2, AlertTriangle, AlertCircle, FileSearch } from "lucide-react";
 
 export default function ReconciliationTab({ caseId }: { caseId: string }) {
-  const [reconData, setReconData] = useState<any>(null);
+  const [reconData, setReconData] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,7 +71,7 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
         </h3>
         
         <div className="space-y-4">
-          {reconData.checks?.map((check: any, i: number) => (
+          {reconData.checks?.map((check: unknown, i: number) => (
             <div key={i} className="p-4 rounded-xl bg-light-bg border border-light-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-light-elevated transition-colors">
               <div className="flex items-start gap-4">
                 <div className="mt-1">{renderStatusIcon(check.status)}</div>

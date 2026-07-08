@@ -28,10 +28,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-vyapar_local}:${POSTGRES_PASSWORD:-change-this-local-development-password}@db:5432/${POSTGRES_DB:-vyapar_pulse}
-      - APP_ENV=development
-      - ALLOWED_ORIGINS=http://localhost:3005
-      - COOKIE_SECURE=false
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - DEMO_USER_PASSWORD=${DEMO_USER_PASSWORD:?required}
+      - DEMO_ACCESS_ENABLED=${DEMO_ACCESS_ENABLED:-true}
+      - APP_ENV=${APP_ENV:-development}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3005}
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
     depends_on:
       db:
         condition: service_healthy

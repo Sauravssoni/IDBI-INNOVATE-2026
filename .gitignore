@@ -79,3 +79,6 @@ postgres-data/
 coverage.xml
 htmlcov/
 .pytest_cache/
+
+# Artifacts
+artifacts/runtime/
