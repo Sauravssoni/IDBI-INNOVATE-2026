@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import hashlib
 import secrets
-from app.api.routers import cases, audit, evidence
+from app.api.routers import cases, audit, evidence, demo
 from app.api import auth
 from app.core.config import get_settings
 
@@ -31,7 +31,9 @@ app.add_middleware(
 @app.middleware("http")
 async def csrf_middleware(request: Request, call_next):
     if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-        if request.url.path.startswith("/api/auth/login") or request.url.path.startswith("/api/auth/demo/session"):
+        if request.url.path.startswith(
+            "/api/auth/login"
+        ) or request.url.path.startswith("/api/auth/demo/session"):
             return await call_next(request)
 
         csrf_header = request.headers.get("x-csrf-token")
@@ -81,6 +83,7 @@ app.include_router(auth.router)
 app.include_router(cases.router)
 app.include_router(audit.router)
 app.include_router(evidence.router)
+app.include_router(demo.router)
 
 
 @app.get("/health")
