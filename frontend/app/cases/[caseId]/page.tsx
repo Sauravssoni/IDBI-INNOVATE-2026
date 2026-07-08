@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { formatCurrency, humanise } from "@/lib/formatters";
 import { useAuth } from "@/context/AuthContext";
 import EvidenceTab from "./tabs/EvidenceTab";
 import ReconciliationTab from "./tabs/ReconciliationTab";
@@ -34,7 +35,7 @@ export default function CaseEvaluationPage() {
   const params = useParams();
   const caseIdParam = (params?.caseId as string) || "";
 
-  const [caseData, setCaseData] = useState<any | null>(null);
+  const [caseData, setCaseData] = useState<CaseResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +44,7 @@ export default function CaseEvaluationPage() {
 
   // Action States
   const [evaluating, setEvaluating] = useState(false);
-  const [evalResult, setEvalResult] = useState<any | null>(null);
+  const [evalResult, setEvalResult] = useState<CaseResponse | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -54,19 +55,11 @@ export default function CaseEvaluationPage() {
   const [approvedAmount, setApprovedAmount] = useState<number>(0);
   const [sanctionNotes, setSanctionNotes] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
-  const [creditTwin, setCreditTwin] = useState<any | null>(null);
+  const [creditTwin, setCreditTwin] = useState<CaseResponse | null>(null);
   const [twinLoading, setTwinLoading] = useState(true);
   const [twinError, setTwinError] = useState<string | null>(null);
 
-  const formatCurrency = (val: any) => {
-    if (val === "-" || val === null || val === undefined) return "-";
-    const num = Number(val);
-    if (isNaN(num)) return "-";
-    if (num === 0) return "₹0";
-    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
-    if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
-    return `₹${num.toLocaleString("en-IN")}`;
-  };
+  
 
   const humaniseEnum = (str: string) => {
     if (!str) return "-";
@@ -78,7 +71,7 @@ export default function CaseEvaluationPage() {
     setError(null);
 
     let targetId = caseIdParam;
-    let foundCase: any = null;
+    let foundCase: CaseResponse | null = null;
 
     if (
       targetId &&
@@ -98,7 +91,7 @@ export default function CaseEvaluationPage() {
         data: listData,
         status: listStatus,
         error: listErr,
-      } = await apiFetch<any[]>("/api/cases/");
+      } = await apiFetch<CaseResponse[]>("/api/cases/");
       if (listStatus === 200 && Array.isArray(listData)) {
         const isShaktiAlias =
           targetId.toLowerCase() === "shakti" ||
@@ -242,7 +235,7 @@ export default function CaseEvaluationPage() {
     setActionSuccess(null);
 
     const idempotencyKey = `dec-${caseData.id}-${Date.now()}`;
-    const payload: any = {
+    const payload: HumanDecisionResponse | RecommendationResponse | Record<string, unknown> = {
       decision: decisionAction,
       reason:
         sanctionNotes || "Sanction decision recorded via prototype portal.",

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { apiFetch } from "@/lib/api";
+import { formatCurrency, humanise } from "@/lib/formatters";
 import {
   FolderKanban,
   Clock,
@@ -14,16 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-const formatCurrency = (val: any) => {
-  if (val === undefined || val === null || val === "") return "-";
-  const num = typeof val === "string" ? parseFloat(val) : Number(val);
-  if (isNaN(num)) return String(val);
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(num);
-};
+
 
 const humaniseEnum = (str: string) => {
   if (!str) return "-";
@@ -32,15 +24,15 @@ const humaniseEnum = (str: string) => {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [cases, setCases] = useState<any[]>([]);
-  const [summary, setSummary] = useState<any>(null);
+  const [cases, setCases] = useState<unknown[]>([]);
+  const [summary, setSummary] = useState<unknown>(null);
   const [loading, setLoading] = useState(true);
 
   const loadCases = async () => {
     setLoading(true);
     const [casesRes, summaryRes] = await Promise.all([
-      apiFetch<any[]>("/api/cases"),
-      apiFetch<any>("/api/cases/summary"),
+      apiFetch<unknown[]>("/api/cases"),
+      apiFetch<unknown>("/api/cases/summary"),
     ]);
     if (casesRes.status === 200 && Array.isArray(casesRes.data)) {
       setCases(casesRes.data);

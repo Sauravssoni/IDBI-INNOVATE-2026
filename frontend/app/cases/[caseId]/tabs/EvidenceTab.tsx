@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { FileText, Database, ShieldAlert, CheckCircle2 } from "lucide-react";
 
-const formatCurrency = (val: any) => {
+const formatCurrency = (val: unknown) => {
   if (val === "-" || val === null || val === undefined) return "-";
   const num = Number(val);
   if (isNaN(num)) return "-";
@@ -15,11 +15,11 @@ const formatCurrency = (val: any) => {
 };
 
 export default function EvidenceTab({ caseId }: { caseId: string }) {
-  const [gstRecords, setGstRecords] = useState<any[]>([]);
-  const [bankRecords, setBankRecords] = useState<any[]>([]);
-  const [invoiceRecords, setInvoiceRecords] = useState<any[]>([]);
-  const [employmentRecords, setEmploymentRecords] = useState<any[]>([]);
-  const [obligationRecords, setObligationRecords] = useState<any[]>([]);
+  const [gstRecords, setGstRecords] = useState<unknown[]>([]);
+  const [bankRecords, setBankRecords] = useState<unknown[]>([]);
+  const [invoiceRecords, setInvoiceRecords] = useState<unknown[]>([]);
+  const [employmentRecords, setEmploymentRecords] = useState<unknown[]>([]);
+  const [obligationRecords, setObligationRecords] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,7 +46,7 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
     return <div className="text-center p-8 text-light-secondary font-mono text-sm">Loading Evidence Data...</div>;
   }
 
-  const renderProvenanceMarker = (metadata: any) => {
+  const renderProvenanceMarker = (metadata: unknown) => {
     const mode = metadata?.ingestion_mode;
     if (!mode) return <span className="px-2 py-0.5 rounded bg-light-elevated text-light-secondary border border-light-border text-xs font-mono">UNKNOWN</span>;
     switch(mode) {
