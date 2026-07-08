@@ -24,15 +24,15 @@ const humaniseEnum = (str: string) => {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [cases, setCases] = useState<unknown[]>([]);
-  const [summary, setSummary] = useState<unknown>(null);
+  const [cases, setCases] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const loadCases = async () => {
     setLoading(true);
     const [casesRes, summaryRes] = await Promise.all([
-      apiFetch<unknown[]>("/api/cases"),
-      apiFetch<unknown>("/api/cases/summary"),
+      apiFetch<any[]>("/api/cases"),
+      apiFetch<any>("/api/cases/summary"),
     ]);
     if (casesRes.status === 200 && Array.isArray(casesRes.data)) {
       setCases(casesRes.data);
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                           <div className="text-xs text-light-muted mt-0.5">{c.id}</div>
                         </td>
                         <td className="px-5 py-4">
-                          <div className="font-medium text-light-text">{humaniseEnum(c.facility_type)}</div>
+                          <div className="font-medium text-light-text">{humaniseEnum(c.requested_product)}</div>
                           <div className="text-xs text-light-muted mt-0.5">{formatCurrency(c.requested_amount)}</div>
                         </td>
                         <td className="px-5 py-4">

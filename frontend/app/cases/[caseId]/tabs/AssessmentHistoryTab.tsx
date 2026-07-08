@@ -3,15 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { Clock, CheckCircle2, User, PlayCircle, FileText } from "lucide-react";
+import { AuditLogEvent } from "@/types";
 
 export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
-  const [history, setHistory] = useState<unknown[]>([]);
+  const [history, setHistory] = useState<AuditLogEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchHistory() {
       setLoading(true);
-      const { data, status } = await apiFetch(`/api/cases/${caseId}/assessment-history`);
+      const { data, status } = await apiFetch<AuditLogEvent[]>(`/api/cases/${caseId}/assessment-history`);
       if (status === 200) {
         setHistory(data);
       }
@@ -68,10 +69,10 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
               <div className="flex-1 bg-light-elevated border border-light-border p-4 rounded-xl hover:bg-light-bg transition-colors shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                   <div className="text-sm font-bold text-light-text">
-                    {event.event_type.replace(/_/g, " ")}
+                    {event.event_type ? event.event_type.replace(/_/g, " ") : "UNKNOWN"}
                   </div>
                   <div className="text-xs font-mono text-light-secondary bg-light-bg border border-light-border px-2 py-1 rounded">
-                    {new Date(event.created_at).toLocaleString()}
+                    {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
                   </div>
                 </div>
                 

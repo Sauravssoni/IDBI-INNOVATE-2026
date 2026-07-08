@@ -15,22 +15,22 @@ const formatCurrency = (val: unknown) => {
 };
 
 export default function EvidenceTab({ caseId }: { caseId: string }) {
-  const [gstRecords, setGstRecords] = useState<unknown[]>([]);
-  const [bankRecords, setBankRecords] = useState<unknown[]>([]);
-  const [invoiceRecords, setInvoiceRecords] = useState<unknown[]>([]);
-  const [employmentRecords, setEmploymentRecords] = useState<unknown[]>([]);
-  const [obligationRecords, setObligationRecords] = useState<unknown[]>([]);
+  const [gstRecords, setGstRecords] = useState<any[]>([]);
+  const [bankRecords, setBankRecords] = useState<any[]>([]);
+  const [invoiceRecords, setInvoiceRecords] = useState<any[]>([]);
+  const [employmentRecords, setEmploymentRecords] = useState<any[]>([]);
+  const [obligationRecords, setObligationRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchEvidence() {
       setLoading(true);
       const [gstRes, bankRes, invoiceRes, empRes, obRes] = await Promise.all([
-        apiFetch(`/api/cases/${caseId}/evidence/gst`),
-        apiFetch(`/api/cases/${caseId}/evidence/bank`),
-        apiFetch(`/api/cases/${caseId}/evidence/invoices`),
-        apiFetch(`/api/cases/${caseId}/evidence/employment`),
-        apiFetch(`/api/cases/${caseId}/evidence/obligations`)
+        apiFetch<any>(`/api/cases/${caseId}/evidence/gst`),
+        apiFetch<any>(`/api/cases/${caseId}/evidence/bank`),
+        apiFetch<any>(`/api/cases/${caseId}/evidence/invoices`),
+        apiFetch<any>(`/api/cases/${caseId}/evidence/employment`),
+        apiFetch<any>(`/api/cases/${caseId}/evidence/obligations`)
       ]);
       if (gstRes.status === 200) setGstRecords(gstRes.data || []);
       if (bankRes.status === 200) setBankRecords(bankRes.data || []);
@@ -46,7 +46,7 @@ export default function EvidenceTab({ caseId }: { caseId: string }) {
     return <div className="text-center p-8 text-light-secondary font-mono text-sm">Loading Evidence Data...</div>;
   }
 
-  const renderProvenanceMarker = (metadata: unknown) => {
+  const renderProvenanceMarker = (metadata: any) => {
     const mode = metadata?.ingestion_mode;
     if (!mode) return <span className="px-2 py-0.5 rounded bg-light-elevated text-light-secondary border border-light-border text-xs font-mono">UNKNOWN</span>;
     switch(mode) {

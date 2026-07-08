@@ -105,8 +105,7 @@ export default function CaseInventoryPage() {
     const matchesSearch =
       c.business_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.requested_product?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.facility_type?.toLowerCase().includes(searchQuery.toLowerCase());
+      c.requested_product?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "ALL" || c.status?.toUpperCase() === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -273,7 +272,7 @@ export default function CaseInventoryPage() {
                       </td>
                       <td className="py-4 px-6">
                         <span className="inline-flex items-center px-2.5 py-1 rounded border border-light-border bg-light-elevated text-[11px] font-medium text-light-secondary">
-                          {c.facility_type ? humaniseEnum(c.facility_type) : (c.requested_product || "-")}
+                          {c.requested_product ? humaniseEnum(c.requested_product) : "-"}
                         </span>
                       </td>
                       <td className="py-4 px-6">
