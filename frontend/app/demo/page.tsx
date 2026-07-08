@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, humanise } from "@/lib/formatters";
-
 interface CreditTwin {
   case_id: string;
   business_id: string;
@@ -27,13 +26,14 @@ interface CreditTwin {
   evidence_confidence_score: number | null;
   resilience_score: number | null;
   evaluated_at: string | null;
+  policy_version?: string;
 }
 
 export default function GuidedDemoPage() {
   const { user, demoLogin } = useAuth();
   const router = useRouter();
 
-  const [caseData, setCaseData] = useState<CaseResponse | null>(null);
+  const [caseData, setCaseData] = useState<any | null>(null);
   const [creditTwin, setCreditTwin] = useState<CreditTwin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,9 +41,11 @@ export default function GuidedDemoPage() {
   const [evaluating, setEvaluating] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
 
-  const determineStep = (fullCase: unknown) => {
+  const determineStep = (fullCase: any, role: string | undefined) => {
     if (fullCase.status === "HUMAN_APPROVED" || fullCase.status === "HUMAN_DECLINED") return 6;
-    if (fullCase.analyst_recommendation) return 5;
+    if (fullCase.analyst_recommendation) {
+      return role === "SANCTIONING_AUTHORITY" ? 6 : 5;
+    }
     if (fullCase.recommendation) return 4;
     if (fullCase.status === "ASSESSMENT_COMPLETED") return 4;
     return 1; // Default
@@ -51,14 +53,14 @@ export default function GuidedDemoPage() {
 
   const loadShaktiCase = async () => {
     setLoading(true);
-    const { data: listData, status: listStatus } = await apiFetch<unknown[]>("/api/cases/");
+    const { data: listData, status: listStatus } = await apiFetch<any[]>("/api/cases/");
     if (listStatus === 200 && Array.isArray(listData)) {
-      const match = listData.find((c) => c.business_id === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
+      const match = listData.find((c) => c.business_id_fk === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
       if (match) {
         const { data: fullCase, status: caseStatus } = await apiFetch(`/api/cases/${match.id}`);
         if (caseStatus === 200 && fullCase) {
           setCaseData(fullCase);
-          setStep(determineStep(fullCase));
+          setStep(determineStep(fullCase, user?.role));
           const { data: twinData, status: twinStatus } = await apiFetch<CreditTwin>(`/api/cases/${match.id}/credit-twin`);
           if (twinStatus === 200 && twinData) {
             setCreditTwin(twinData);
@@ -346,7 +348,7 @@ export default function GuidedDemoPage() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">System Recommendation</div>
-                     <div className="text-xl font-extrabold text-brand-teal">{humanise(creditTwin?.recommendation)}</div>
+                     <div className="text-xl font-extrabold text-brand-teal">{humanise(creditTwin?.recommendation || undefined)}</div>
                    </div>
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">Binding Support Limit</div>

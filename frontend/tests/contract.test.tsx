@@ -200,7 +200,7 @@ describe('Frontend Contract Tests', () => {
       expect(screen.getByText(/AI-assisted credit assessment completed successfully/i)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByText(/Submit Rec/i));
+    fireEvent.click(screen.getByText(/Submit:/i));
 
     await waitFor(() => {
       const calls = mockApiFetch.mock.calls;
@@ -220,6 +220,7 @@ describe('Frontend Contract Tests', () => {
       data: {
         id: 'CASE-001',
         business_name: 'Test Business',
+        requested_amount: 1000,
         allowed_actions: { record_human_decision: true }
       },
     });

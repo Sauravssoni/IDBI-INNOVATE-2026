@@ -26,6 +26,7 @@ npm run build
 
 echo "Running Proofs..."
 cd "$REPO_ROOT/backend"
+unset DATABASE_URL
 if [ -f "$REPO_ROOT/.env" ]; then
   export $(grep -v '^#' "$REPO_ROOT/.env" | xargs)
 fi
