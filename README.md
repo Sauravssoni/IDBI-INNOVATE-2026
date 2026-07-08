@@ -1,100 +1,78 @@
-# VYAPAR PULSE AI
+# Vyapar Pulse
 
-![Vyapar Pulse Hero](https://via.placeholder.com/1200x400.png?text=Vyapar+Pulse+AI+-+Evidence-First+Credit+Twin)
+**Evidence-linked MSME credit assessment and governed human decision support.**
 
-An Evidence-First Financial Health Card, MSME Credit Twin, and Safe-Offer Engine for credit-invisible Indian MSMEs. Built for the **IDBI Innovate 2026 Track 03** submission by **Syntheon Technology Private Limited**.
+![Vyapar Pulse Hero](docs/assets/hero.png)
 
-## Mission
-Vyapar Pulse AI helps banking institutions assess New-to-Bank (NTB) MSMEs lacking traditional financial documents. It achieves this by combining synthetic GST data, consented Account Aggregator-style banking data, UPI aggregates, EPFO employment trends, and invoice metrics into a deterministic, fully explainable "Credit Twin". 
+Vyapar Pulse is an intelligent credit underwriting engine designed specifically for the Indian MSME context. It eliminates manual reconciliation by generating an **MSME Credit Twin** from verified GST and bank statement data, executing deterministic scoring policies, and enforcing a cryptographically assured governance workflow.
 
-This is **not** a generic dashboard and **not** an LLM wrapper. LLMs are strictly bounded to generating narrative summaries; the authoritative scoring logic is 100% deterministic, monotonic, and bounded code.
+## The Guided Live Demo
 
-## Key Capabilities & Safety Invariants
-- **Deterministic Bounded Scoring:** Scores (Health, Evidence, Resilience) are mathematically guaranteed to remain between `[0, 100]`.
-- **Monotonic Stress Response:** As risk factors (e.g., buyer concentration, payment delays) increase, resilience scores strictly decrease or remain stable.
-- **Evidence-Linking:** Every feature is derived directly from auditable underlying data (GST, Bank, EPFO).
-- **Strict Architecture Boundaries:** LLMs cannot modify authoritative scores. Data flows via a strict Clean Architecture pattern.
+![Vyapar Pulse Demo](docs/assets/demo.gif)
 
-## Architecture
+This repository includes a fully interactive, synthetic Guided Demo designed for Evaluators and Sanctioning Authorities.
 
-```mermaid
-graph TD
-    A[Frontend: Next.js] -->|REST API| B[Backend: FastAPI]
-    B --> C[Feature Engine]
-    C --> D[Scoring Engine]
-    D --> E[Decision Policy]
-    B --> F[(PostgreSQL)]
-    F --> |Synthetic Evidence| C
-```
+To experience the guided flow, you can boot the demo environment and initiate the **3-Minute Credit Journey**:
 
-## Differentiators
+1. Open the [Frontend Dashboard](http://localhost:3005)
+2. Click **Start 3-Minute Credit Journey** to enter the `DSCR_SANDBOX_V1` environment.
+3. You will be safely authenticated as the `Credit Analyst` with a pre-loaded synthetic case for *Shakti Precision Components*.
+4. Step through the 6-stage evaluation:
+   - **Business & Request**: Review the initial loan parameters.
+   - **Evidence Coverage**: Inspect the raw, synthetic data connected via mock APIs (GST, Bank).
+   - **Reconciliation**: Run the engine to generate the Credit Twin.
+   - **Credit Twin**: Review deterministic bounds and system recommendations.
+   - **Analyst Recommendation**: Forward the structure to the Sanctioning Authority.
+   - **Human Sanction & Audit**: Automatically switch to the Sanctioning Authority role, approve the structure, and inspect the immutable cryptographic audit trail.
 
-Unlike standard dashboards or LLM-wrappers, Vyapar Pulse is an **Evidence-First** engine:
-1. **Deterministic Bounded Scoring:** Financial Health, Evidence, and Resilience scores are mathematically bounded `[0, 100]`.
-2. **Monotonic Stress Response:** As risk factors (e.g., buyer concentration, payment delays) increase, resilience scores strictly decrease or remain stable.
-3. **No LLM Hallucinations in Core Logic:** Authoritative credit decisions, policy constraints, and offer generation are 100% deterministic code. LLMs are strictly bounded to generating explainable narrative summaries of the numeric data.
-4. **Tamper-Evident Audit Trails:** Every system action and human decision is logged with cryptographic hashing.
+## Quick Start (Local Docker)
 
-## Demo Personas
+The repository is fully containerized and controlled via `make`. No host dependencies except Docker and `make` are required.
 
-The prototype includes four distinct MSME archetypes to demonstrate the decision engine's edge cases:
+1. **Configure Environment:**
+   ```bash
+   cp .env.example .env
+   # Ensure you set DEMO_USER_PASSWORD in .env
+   ```
 
-| Legal Name | Persona Profile | Key Constraint | System Recommendation |
-| :--- | :--- | :--- | :--- |
-| **Shakti Precision Components** | Ideal "Credit-Invisible" MSME. 18 months of GST & AA data. | None | **CONDITIONAL_OFFER** / **READY_FOR_REVIEW** |
-| **Navprerna Tech Solutions** | Genuinely missing periods or source evidence. | Low Evidence Confidence | **ADDITIONAL_EVIDENCE_REQUIRED** |
-| **Rangrez Textiles** | Viable but highly seasonal cash flows. | High Revenue CV | **READY_FOR_REVIEW** |
-| **Aarohan Infrastructure** | High existing debt obligations. | Low DSCR (< 1.15) | **DECLINE_RECOMMENDED** |
+2. **Boot the Demo Environment:**
+   ```bash
+   make demo-up
+   ```
+   This command starts PostgreSQL, runs database migrations, seeds the 4 evaluation personas, and launches the application.
+   - **Frontend:** http://localhost:3005
+   - **Backend API Docs:** http://localhost:8000/docs
 
-## One-Command Demo
+3. **Reset the Demo State:**
+   If you need to reset the four demonstration personas to their initial state at any point:
+   ```bash
+   make demo-reset
+   ```
 
-We provide a streamlined makefile for evaluators to run the entire stack and verify the decision logic.
+4. **Verify Assurance & Business Logic:**
+   Run the canonical test runner to validate backend/frontend tests and execute the Decision Assurance proofs.
+   ```bash
+   make verify
+   ```
 
-### Prerequisites
-- Docker & Docker Compose
-- `make`
+5. **Teardown:**
+   ```bash
+   make demo-down
+   ```
 
-### Commands
+## Evaluator Disclosures
 
-1. **Start the environment (detached)**
-```bash
-make demo-up
-```
+This repository is submitted as a prototype for **IDBI Innovate 2026**.
 
-2. **Reset the database and seed exactly 4 personas**
-```bash
-make demo-reset
-```
+* **Synthetic Data:** All data utilized (GST records, bank statements, personal details) is purely synthetic and deterministically generated by the seeders.
+* **Deterministic Execution:** The decisioning engine is entirely deterministic. No speculative AI agents or non-deterministic LLMs are used for financial limits, reconciliation, or policy logic.
+* **Role-Based Access Control (RBAC/BOLA):** Workspaces strictly enforce Object-Level Authorization based on branch topology, loan limits, and user roles.
+* **Cryptographic Audit:** All case mutations use Compare-And-Swap (CAS) optimistic locking and append to a SHA-256 hash-linked audit chain.
 
-3. **Verify the decision logic (Decision Assurance)**
-```bash
-make verify
-```
+## Documentation Reference
 
-4. **Tear down everything**
-```bash
-make demo-down
-```
-
-## Demo Credentials
-
-> **Note:** As a bank-internal underwriting platform, there is no public self-registration. Users are strictly provisioned by an administrator. Use the credentials below to log in.
-
-| Role | Email | Password | Allowed Actions |
-| :--- | :--- | :--- | :--- |
-| **Relationship Manager (RM)** | `rm@bank.example` | `demopassword` | View cases, View read-only assessment, Acknowledge decisions |
-| **Credit Analyst (CA)** | `credit@bank.example` | `demopassword` | Run assessment, View full details, Submit recommendation |
-| **Sanctioning Authority (SA)** | `sa@bank.example` | `demopassword` | Review CA recommendations, Approve/Decline |
-| **Auditor** | `auditor@bank.example` | `demopassword` | View tamper-evident logs |
-| **System/Admin** | `system@bank.example` / `admin@bank.example` | `demopassword` | Administration tasks |
-
-## Known Limitations & Future Work
-- **Sandbox Rules:** The credit policies and limits in `SafeLimitEngine` (e.g. 20% Nayak Committee heuristic) are illustrative prototype assumptions, not exact production policies.
-- **Mock Aggregator:** The Account Aggregator implementation uses synthetic seeded data rather than a live Sahamati sandbox connection.
-
-## Repository Quality Standards
-This repository enforces:
-- Clean Architecture (API, Core, Domain, DB layers isolated)
-- SQLAlchemy ORM with Alembic schema migrations
-- Deterministic data seeding for reproducibility
-- Security by design (threat models, access controls, BOLA checks)
+- **[Final Evidence Report](artifacts/FINAL_EVIDENCE_REPORT.md)**: Details the successful implementation of the business logic rules and role-based access controls.
+- **[Decision Assurance Output](artifacts/decision_assurance.json)**: The machine-readable cryptographic verification of business logic monotonicities.
+- **[Decision Assurance Docs](docs/DECISION_ASSURANCE.md)**: The human-readable cryptographic verification of business logic monotonicities.
+- **[System Architecture](docs/architecture/SYSTEM_ARCHITECTURE.md)**: Detailed architectural layout, boundaries, and system design.
+- **[Threat Model](docs/THREAT_MODEL.md)**: Security assumptions and mitigation strategies.
