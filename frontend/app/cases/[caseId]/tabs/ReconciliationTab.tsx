@@ -5,8 +5,17 @@ import { apiFetch } from "@/lib/api";
 import { Scale, CheckCircle2, AlertTriangle, AlertCircle, FileSearch } from "lucide-react";
 
 export default function ReconciliationTab({ caseId }: { caseId: string }) {
-  const [reconData, setReconData] = useState<unknown>(null);
+  const [reconData, setReconData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  const formatCurrency = (amount: number | string | undefined | null) => {
+    if (amount === undefined || amount === null) return "₹0";
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (isNaN(num)) return amount;
+    if (num >= 10000000) return `₹${(num / 10000000).toFixed(2)} Cr`;
+    if (num >= 100000) return `₹${(num / 100000).toFixed(2)} L`;
+    return `₹${num.toLocaleString("en-IN")}`;
+  };
 
   useEffect(() => {
     async function fetchRecon() {
@@ -71,7 +80,7 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
         </h3>
         
         <div className="space-y-4">
-          {reconData.checks?.map((check: unknown, i: number) => (
+          {reconData.checks?.map((check: any, i: number) => (
             <div key={i} className="p-4 rounded-xl bg-light-bg border border-light-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-light-elevated transition-colors">
               <div className="flex items-start gap-4">
                 <div className="mt-1">{renderStatusIcon(check.status)}</div>
@@ -80,7 +89,7 @@ export default function ReconciliationTab({ caseId }: { caseId: string }) {
                   <div className="text-xs text-light-secondary max-w-xl">{check.explanation}</div>
                   {(check.observed_value !== undefined || check.reference_value !== undefined) && check.observed_value !== null && (
                     <div className="mt-2 text-[10px] font-mono text-light-muted">
-                      Observed: {check.observed_value} | Reference: {check.reference_value} | Variance: {check.variance_amount} ({check.variance_percentage}%)
+                      Observed: {formatCurrency(check.observed_value)} | Reference: {formatCurrency(check.reference_value)} | Variance: {formatCurrency(check.variance_amount)} ({check.variance_percentage}%)
                     </div>
                   )}
                   {check.evidence_references && check.evidence_references.length > 0 && (

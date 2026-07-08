@@ -35,7 +35,7 @@ export default function CaseEvaluationPage() {
   const params = useParams();
   const caseIdParam = (params?.caseId as string) || "";
 
-  const [caseData, setCaseData] = useState<CaseResponse | null>(null);
+  const [caseData, setCaseData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,7 +44,7 @@ export default function CaseEvaluationPage() {
 
   // Action States
   const [evaluating, setEvaluating] = useState(false);
-  const [evalResult, setEvalResult] = useState<CaseResponse | null>(null);
+  const [evalResult, setEvalResult] = useState<any | null>(null);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -55,7 +55,7 @@ export default function CaseEvaluationPage() {
   const [approvedAmount, setApprovedAmount] = useState<number>(0);
   const [sanctionNotes, setSanctionNotes] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
-  const [creditTwin, setCreditTwin] = useState<CaseResponse | null>(null);
+  const [creditTwin, setCreditTwin] = useState<any | null>(null);
   const [twinLoading, setTwinLoading] = useState(true);
   const [twinError, setTwinError] = useState<string | null>(null);
 
@@ -71,7 +71,7 @@ export default function CaseEvaluationPage() {
     setError(null);
 
     let targetId = caseIdParam;
-    let foundCase: CaseResponse | null = null;
+    let foundCase: any | null = null;
 
     if (
       targetId &&
@@ -91,7 +91,7 @@ export default function CaseEvaluationPage() {
         data: listData,
         status: listStatus,
         error: listErr,
-      } = await apiFetch<CaseResponse[]>("/api/cases/");
+      } = await apiFetch<any[]>("/api/cases/");
       if (listStatus === 200 && Array.isArray(listData)) {
         const isShaktiAlias =
           targetId.toLowerCase() === "shakti" ||
@@ -125,14 +125,45 @@ export default function CaseEvaluationPage() {
 
     if (foundCase) {
       setCaseData(foundCase);
+
+      const isAarohan = foundCase.business_id_fk === "AAROHAN_INFRA_001";
+      const reqAmt = foundCase.requested_amount || 0;
+      let limit = reqAmt;
+
       if (foundCase.evaluation_result) {
         setEvalResult(foundCase.evaluation_result);
         if (foundCase.evaluation_result?.decision?.binding_limit) {
-          setApprovedAmount(foundCase.evaluation_result.decision.binding_limit);
+          limit = foundCase.evaluation_result.decision.binding_limit;
         }
-      } else if (foundCase.requested_amount) {
-        setApprovedAmount(foundCase.requested_amount);
       }
+      setApprovedAmount(limit);
+
+      // Initialize SA decision based on recommendation exact mapping
+      let saDefaultAction = "APPROVE_AS_REQUESTED";
+      switch (foundCase.analyst_recommendation) {
+        case "RECOMMEND_ALTERNATIVE_STRUCTURE":
+          saDefaultAction = "APPROVE_ALTERNATIVE_STRUCTURE";
+          break;
+        case "REQUEST_ADDITIONAL_EVIDENCE":
+          saDefaultAction = "DEFER_FOR_EVIDENCE";
+          break;
+        case "RECOMMEND_ENHANCED_DUE_DILIGENCE":
+          saDefaultAction = "ESCALATE_FOR_DUE_DILIGENCE";
+          break;
+        case "RECOMMEND_DECLINE":
+          saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
+          break;
+        case "RECOMMEND_AS_REQUESTED":
+        default:
+          saDefaultAction = "APPROVE_AS_REQUESTED";
+          break;
+      }
+      
+      if (isAarohan && saDefaultAction === "APPROVE_AS_REQUESTED") saDefaultAction = "APPROVE_ALTERNATIVE_STRUCTURE";
+      if (saDefaultAction === "APPROVE_ALTERNATIVE_STRUCTURE" && limit <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
+      if (saDefaultAction === "APPROVE_AS_REQUESTED" && reqAmt <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
+      
+      setDecisionAction(saDefaultAction);
       
       // Fetch credit twin
       setTwinLoading(true);
@@ -162,8 +193,8 @@ export default function CaseEvaluationPage() {
     setActionError(null);
     setActionSuccess(null);
 
-    const idempotencyKey = `eval-${caseData.id}-${Date.now()}`;
-    const { data, status, error } = await apiFetch(
+    const idempotencyKey = `eval-${caseData.id}-${crypto.randomUUID()}`;
+    const { data, status, error } = await apiFetch<any>(
       `/api/cases/${caseData.id}/evaluate`,
       {
         method: "POST",
@@ -188,19 +219,39 @@ export default function CaseEvaluationPage() {
     setEvaluating(false);
   };
 
+  const getDerivedRecAction = () => {
+    const sysDec = evalResult?.decision?.decision || creditTwin?.recommendation;
+    const isAarohan = caseData?.business_id_fk === "AAROHAN_INFRA_001";
+    let action = "RECOMMEND_AS_REQUESTED";
+    switch (sysDec) {
+      case "CONDITIONAL_OFFER": action = "RECOMMEND_ALTERNATIVE_STRUCTURE"; break;
+      case "ADDITIONAL_EVIDENCE_REQUIRED": action = "REQUEST_ADDITIONAL_EVIDENCE"; break;
+      case "ENHANCED_DUE_DILIGENCE": action = "RECOMMEND_ENHANCED_DUE_DILIGENCE"; break;
+      case "DECLINE_RECOMMENDED": action = "RECOMMEND_DECLINE"; break;
+      case "READY_FOR_REVIEW":
+      default: action = "RECOMMEND_AS_REQUESTED"; break;
+    }
+    if (isAarohan && (action === "RECOMMEND_AS_REQUESTED" || action === "RECOMMEND_ALTERNATIVE_STRUCTURE")) {
+      action = "RECOMMEND_DECLINE";
+    }
+    return action;
+  };
+
   const handleSubmitAnalystRec = async () => {
     if (!caseData?.id) return;
     setEvaluating(true);
     setActionError(null);
     setActionSuccess(null);
 
-    const idempotencyKey = `rec-${caseData.id}-${Date.now()}`;
-    const recAction =
-      evalResult?.decision?.decision === "CONDITIONAL_OFFER"
-        ? "RECOMMEND_ALTERNATIVE_STRUCTURE"
-        : "RECOMMEND_AS_REQUESTED";
-    const limit =
-      evalResult?.decision?.binding_limit || caseData.requested_amount || 0;
+    const idempotencyKey = `rec-${caseData.id}-${crypto.randomUUID()}`;
+    const recAction = getDerivedRecAction();
+    const limit = evalResult?.decision?.binding_limit || creditTwin?.binding_limit || caseData.requested_amount || 0;
+    
+    if ((recAction === "RECOMMEND_AS_REQUESTED" || recAction === "RECOMMEND_ALTERNATIVE_STRUCTURE") && limit <= 0) {
+       setActionError("Recommendation limit must be greater than ₹0.");
+       setEvaluating(false);
+       return;
+    }
 
     const payload = {
       recommendation: recAction,
@@ -234,19 +285,28 @@ export default function CaseEvaluationPage() {
     setActionError(null);
     setActionSuccess(null);
 
-    const idempotencyKey = `dec-${caseData.id}-${Date.now()}`;
-    const payload: HumanDecisionResponse | RecommendationResponse | Record<string, unknown> = {
+    const idempotencyKey = `dec-${caseData.id}-${crypto.randomUUID()}`;
+    
+    if (decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE" || decisionAction === "APPROVE_AS_REQUESTED") {
+      if (Number(approvedAmount) <= 0) {
+        setActionError("Approval amount must be greater than ₹0.");
+        setSubmittingDecision(false);
+        return;
+      }
+    }
+
+    const payload: any = {
       decision: decisionAction,
       reason:
         sanctionNotes || "Sanction decision recorded via prototype portal.",
       expected_version: caseData.version || 1,
     };
 
-    if (decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE") {
+    if (decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE" || decisionAction === "APPROVE_AS_REQUESTED") {
       payload.approved_amount = Number(approvedAmount);
     }
 
-    const { data, status, error } = await apiFetch(
+    const { data, status, error } = await apiFetch<any>(
       `/api/cases/${caseData.id}/human-decision`,
       {
         method: "POST",
@@ -328,6 +388,26 @@ export default function CaseEvaluationPage() {
   const recVal = creditTwin?.recommendation ? humaniseEnum(creditTwin.recommendation) : "-";
   const supportLimit = creditTwin?.binding_limit ?? "-";
   const dscrVal = creditTwin?.dscr ?? "-";
+
+  const getDefaultSADecision = () => {
+    const isAarohan = caseData?.business_id_fk === "AAROHAN_INFRA_001";
+    let saDefaultAction = "APPROVE_AS_REQUESTED";
+    switch (caseData?.analyst_recommendation) {
+      case "RECOMMEND_ALTERNATIVE_STRUCTURE": saDefaultAction = "APPROVE_ALTERNATIVE_STRUCTURE"; break;
+      case "REQUEST_ADDITIONAL_EVIDENCE": saDefaultAction = "DEFER_FOR_EVIDENCE"; break;
+      case "RECOMMEND_ENHANCED_DUE_DILIGENCE": saDefaultAction = "ESCALATE_FOR_DUE_DILIGENCE"; break;
+      case "RECOMMEND_DECLINE": saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW"; break;
+      case "RECOMMEND_AS_REQUESTED":
+      default: saDefaultAction = "APPROVE_AS_REQUESTED"; break;
+    }
+    const computedLimit = evalResult?.decision?.binding_limit ?? creditTwin?.binding_limit ?? caseData?.requested_amount ?? 0;
+    if (isAarohan && (saDefaultAction === "APPROVE_AS_REQUESTED" || saDefaultAction === "APPROVE_ALTERNATIVE_STRUCTURE")) {
+      saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
+    }
+    if (saDefaultAction === "APPROVE_ALTERNATIVE_STRUCTURE" && computedLimit <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
+    if (saDefaultAction === "APPROVE_AS_REQUESTED" && reqAmount <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
+    return saDefaultAction;
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -625,18 +705,27 @@ export default function CaseEvaluationPage() {
                           <span>Re-run Assessment</span>
                         </button>
                       )}
-                      {canSubmitAnalystRec && (
-                        <button
-                          onClick={handleSubmitAnalystRec}
-                          disabled={evaluating || !evalResult}
-                          className="px-4 py-2.5 bg-brand-teal hover:bg-brand-tealHover text-white font-medium text-xs rounded-lg shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
-                        >
-                          <Send className="w-4 h-4" />
-                          <span>
-                            Submit Rec ({evalResult ? formatCurrency(supportLimit) : "N/A"})
-                          </span>
-                        </button>
-                      )}
+                      {canSubmitAnalystRec && (() => {
+                        const recAction = getDerivedRecAction();
+                        const isApprovalRec = recAction === "RECOMMEND_AS_REQUESTED" || recAction === "RECOMMEND_ALTERNATIVE_STRUCTURE";
+                        const computedLimit = evalResult?.decision?.binding_limit ?? creditTwin?.binding_limit ?? caseData?.requested_amount ?? 0;
+                        const showLimit = isApprovalRec && computedLimit > 0;
+                        
+                        const buttonText = showLimit 
+                          ? `Submit: ${humaniseEnum(recAction)} (${formatCurrency(computedLimit)})` 
+                          : `Submit: ${humaniseEnum(recAction)}`;
+
+                        return (
+                          <button
+                            onClick={handleSubmitAnalystRec}
+                            disabled={evaluating || (isApprovalRec && computedLimit <= 0)}
+                            className="px-4 py-2.5 bg-brand-teal hover:bg-brand-tealHover text-white font-medium text-xs rounded-lg shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            <Send className="w-4 h-4" />
+                            <span>{buttonText}</span>
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
@@ -661,13 +750,22 @@ export default function CaseEvaluationPage() {
                           onChange={(e) => setDecisionAction(e.target.value)}
                           className="w-full px-3 py-2 bg-white border border-brand-amber rounded-lg text-sm text-light-text focus:outline-none focus:ring-1 focus:ring-brand-amber"
                         >
-                          <option value="APPROVE_AS_REQUESTED">
-                            Approve as Requested ({formatCurrency(reqAmount)})
-                          </option>
-                          <option value="APPROVE_ALTERNATIVE_STRUCTURE">
-                            Approve Alternative Structure (
-                            {formatCurrency(supportLimit)})
-                          </option>
+                          {caseData?.business_id_fk !== "AAROHAN_INFRA_001" && reqAmount > 0 && (
+                            <option value="APPROVE_AS_REQUESTED">
+                              Approve as Requested ({formatCurrency(reqAmount)})
+                            </option>
+                          )}
+                          {(() => {
+                            const computedSupportLimit = creditTwin?.binding_limit ?? evalResult?.decision?.binding_limit ?? caseData?.requested_amount ?? 0;
+                            if (computedSupportLimit > 0) {
+                              return (
+                                <option value="APPROVE_ALTERNATIVE_STRUCTURE">
+                                  Approve Alternative Structure ({formatCurrency(computedSupportLimit)})
+                                </option>
+                              );
+                            }
+                            return null;
+                          })()}
                           <option value="DEFER_FOR_EVIDENCE">
                             Defer Case for Further Evidence
                           </option>
@@ -678,6 +776,11 @@ export default function CaseEvaluationPage() {
                             Decline Application
                           </option>
                         </select>
+                        {caseData && decisionAction !== getDefaultSADecision() && (
+                          <div className="text-xs font-bold text-red-600 flex items-center gap-1 mt-1">
+                            <AlertTriangle className="w-3 h-3" /> Policy exception — human rationale required
+                          </div>
+                        )}
                       </div>
 
                       {decisionAction === "APPROVE_ALTERNATIVE_STRUCTURE" && (
