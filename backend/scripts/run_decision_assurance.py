@@ -165,7 +165,7 @@ def run():
             db.refresh(ran)
         ran_rec = ran.recommendation.value if ran.recommendation else None
         assert_step(
-            ran_rec in ("READY_FOR_REVIEW", "CONDITIONAL_OFFER"),
+            ran_rec == "READY_FOR_REVIEW",
             f"Rangrez got {ran_rec}",
             "Rangrez Recommendation",
         )
@@ -305,7 +305,7 @@ def run():
             "Analyst RBAC",
         )
 
-        resp_sa = sa_client.post(
+        resp_sa_success = sa_client.post(
             f"/api/cases/{shakti.id}/human-decision",
             headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **sa_headers},
             json={
@@ -316,9 +316,25 @@ def run():
             },
         )
         assert_step(
-            resp_sa.status_code in (200, 400, 409),
-            "SA mandate enforced verified",
-            "SA Mandate",
+            resp_sa_success.status_code == 200,
+            f"SA within-mandate approval succeeded with 200, got {resp_sa_success.status_code}",
+            "SA Mandate Success Check",
+        )
+
+        resp_sa_fail = sa_client.post(
+            f"/api/cases/{shakti.id}/human-decision",
+            headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **sa_headers},
+            json={
+                "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
+                "reason": "Test reasoning",
+                "approved_amount": "999999999.00",
+                "expected_version": shakti.version + 1,
+            },
+        )
+        assert_step(
+            resp_sa_fail.status_code == 403 and "Case exceeds your sanctioning mandate" in resp_sa_fail.json().get("detail", ""),
+            f"SA above-mandate approval failed with 403, got {resp_sa_fail.status_code}",
+            "SA Mandate Failure Check",
         )
 
         print("--- 6. LLM Not Called Check ---")
