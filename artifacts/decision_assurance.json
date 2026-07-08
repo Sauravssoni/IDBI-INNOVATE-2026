@@ -1,10 +1,10 @@
 {
-  "git_sha": "09c3aeb2f00234341edf2aa43c0054cbbae1ea93",
-  "timestamp": "2026-07-08T06:00:02.453320",
+  "git_sha": "c5d4dcf6491682c2f1ff021cd3e5996a6d146f45",
+  "timestamp": "2026-07-08T06:44:11.571107",
   "policy_version": 1,
   "calculation_version": 1,
-  "total_assertions": 16,
-  "passed": 16,
+  "total_assertions": 17,
+  "passed": 17,
   "failed": 0,
   "overall_result": "PASS",
   "personas": {
@@ -89,9 +89,14 @@
       "message": "Analyst cannot sanction verified"
     },
     {
-      "step": "SA Mandate",
+      "step": "SA Mandate Success Check",
       "status": "PASS",
-      "message": "SA mandate enforced verified"
+      "message": "SA within-mandate approval succeeded with 200, got 200"
+    },
+    {
+      "step": "SA Mandate Failure Check",
+      "status": "PASS",
+      "message": "SA above-mandate approval failed with 403, got 403"
     },
     {
       "step": "LLM Isolation",

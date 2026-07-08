@@ -1,12 +1,12 @@
 # Decision Assurance Report
 
-**Final SHA:** `09c3aeb2f00234341edf2aa43c0054cbbae1ea93`
-**Timestamp:** 2026-07-08T06:00:02.453320
+**Final SHA:** `c5d4dcf6491682c2f1ff021cd3e5996a6d146f45`
+**Timestamp:** 2026-07-08T06:44:11.571107
 **Policy Version:** 1
 **Calculation Version:** 1
 
-**Total Assertions:** 16
-**Passed:** 16
+**Total Assertions:** 17
+**Passed:** 17
 **Failed:** 0
 **Overall Result:** PASS
 
@@ -30,6 +30,7 @@
 - [PASS] **Evidence-confidence Monotonicity**: evidence-confidence monotonicity verified
 - [PASS] **RM RBAC**: RM cannot evaluate verified
 - [PASS] **Analyst RBAC**: Analyst cannot sanction verified
-- [PASS] **SA Mandate**: SA mandate enforced verified
+- [PASS] **SA Mandate Success Check**: SA within-mandate approval succeeded with 200, got 200
+- [PASS] **SA Mandate Failure Check**: SA above-mandate approval failed with 403, got 403
 - [PASS] **LLM Isolation**: LLM not called in scoring/policy verified
 - [PASS] **Audit Hash Chain**: Continuous audit hash chain verified
