@@ -1,45 +1,107 @@
 {
-  "title": "Decision Assurance Report",
-  "cases": [
+  "git_sha": "09c3aeb2f00234341edf2aa43c0054cbbae1ea93",
+  "timestamp": "2026-07-08T06:00:02.453320",
+  "policy_version": 1,
+  "calculation_version": 1,
+  "total_assertions": 16,
+  "passed": 16,
+  "failed": 0,
+  "overall_result": "PASS",
+  "personas": {
+    "SHAKTI_PRECISION_001": {
+      "recommendation": "CONDITIONAL_OFFER",
+      "limit": 3569042.496
+    },
+    "NAVPRERNA_TECH_001": {
+      "recommendation": "ADDITIONAL_EVIDENCE_REQUIRED"
+    },
+    "RANGREZ_TEXTILES_001": {
+      "recommendation": "READY_FOR_REVIEW"
+    },
+    "AAROHAN_INFRA_001": {
+      "recommendation": "DECLINE_RECOMMENDED"
+    }
+  },
+  "details": [
     {
-      "business_id": "SHAKTI_PRECISION_001",
-      "legal_name": "Shakti Precision Components Pvt Ltd",
-      "status": "INITIATED",
-      "requested_amount": 5000000.0,
-      "assessment_result": {
-        "dscr": null,
-        "recommendation": null
-      }
+      "step": "Persona Count",
+      "status": "PASS",
+      "message": "Found 4 businesses"
     },
     {
-      "business_id": "NAVPRERNA_TECH_001",
-      "legal_name": "Navprerna Tech Solutions",
-      "status": "ASSESSMENT_COMPLETED",
-      "requested_amount": 3000000.0,
-      "assessment_result": {
-        "dscr": 2.41,
-        "recommendation": "ADDITIONAL_EVIDENCE_REQUIRED"
-      }
+      "step": "Case Count",
+      "status": "PASS",
+      "message": "Found 4 cases"
     },
     {
-      "business_id": "RANGREZ_TEXTILES_001",
-      "legal_name": "Rangrez Textiles",
-      "status": "DECISION_PENDING",
-      "requested_amount": 4500000.0,
-      "assessment_result": {
-        "dscr": 7.26,
-        "recommendation": "READY_FOR_REVIEW"
-      }
+      "step": "Shakti Limit",
+      "status": "PASS",
+      "message": "Shakti Supportable Amount ~35.7 lakh. Got 3569042.496"
     },
     {
-      "business_id": "AAROHAN_INFRA_001",
-      "legal_name": "Aarohan Infrastructure",
-      "status": "ASSESSMENT_COMPLETED",
-      "requested_amount": 20000000.0,
-      "assessment_result": {
-        "dscr": 0.55,
-        "recommendation": "DECLINE_RECOMMENDED"
-      }
+      "step": "Navprerna Recommendation",
+      "status": "PASS",
+      "message": "Navprerna got ADDITIONAL_EVIDENCE_REQUIRED"
+    },
+    {
+      "step": "Rangrez Recommendation",
+      "status": "PASS",
+      "message": "Rangrez got READY_FOR_REVIEW"
+    },
+    {
+      "step": "Aarohan Recommendation",
+      "status": "PASS",
+      "message": "Aarohan got DECLINE_RECOMMENDED"
+    },
+    {
+      "step": "Idempotency Replay",
+      "status": "PASS",
+      "message": "Deterministic Idempotency replay"
+    },
+    {
+      "step": "CAS STALE_VERSION",
+      "status": "PASS",
+      "message": "CAS STALE_VERSION verified"
+    },
+    {
+      "step": "Cash-flow/limit Monotonicity",
+      "status": "PASS",
+      "message": "cash-flow/limit monotonicity verified"
+    },
+    {
+      "step": "Obligation/DSCR Monotonicity",
+      "status": "PASS",
+      "message": "obligation/DSCR monotonicity verified"
+    },
+    {
+      "step": "Evidence-confidence Monotonicity",
+      "status": "PASS",
+      "message": "evidence-confidence monotonicity verified"
+    },
+    {
+      "step": "RM RBAC",
+      "status": "PASS",
+      "message": "RM cannot evaluate verified"
+    },
+    {
+      "step": "Analyst RBAC",
+      "status": "PASS",
+      "message": "Analyst cannot sanction verified"
+    },
+    {
+      "step": "SA Mandate",
+      "status": "PASS",
+      "message": "SA mandate enforced verified"
+    },
+    {
+      "step": "LLM Isolation",
+      "status": "PASS",
+      "message": "LLM not called in scoring/policy verified"
+    },
+    {
+      "step": "Audit Hash Chain",
+      "status": "PASS",
+      "message": "Continuous audit hash chain verified"
     }
   ]
 }
