@@ -280,10 +280,12 @@ def run():
         )
 
         print("--- 5. Testing RBAC ---")
+        resp_get = ca_client.get(f"/api/cases/{shakti.id}", headers=ca_headers)
+        shakti_version = resp_get.json()["version"]
         resp_rm = rm_client.post(
             f"/api/cases/{shakti.id}/evaluate",
             headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **rm_headers},
-            json={"expected_version": shakti.version},
+            json={"expected_version": shakti_version},
         )
         assert_step(
             resp_rm.status_code == 403, "RM cannot evaluate verified", "RM RBAC"
@@ -296,7 +298,7 @@ def run():
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
                 "reason": "Test reasoning",
                 "approved_amount": "300000.00",
-                "expected_version": shakti.version,
+                "expected_version": shakti_version,
             },
         )
         assert_step(
@@ -312,7 +314,7 @@ def run():
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
                 "reason": "Test reasoning",
                 "approved_amount": "300000.00",
-                "expected_version": shakti.version,
+                "expected_version": shakti_version,
             },
         )
         assert_step(
@@ -328,11 +330,13 @@ def run():
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
                 "reason": "Test reasoning",
                 "approved_amount": "999999999.00",
-                "expected_version": shakti.version + 1,
+                "expected_version": shakti_version + 1,
             },
         )
         assert_step(
-            resp_sa_fail.status_code == 403 and "Case exceeds your sanctioning mandate" in resp_sa_fail.json().get("detail", ""),
+            resp_sa_fail.status_code == 403
+            and "Case exceeds your sanctioning mandate"
+            in resp_sa_fail.json().get("detail", ""),
             f"SA above-mandate approval failed with 403, got {resp_sa_fail.status_code}",
             "SA Mandate Failure Check",
         )
