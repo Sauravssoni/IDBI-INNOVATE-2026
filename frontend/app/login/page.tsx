@@ -12,9 +12,10 @@ import {
   UserCheck,
   Briefcase,
   TrendingUp,
-  Settings,
   AlertCircle,
   RefreshCw,
+  Search,
+  PlayCircle
 } from "lucide-react";
 
 export default function LoginPage() {
@@ -23,8 +24,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [serviceStatus, setServiceStatus] = useState<"checking" | "available" | "unavailable">("checking");
+  const [showEmailLogin, setShowEmailLogin] = useState(false);
 
-  const { login } = useAuth();
+  const { login, demoLogin } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -39,16 +41,42 @@ export default function LoginPage() {
       if (res.error?.includes("Failed to fetch") || res.error?.includes("Network request failed") || res.error?.includes("unavailable")) {
         setServiceStatus("unavailable");
       } else {
-        setError(res.error || "Login failed. Please verify credentials.");
+        setError("Email or password is incorrect.");
       }
       setIsSubmitting(false);
     }
   };
 
-  const selectDemoRole = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword("");
+  const handleDemoLogin = async (role: string) => {
     setError(null);
+    setIsSubmitting(true);
+    const res = await demoLogin(role);
+    if (res.success) {
+      router.push("/");
+    } else {
+      if (res.error?.includes("Failed to fetch") || res.error?.includes("Network request failed") || res.error?.includes("unavailable")) {
+        setServiceStatus("unavailable");
+      } else {
+        setError(res.error || "Guided demo access is unavailable in this environment.");
+      }
+      setIsSubmitting(false);
+    }
+  };
+
+  const startJourney = async () => {
+    setError(null);
+    setIsSubmitting(true);
+    const res = await demoLogin("CREDIT_ANALYST");
+    if (res.success) {
+      router.push("/demo");
+    } else {
+      if (res.error?.includes("Failed to fetch") || res.error?.includes("Network request failed") || res.error?.includes("unavailable")) {
+        setServiceStatus("unavailable");
+      } else {
+        setError(res.error || "Guided demo access is unavailable in this environment.");
+      }
+      setIsSubmitting(false);
+    }
   };
 
   const checkHealth = async () => {
@@ -68,8 +96,6 @@ export default function LoginPage() {
   React.useEffect(() => {
     checkHealth();
   }, []);
-
-  const enableDemoShortcuts = process.env.NEXT_PUBLIC_ENABLE_DEMO_SHORTCUTS === "true";
 
   return (
     <div className="min-h-screen bg-brand-nav text-light-text flex flex-col justify-center items-center p-4 relative overflow-hidden">
@@ -98,7 +124,7 @@ export default function LoginPage() {
             </div>
             <h2 className="text-xl font-bold text-light-text mb-2">Service Unavailable</h2>
             <p className="text-sm text-light-secondary mb-8">
-              Vyapar Pulse API could not be reached. Ensure the backend services are running.
+              Vyapar Pulse API is unavailable. Retry or verify the service URL.
             </p>
             <button
               onClick={checkHealth}
@@ -110,165 +136,185 @@ export default function LoginPage() {
           </div>
         ) : (
           <>
-            <h2 className="text-xl font-bold text-light-text mb-6 flex items-center justify-between">
-              <span>Sign in to Vyapar Pulse</span>
+            <h2 className="text-xl font-bold text-light-text flex items-center justify-between mb-6">
+              <span>{showEmailLogin ? "Sign in to Vyapar Pulse" : "Demo Access"}</span>
               <span className="text-xs text-light-secondary font-medium bg-light-bg px-2 py-1 rounded">Prototype release 1.1.3</span>
             </h2>
 
-        {/* 1-Click Demo Role Selector */}
-        {enableDemoShortcuts && (
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-light-text uppercase tracking-wider mb-1">
-              Quick Demo Login (Click to Fill Email)
-            </label>
-            <p className="text-xs text-light-secondary font-medium mb-3">
-              Use the development credential provided in the evaluator guide.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => selectDemoRole("sa@bank.example")}
-                className={`p-3 rounded-lg border text-left flex items-center gap-3 transition-all ${
-                  email === "sa@bank.example"
-                    ? "bg-brand-softAmber border-brand-amber text-brand-amber shadow-sm"
-                    : "bg-light-bg border-light-border text-light-text hover:border-brand-amber hover:bg-brand-softAmber"
-                }`}
-              >
-                <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-amber shrink-0 border border-brand-amber/20">
-                  <UserCheck className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Sanction Auth</div>
-                  <div className="text-[10px] text-light-secondary font-mono">sa@bank.example</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectDemoRole("credit@bank.example")}
-                className={`p-3 rounded-lg border text-left flex items-center gap-3 transition-all ${
-                  email === "credit@bank.example"
-                    ? "bg-brand-softTeal border-brand-teal text-brand-teal shadow-sm"
-                    : "bg-light-bg border-light-border text-light-text hover:border-brand-teal hover:bg-brand-softTeal"
-                }`}
-              >
-                <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-teal shrink-0 border border-brand-teal/20">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Credit Analyst</div>
-                  <div className="text-[10px] text-light-secondary font-mono">credit@bank.example</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectDemoRole("rm@bank.example")}
-                className={`p-3 rounded-lg border text-left flex items-center gap-3 transition-all ${
-                  email === "rm@bank.example"
-                    ? "bg-brand-softTeal border-brand-teal text-brand-teal shadow-sm"
-                    : "bg-light-bg border-light-border text-light-text hover:border-brand-teal hover:bg-brand-softTeal"
-                }`}
-              >
-                <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-teal shrink-0 border border-brand-teal/20">
-                  <Briefcase className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">Relationship Mgr</div>
-                  <div className="text-[10px] text-light-secondary font-mono">rm@bank.example</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => selectDemoRole("system@bank.example")}
-                className={`p-3 rounded-lg border text-left flex items-center gap-3 transition-all ${
-                  email === "system@bank.example"
-                    ? "bg-light-elevated border-light-secondary text-light-text shadow-sm"
-                    : "bg-light-bg border-light-border text-light-text hover:border-light-secondary hover:bg-light-elevated"
-                }`}
-              >
-                <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-light-secondary shrink-0 border border-light-border">
-                  <Settings className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold truncate">System Admin</div>
-                  <div className="text-[10px] text-light-secondary font-mono">system@bank.example</div>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 p-4 bg-brand-softRed border border-brand-red rounded-lg flex items-center gap-3 text-brand-red text-sm font-medium">
-            <AlertCircle className="w-5 h-5 text-brand-red shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-light-text mb-1.5 uppercase">
-              Email Address
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-light-muted">
-                <Mail className="w-4 h-4" />
+            {error && (
+              <div className="mb-6 p-4 bg-brand-softRed border border-brand-red rounded-lg flex items-center gap-3 text-brand-red text-sm font-medium">
+                <AlertCircle className="w-5 h-5 text-brand-red shrink-0" />
+                <span>{error}</span>
               </div>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-light-bg border border-light-border rounded-lg text-light-text placeholder-light-muted text-sm focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all font-medium"
-                placeholder="user@bank.example"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold text-light-text mb-1.5 uppercase">
-              Password
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-light-muted">
-                <Lock className="w-4 h-4" />
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-light-bg border border-light-border rounded-lg text-light-text placeholder-light-muted text-sm focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all font-medium"
-                placeholder="••••••••••••"
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full mt-4 py-3 px-4 bg-brand-teal hover:bg-brand-tealHover text-white font-bold rounded-lg border border-brand-tealHover flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-sm"
-          >
-            {isSubmitting ? (
-              <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <span>Sign In to Vyapar Pulse</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
             )}
-          </button>
-        </form>
 
-        <div className="mt-6 pt-5 border-t border-light-border text-center">
-          <p className="text-xs text-light-secondary font-medium">
-            Protected by CAS & Role-Based BOLA Governance • Built for IDBI Innovate 2026
-          </p>
-        </div>
+            {!showEmailLogin ? (
+              <div className="space-y-6">
+                <div className="bg-brand-softTeal border border-brand-teal rounded-lg p-5">
+                  <h3 className="text-sm font-bold text-brand-teal uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <PlayCircle className="w-5 h-5" />
+                    Guided Live Demo
+                  </h3>
+                  <p className="text-sm text-light-text font-medium mb-4">
+                    Experience the complete analyst-to-sanction journey with live API reconciliation and actual data twins.
+                  </p>
+                  <button
+                    onClick={startJourney}
+                    disabled={isSubmitting}
+                    className="w-full py-3 px-4 bg-brand-teal hover:bg-brand-tealHover text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-all disabled:opacity-50 shadow-sm"
+                  >
+                    {isSubmitting ? (
+                      <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <span>Start 3-Minute Credit Journey</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div>
+                  <h3 className="text-xs font-bold text-light-secondary uppercase tracking-wider mb-3">
+                    Explore Specific Roles
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    <button
+                      onClick={() => handleDemoLogin("CREDIT_ANALYST")}
+                      disabled={isSubmitting}
+                      className="p-3 bg-light-bg border border-light-border hover:border-brand-teal hover:bg-brand-softTeal text-left rounded-lg transition-all flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-teal shrink-0 border border-brand-teal/20">
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-light-text">Credit Analyst</div>
+                        <div className="text-[11px] text-light-secondary">Evaluate evidence and recommend a structure</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDemoLogin("SANCTIONING_AUTHORITY")}
+                      disabled={isSubmitting}
+                      className="p-3 bg-light-bg border border-light-border hover:border-brand-amber hover:bg-brand-softAmber text-left rounded-lg transition-all flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-amber shrink-0 border border-brand-amber/20">
+                        <UserCheck className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-light-text">Sanctioning Authority</div>
+                        <div className="text-[11px] text-light-secondary">Review the analyst recommendation and decide</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDemoLogin("RELATIONSHIP_MANAGER")}
+                      disabled={isSubmitting}
+                      className="p-3 bg-light-bg border border-light-border hover:border-brand-teal hover:bg-brand-softTeal text-left rounded-lg transition-all flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-teal shrink-0 border border-brand-teal/20">
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-light-text">Relationship Manager</div>
+                        <div className="text-[11px] text-light-secondary">View originated cases and final outcomes</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleDemoLogin("AUDITOR")}
+                      disabled={isSubmitting}
+                      className="p-3 bg-light-bg border border-light-border hover:border-light-secondary hover:bg-light-elevated text-left rounded-lg transition-all flex items-center gap-3"
+                    >
+                      <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-light-secondary shrink-0 border border-light-border">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-light-text">Auditor</div>
+                        <div className="text-[11px] text-light-secondary">Inspect versioned decision history</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-center pt-2">
+                  <button 
+                    onClick={() => { setShowEmailLogin(true); setError(null); }}
+                    className="text-sm font-bold text-brand-teal hover:underline"
+                  >
+                    Use email and password instead
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div>
+                  <label className="block text-xs font-bold text-light-text mb-1.5 uppercase">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-light-muted">
+                      <Mail className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-light-bg border border-light-border rounded-lg text-light-text placeholder-light-muted text-sm focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all font-medium"
+                      placeholder="user@bank.example"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-light-text mb-1.5 uppercase">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-light-muted">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 bg-light-bg border border-light-border rounded-lg text-light-text placeholder-light-muted text-sm focus:outline-none focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all font-medium"
+                      placeholder="••••••••••••"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full mt-4 py-3 px-4 bg-brand-teal hover:bg-brand-tealHover text-white font-bold rounded-lg border border-brand-tealHover flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer shadow-sm"
+                >
+                  {isSubmitting ? (
+                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <span>Sign In to Vyapar Pulse</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+                
+                <div className="text-center pt-2">
+                  <button 
+                    type="button"
+                    onClick={() => { setShowEmailLogin(false); setError(null); }}
+                    className="text-sm font-bold text-light-secondary hover:text-light-text hover:underline"
+                  >
+                    Return to Demo Access
+                  </button>
+                </div>
+              </form>
+            )}
+
+            <div className="mt-6 pt-5 border-t border-light-border text-center">
+              <p className="text-xs text-light-secondary font-medium">
+                Synthetic Sandbox • Protected by CAS & Role-Based BOLA Governance
+              </p>
+            </div>
           </>
         )}
       </div>

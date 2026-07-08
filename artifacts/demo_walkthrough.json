@@ -1,68 +1,101 @@
 [
   {
-    "step": "Analyst Login",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:31.871893"
+    "step_request": "Analyst Login",
+    "expected": "200 OK",
+    "status": "200",
+    "actual": "Logged in analyst",
+    "passed": true,
+    "case_version": null,
+    "event_sequence": null
   },
   {
-    "step": "Shakti Assessment",
-    "status": "PASS",
-    "result": "Evaluated Shakti",
-    "timestamp": "2026-07-07T18:35:31.880741"
+    "step_request": "Shakti Assessment",
+    "expected": "200 OK",
+    "status": "200",
+    "actual": "Evaluated Shakti",
+    "passed": true,
+    "case_version": 3,
+    "event_sequence": null
   },
   {
-    "step": "Analyst Recommend Alternative Structure",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:32.007901"
+    "step_request": "Analyst Recommend Alternative Structure",
+    "expected": "200 OK",
+    "status": "200",
+    "actual": "Recommended alternative",
+    "passed": true,
+    "case_version": 4,
+    "event_sequence": null
   },
   {
-    "step": "SA Login",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:32.078560"
+    "step_request": "SA Login",
+    "expected": "200 OK",
+    "status": "200",
+    "actual": "Logged in SA",
+    "passed": true,
+    "case_version": null,
+    "event_sequence": null
   },
   {
-    "step": "SA Approve Alternative Structure",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:32.126627"
+    "step_request": "SA Approve Alternative Structure",
+    "expected": "200 OK",
+    "status": "200",
+    "actual": "Approved alternative",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": null
   },
   {
-    "step": "RM Read-only Result",
-    "status": "PASS",
-    "result": "RM viewed approved case",
-    "timestamp": "2026-07-07T18:35:32.218641"
+    "step_request": "RM Read-only Result",
+    "expected": "200 OK & HUMAN_APPROVED",
+    "status": "200",
+    "actual": "Viewed approved case",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": null
   },
   {
-    "step": "Auditor Audit Access",
-    "status": "PASS",
-    "result": "Auditor viewed 4 events",
-    "timestamp": "2026-07-07T18:35:32.322014"
+    "step_request": "Auditor Audit Access",
+    "expected": "200 OK & >0 events",
+    "status": "200",
+    "actual": "Auditor viewed 4 events",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": null
   },
   {
-    "step": "System Admin Borrower-data Denial",
-    "status": "PASS",
-    "result": "System Admin denied",
-    "timestamp": "2026-07-07T18:35:32.457843"
+    "step_request": "System Admin Borrower-data Denial",
+    "expected": "403/404",
+    "status": "404",
+    "actual": "System Admin denied",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": null
   },
   {
-    "step": "Invalid-case Denial",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:32.483967"
+    "step_request": "Invalid-case Denial",
+    "expected": "404 NOT FOUND",
+    "status": "404",
+    "actual": "Invalid case denied",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": null
   },
   {
-    "step": "Idempotency Replay",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:32.615822"
+    "step_request": "Idempotency Replay",
+    "expected": "409/400 & 200 OK",
+    "status": "200",
+    "actual": "Idempotency replay handled correctly",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": null
   },
   {
-    "step": "Continuous Case Versions and Audit Sequence",
-    "status": "PASS",
-    "result": "",
-    "timestamp": "2026-07-07T18:35:32.637282"
+    "step_request": "Continuous Case Versions and Audit Sequence",
+    "expected": "Hash chain intact",
+    "status": "SUCCESS",
+    "actual": "Validated 4 events",
+    "passed": true,
+    "case_version": 5,
+    "event_sequence": 4
   }
 ]
