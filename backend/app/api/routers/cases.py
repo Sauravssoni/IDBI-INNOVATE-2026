@@ -22,6 +22,7 @@ from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
 from app.api.dependencies import get_current_user
+from app.core.audit import calculate_audit_hash
 from app.db.orm.users import User
 from app.services.authz import (
     apply_case_list_scope,
@@ -254,8 +255,7 @@ def cas_update_case_and_audit(
         "metadata": metadata_enc,
     }
 
-    payload_str = json.dumps(hash_payload, sort_keys=True)
-    event_hash = hashlib.sha256((prior_hash + payload_str).encode("utf-8")).hexdigest()
+    event_hash = calculate_audit_hash(prior_hash, hash_payload)
 
     audit = AuditEvent(
         case_id=case_id,

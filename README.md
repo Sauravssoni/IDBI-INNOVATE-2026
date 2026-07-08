@@ -2,13 +2,11 @@
 
 **Evidence-linked MSME credit assessment and governed human decision support.**
 
-![Vyapar Pulse Hero](docs/assets/hero.png)
 
 Vyapar Pulse is an intelligent credit underwriting engine designed specifically for the Indian MSME context. It eliminates manual reconciliation by generating an **MSME Credit Twin** from verified GST and bank statement data, executing deterministic scoring policies, and enforcing a cryptographically assured governance workflow.
 
 ## The Guided Live Demo
 
-![Vyapar Pulse Demo](docs/assets/demo.gif)
 
 This repository includes a fully interactive, synthetic Guided Demo designed for Evaluators and Sanctioning Authorities.
 

@@ -12,6 +12,7 @@ import {
   Send, UserCheck, Check, ShieldCheck, Database, Scale, Activity, User, Clock, ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
+import { formatCurrency, humanise } from "@/lib/formatters";
 
 interface CreditTwin {
   case_id: string;
@@ -32,7 +33,7 @@ export default function GuidedDemoPage() {
   const { user, demoLogin } = useAuth();
   const router = useRouter();
 
-  const [caseData, setCaseData] = useState<any | null>(null);
+  const [caseData, setCaseData] = useState<CaseResponse | null>(null);
   const [creditTwin, setCreditTwin] = useState<CreditTwin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export default function GuidedDemoPage() {
   const [evaluating, setEvaluating] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
 
-  const determineStep = (fullCase: any) => {
+  const determineStep = (fullCase: unknown) => {
     if (fullCase.status === "HUMAN_APPROVED" || fullCase.status === "HUMAN_DECLINED") return 6;
     if (fullCase.analyst_recommendation) return 5;
     if (fullCase.recommendation) return 4;
@@ -50,7 +51,7 @@ export default function GuidedDemoPage() {
 
   const loadShaktiCase = async () => {
     setLoading(true);
-    const { data: listData, status: listStatus } = await apiFetch<any[]>("/api/cases/");
+    const { data: listData, status: listStatus } = await apiFetch<unknown[]>("/api/cases/");
     if (listStatus === 200 && Array.isArray(listData)) {
       const match = listData.find((c) => c.business_id === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
       if (match) {
@@ -113,7 +114,7 @@ export default function GuidedDemoPage() {
     if (!caseData?.id) return;
     setEvaluating(true);
     const idempotencyKey = crypto.randomUUID();
-    const limit = creditTwin?.binding_limit || 0;
+    const limit = creditTwin?.binding_limit ?? "-";
     const { status } = await apiFetch(`/api/cases/${caseData.id}/analyst-recommendation`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
@@ -146,7 +147,7 @@ export default function GuidedDemoPage() {
     if (!caseData?.id) return;
     setEvaluating(true);
     const idempotencyKey = crypto.randomUUID();
-    const limit = creditTwin?.binding_limit || 0;
+    const limit = creditTwin?.binding_limit ?? "-";
     const { status } = await apiFetch(`/api/cases/${caseData.id}/human-decision`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
@@ -345,12 +346,12 @@ export default function GuidedDemoPage() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">System Recommendation</div>
-                     <div className="text-xl font-extrabold text-brand-teal">{creditTwin?.recommendation || "N/A"}</div>
+                     <div className="text-xl font-extrabold text-brand-teal">{humanise(creditTwin?.recommendation)}</div>
                    </div>
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">Binding Support Limit</div>
                      <div className="text-xl font-extrabold font-mono text-brand-teal">
-                       ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")}
+                       {formatCurrency(creditTwin?.binding_limit)}
                      </div>
                    </div>
                 </div>
@@ -398,7 +399,7 @@ export default function GuidedDemoPage() {
                   </div>
                   <div className="p-4 bg-light-bg border border-light-border rounded-lg">
                     <div className="text-xs font-bold text-light-secondary mb-2 uppercase">Rationale</div>
-                    <div className="text-sm text-light-text">Deterministic reconciliation successful. Recommend ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")} alternative structure based on verified cash flows.</div>
+                    <div className="text-sm text-light-text">Deterministic reconciliation successful. Recommend {formatCurrency(creditTwin?.binding_limit)} alternative structure based on verified cash flows.</div>
                   </div>
                   <button 
                     onClick={submitAnalystRecommendation}
@@ -428,11 +429,11 @@ export default function GuidedDemoPage() {
                   <div className="p-6 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                     <ShieldCheck className="w-12 h-12 text-brand-teal mx-auto mb-3" />
                     <h3 className="text-2xl font-bold text-brand-teal mb-1">SANCTION {caseData.status === "HUMAN_APPROVED" ? "APPROVED" : "DECLINED"}</h3>
-                    <p className="text-sm text-light-secondary font-mono">Limit: ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")}</p>
+                    <p className="text-sm text-light-secondary font-mono">Limit: {formatCurrency(creditTwin?.binding_limit)}</p>
                   </div>
                   <div className="pt-4 border-t border-light-border">
                     <h4 className="text-sm font-bold text-light-text mb-4 flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-light-secondary" /> Immutable Audit Trail
+                      <Clock className="w-4 h-4 text-light-secondary" /> Tamper-Evident Prototype Audit Chain
                     </h4>
                     <div className="h-[250px] overflow-y-auto border border-light-border rounded-lg bg-light-bg">
                       <AssessmentHistoryTab caseId={caseData.id} />
@@ -447,9 +448,21 @@ export default function GuidedDemoPage() {
                   <div className="p-5 bg-brand-softAmber border border-brand-amber rounded-lg">
                     <div className="text-sm font-bold text-brand-amber mb-2 uppercase flex items-center justify-between">
                       <span>Recommendation Review</span>
-                      <span className="font-mono text-xs">Limit: ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")}</span>
                     </div>
-                    <p className="text-sm text-light-text font-medium">{caseData.human_decision || "Analyst recommends alternative structure."}</p>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="text-light-secondary">Requested Amount</div>
+                      <div className="text-right font-mono font-medium">{formatCurrency(caseData.requested_amount)}</div>
+                      <div className="text-light-secondary">Supportable Amount</div>
+                      <div className="text-right font-mono font-medium">{formatCurrency(creditTwin?.binding_limit)}</div>
+                      <div className="text-light-secondary">DSCR</div>
+                      <div className="text-right font-mono font-medium">{creditTwin?.dscr ? `${creditTwin.dscr}×` : "-"}</div>
+                      <div className="text-light-secondary">Analyst Action</div>
+                      <div className="text-right font-medium">{humanise(caseData.analyst_recommendation)}</div>
+                      <div className="text-light-secondary">Mandate Status</div>
+                      <div className="text-right font-medium text-brand-teal">Within Mandate</div>
+                      <div className="text-light-secondary">Policy Version</div>
+                      <div className="text-right font-mono text-xs mt-1">{creditTwin?.policy_version || "DSCR_SANDBOX_V1"}</div>
+                    </div>
                   </div>
                   
                   <button 

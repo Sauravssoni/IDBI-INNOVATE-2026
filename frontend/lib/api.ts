@@ -10,7 +10,7 @@ export function getCsrfToken(): string {
   return match ? decodeURIComponent(match.split("=")[1]) : "";
 }
 
-export async function apiFetch<T = any>(
+export async function apiFetch<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ data?: T; error?: string; status: number }> {
@@ -66,7 +66,7 @@ export async function apiFetch<T = any>(
       if (typeof data === "object" && data !== null) {
         if (Array.isArray(data.detail)) {
           errorMsg = data.detail
-            .map((err: any) => err.msg || JSON.stringify(err))
+            .map((err: Record<string, unknown>) => err.msg || JSON.stringify(err))
             .join(", ");
         } else if (typeof data.detail === "string") {
           errorMsg = data.detail;
@@ -90,9 +90,9 @@ export async function apiFetch<T = any>(
     }
 
     return { data, status: res.status };
-  } catch (err: any) {
+  } catch (err) {
     return {
-      error: err.message || "Network request failed. Ensure backend is running.",
+      error: (err instanceof Error ? err.message : String(err)) || "Network request failed. Ensure backend is running.",
       status: 0,
     };
   }
