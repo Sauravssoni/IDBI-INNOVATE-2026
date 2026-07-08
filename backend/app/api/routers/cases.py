@@ -411,6 +411,7 @@ def get_case(
 
     return {
         "id": str(case.id),
+        "business_id_fk": str(case.business_id_fk),
         "business": {
             "id": str(case.business.id),
             "business_id": case.business.business_id,
@@ -438,8 +439,8 @@ def get_case(
             "view_audit": check_can_view_audit(db, case, user),
         },
         "version": case.version,
-        "created_at": case.created_at,
-        "updated_at": case.updated_at,
+        "created_at": case.created_at.isoformat() if case.created_at else None,
+        "updated_at": case.updated_at.isoformat() if case.updated_at else None,
     }
 
 

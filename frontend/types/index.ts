@@ -1,7 +1,7 @@
 export interface CaseResponse {
   id: string;
   business_id_fk: string;
-  product_type: string;
+  requested_product?: string;
   requested_amount: number;
   status: string;
   version: number;
@@ -32,4 +32,21 @@ export interface HumanDecisionResponse {
   reason: string;
   approved_amount: number;
   expected_version: number;
+}
+
+export interface AuditLogEvent {
+  id?: string;
+  event_type?: string;
+  action?: string;
+  case_id?: string;
+  resource?: string;
+  timestamp?: string;
+  created_at?: string;
+  actor?: string;
+  actor_role?: string;
+  reason?: string;
+  metadata_json?: Record<string, unknown>;
+  previous_hash?: string;
+  hash?: string;
+  event_hash?: string;
 }

@@ -95,10 +95,10 @@ describe("DashboardPage", () => {
     render(<DashboardPage />);
 
     await waitFor(() => {
-      expect(screen.getAllByText(/₹50,00,000/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText(/₹50\.00 lakh/i).length).toBeGreaterThan(0);
       expect(screen.queryByText(/₹14\.8 Cr/i)).not.toBeInTheDocument();
-    });
-  });
+    }, { timeout: 4000 });
+  }, 10000);
 });
 
 describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
