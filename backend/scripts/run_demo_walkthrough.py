@@ -39,7 +39,7 @@ def run():
         resp = client.post(
             "/api/auth/login", json={"email": email, "password": demo_password}
         )
-        assert resp.status_code == 200, f"Login failed for {email}"
+        assert resp.status_code == 200, f"Login failed for {email}: {resp.text}"
         return resp.cookies
 
     def get_headers(cookies):
@@ -51,52 +51,101 @@ def run():
         ca_headers = get_headers(ca_cookies)
         log_step("Analyst Login", "200 OK", "200", "Logged in analyst", True)
 
+        # 1. Clean Reset
+        resp_reset = client.post(
+            "/api/demo/reset",
+            headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
+            cookies=ca_cookies,
+        )
+        assert resp_reset.status_code == 200, f"Reset failed: {resp_reset.text}"
+        log_step("Demo Reset", "200 OK", "200", "Clean reset performed", True)
+
+        # Re-login since reset creates new sessions for evaluation scripts, invalidating the current one
+        ca_cookies = get_cookies("credit@bank.example")
+        ca_headers = get_headers(ca_cookies)
+
         shakti = (
             db.query(Case)
             .join(Business)
             .filter(Business.business_id == "SHAKTI_PRECISION_001")
             .first()
         )
-        shakti.version
+        assert shakti, "Shakti case not found after reset"
+        assert shakti.requested_amount == 5000000.0
+        assert shakti.requested_product.value == "WORKING_CAPITAL_LINE"
 
-        # Shakti assessment
-        if shakti.status == CaseStatus.INITIATED:
-            resp_eval = client.post(
-                f"/api/cases/{shakti.id}/evaluate",
-                headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
-                cookies=ca_cookies,
-                json={"expected_version": shakti.version},
-            )
-            assert resp_eval.status_code == 200, "Failed to evaluate Shakti"
-            db.refresh(shakti)
+        initial_version = shakti.version
+
+        # 2. Shakti assessment
+        assert shakti.status == CaseStatus.INITIATED
+        resp_eval = client.post(
+            f"/api/cases/{shakti.id}/evaluate",
+            headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
+            cookies=ca_cookies,
+            json={"expected_version": shakti.version},
+        )
+        assert resp_eval.status_code == 200, (
+            f"Failed to evaluate Shakti: {resp_eval.text}"
+        )
+
+        db.refresh(shakti)
+        assert shakti.version == initial_version + 1, (
+            f"Version did not increment. Expected {initial_version + 1}, got {shakti.version}"
+        )
+
+        # Fetch Credit Twin for DSCR and supportable amount
+        resp_twin = client.get(
+            f"/api/cases/{shakti.id}/credit-twin", cookies=ca_cookies
+        )
+        assert resp_twin.status_code == 200, (
+            f"Failed to get credit twin: {resp_twin.text}"
+        )
+        twin_data = resp_twin.json()
+
+        assert twin_data["dscr"] == 1.85, f"DSCR mismatch: {twin_data['dscr']}"
+        assert twin_data["recommendation"] == "CONDITIONAL_OFFER", (
+            f"Recommendation mismatch: {twin_data['recommendation']}"
+        )
+        assert abs(twin_data["binding_limit"] - 3569042.496) < 1, (
+            "Supportable amount mismatch"
+        )
+
+        supportable_amount = twin_data["binding_limit"]
+
         log_step(
             "Shakti Assessment",
-            "200 OK",
+            "Exact assertions passed",
             "200",
-            "Evaluated Shakti",
+            "Evaluated Shakti with assertions",
             True,
             shakti.version,
         )
 
-        # RECOMMEND_ALTERNATIVE_STRUCTURE
-        if shakti.status == CaseStatus.ASSESSMENT_COMPLETED:
-            resp_rec = client.post(
-                f"/api/cases/{shakti.id}/analyst-recommendation",
-                headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
-                cookies=ca_cookies,
-                json={
-                    "recommendation": "RECOMMEND_ALTERNATIVE_STRUCTURE",
-                    "reason": "Walkthrough analyst recommendation",
-                    "expected_version": shakti.version,
-                },
-            )
-            assert resp_rec.status_code == 200, (
-                f"Analyst failed to recommend: {resp_rec.text}"
-            )
-            db.refresh(shakti)
+        # 3. RECOMMEND_ALTERNATIVE_STRUCTURE
+        assert shakti.status == CaseStatus.ASSESSMENT_COMPLETED
+        current_version = shakti.version
+
+        resp_rec = client.post(
+            f"/api/cases/{shakti.id}/analyst-recommendation",
+            headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **ca_headers},
+            cookies=ca_cookies,
+            json={
+                "recommendation": "RECOMMEND_ALTERNATIVE_STRUCTURE",
+                "reason": "Walkthrough analyst recommendation",
+                "expected_version": current_version,
+            },
+        )
+        assert resp_rec.status_code == 200, (
+            f"Analyst failed to recommend: {resp_rec.text}"
+        )
+
+        db.refresh(shakti)
+        assert shakti.version == current_version + 1
+        assert shakti.analyst_recommendation == "RECOMMEND_ALTERNATIVE_STRUCTURE"
+
         log_step(
             "Analyst Recommend Alternative Structure",
-            "200 OK",
+            "Exact assertions passed",
             "200",
             "Recommended alternative",
             True,
@@ -108,7 +157,8 @@ def run():
         sa_headers = get_headers(sa_cookies)
         log_step("SA Login", "200 OK", "200", "Logged in SA", True)
 
-        # APPROVE_ALTERNATIVE_STRUCTURE
+        # 4. APPROVE_ALTERNATIVE_STRUCTURE
+        current_version = shakti.version
         old_idem = f"walk-{uuid.uuid4()}"
         resp_app = client.post(
             f"/api/cases/{shakti.id}/human-decision",
@@ -117,15 +167,19 @@ def run():
             json={
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
                 "reason": "Walkthrough SA approval",
-                "expected_version": shakti.version,
-                "approved_amount": 3500000.00,
+                "expected_version": current_version,
+                "approved_amount": supportable_amount,
             },
         )
         assert resp_app.status_code == 200, f"SA failed to approve: {resp_app.text}"
+
         db.refresh(shakti)
+        assert shakti.version == current_version + 1
+        assert shakti.human_decision == "APPROVE_ALTERNATIVE_STRUCTURE"
+
         log_step(
             "SA Approve Alternative Structure",
-            "200 OK",
+            "Exact assertions passed",
             "200",
             "Approved alternative",
             True,
@@ -190,19 +244,11 @@ def run():
         )
 
         # Idempotency replay
-        resp_idem = client.post(
-            f"/api/cases/{shakti.id}/human-decision",
-            headers={"Idempotency-Key": f"walk-{uuid.uuid4()}", **sa_headers},
-            cookies=sa_cookies,
-            json={
-                "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-                "reason": "Walkthrough SA approval",
-                "expected_version": shakti.version - 1,
-                "approved_amount": 3500000.00,
-            },
-        )
-        assert resp_idem.status_code in (409, 400), (
-            f"Idempotency replay fail: {resp_idem.status_code}"
+        current_version = shakti.version
+
+        # We need the previous audits count
+        audits_before_replay = (
+            db.query(AuditEvent).filter(AuditEvent.case_id == shakti.id).count()
         )
 
         resp_replay = client.post(
@@ -212,14 +258,26 @@ def run():
             json={
                 "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
                 "reason": "Walkthrough SA approval",
-                "expected_version": shakti.version - 1,
-                "approved_amount": 3500000.00,
+                "expected_version": current_version - 1,
+                "approved_amount": supportable_amount,
             },
         )
         assert resp_replay.status_code == 200, f"Replay fail: {resp_replay.status_code}"
+
+        # Verify no state change and no new events
+        db.refresh(shakti)
+        assert shakti.version == current_version
+
+        audits_after_replay = (
+            db.query(AuditEvent).filter(AuditEvent.case_id == shakti.id).count()
+        )
+        assert audits_before_replay == audits_after_replay, (
+            "Idempotency replay created an additional event"
+        )
+
         log_step(
             "Idempotency Replay",
-            "409/400 & 200 OK",
+            "Same response and no events",
             "200",
             "Idempotency replay handled correctly",
             True,
@@ -249,7 +307,6 @@ def run():
             shakti.version,
             len(audits),
         )
-
     except Exception as e:
         log_step("Execution Error", "No exceptions", "ERROR", str(e), False)
 

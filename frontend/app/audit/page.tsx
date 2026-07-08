@@ -5,14 +5,14 @@ import { apiFetch } from "@/lib/api";
 import { History, ShieldCheck, Lock, CheckCircle2, AlertCircle, RefreshCw, FileText } from "lucide-react";
 
 export default function AuditTrailPage() {
-  const [logs, setLogs] = useState<any[]>([]);
+  const [logs, setLogs] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadAuditLogs = async () => {
     setLoading(true);
     setError(null);
-    const { data, status, error: fetchErr } = await apiFetch<any[]>("/api/audit/logs");
+    const { data, status, error: fetchErr } = await apiFetch<unknown[]>("/api/audit/logs");
     if (status === 200 && Array.isArray(data)) {
       setLogs(data);
     } else {

@@ -5,7 +5,7 @@ import { apiFetch } from "@/lib/api";
 import { Clock, CheckCircle2, User, PlayCircle, FileText } from "lucide-react";
 
 export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
-  const [history, setHistory] = useState<any[]>([]);
+  const [history, setHistory] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
