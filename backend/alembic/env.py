@@ -16,7 +16,14 @@ from app.db.orm.users import User, SessionStore  # noqa: F401
 from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord  # noqa: F401
 from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate  # noqa: F401
 from app.db.orm.consents import Consent, DataConnection  # noqa: F401
-from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, InvoicePayment, EmploymentPeriod, Obligation  # noqa: F401
+from app.db.orm.evidence import (
+    GSTPeriod,
+    BankTransaction,
+    Invoice,
+    InvoicePayment,
+    EmploymentPeriod,
+    Obligation,
+)  # noqa: F401
 
 load_dotenv()
 
@@ -39,11 +46,14 @@ else:
     db_user = os.getenv("POSTGRES_USER", "vyapar_local")
     db_pass = os.getenv("POSTGRES_PASSWORD", "change-this-local-development-password")
     db_name = os.getenv("POSTGRES_DB", "vyapar_pulse")
-    config.set_main_option("sqlalchemy.url", f"postgresql://{db_user}:{db_pass}@127.0.0.1:5433/{db_name}")
+    config.set_main_option(
+        "sqlalchemy.url", f"postgresql://{db_user}:{db_pass}@127.0.0.1:5433/{db_name}"
+    )
 
 print(f"ALEMBIC ENV.PY CONNECTING TO: {config.get_main_option('sqlalchemy.url')}")
 
 target_metadata = Base.metadata
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -83,9 +93,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

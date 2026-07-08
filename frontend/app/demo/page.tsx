@@ -8,38 +8,45 @@ import EvidenceTab from "../cases/[caseId]/tabs/EvidenceTab";
 import ReconciliationTab from "../cases/[caseId]/tabs/ReconciliationTab";
 import AssessmentHistoryTab from "../cases/[caseId]/tabs/AssessmentHistoryTab";
 import {
-  Sparkles,
-  Building2,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  Play,
-  RefreshCw,
-  Send,
-  UserCheck,
-  Check,
-  ShieldCheck,
-  Database,
-  Scale,
-  Activity,
-  User,
-  Clock,
-  ArrowLeft
+  Sparkles, Building2, CheckCircle2, AlertTriangle, ArrowRight, Play, RefreshCw,
+  Send, UserCheck, Check, ShieldCheck, Database, Scale, Activity, User, Clock, ArrowLeft
 } from "lucide-react";
 import Link from "next/link";
+
+interface CreditTwin {
+  case_id: string;
+  business_id: string;
+  dscr: number | null;
+  calculation_version: string;
+  total_annual_revenue: number;
+  binding_limit: number | null;
+  recommendation: string | null;
+  evidence_completeness_score: number;
+  financial_health_score: number | null;
+  evidence_confidence_score: number | null;
+  resilience_score: number | null;
+  evaluated_at: string | null;
+}
 
 export default function GuidedDemoPage() {
   const { user, demoLogin } = useAuth();
   const router = useRouter();
 
   const [caseData, setCaseData] = useState<any | null>(null);
+  const [creditTwin, setCreditTwin] = useState<CreditTwin | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Guided steps: 1 to 6
   const [step, setStep] = useState(1);
   const [evaluating, setEvaluating] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
+
+  const determineStep = (fullCase: any) => {
+    if (fullCase.status === "HUMAN_APPROVED" || fullCase.status === "HUMAN_DECLINED") return 6;
+    if (fullCase.analyst_recommendation) return 5;
+    if (fullCase.recommendation) return 4;
+    if (fullCase.status === "ASSESSMENT_COMPLETED") return 4;
+    return 1; // Default
+  };
 
   const loadShaktiCase = async () => {
     setLoading(true);
@@ -50,6 +57,11 @@ export default function GuidedDemoPage() {
         const { data: fullCase, status: caseStatus } = await apiFetch(`/api/cases/${match.id}`);
         if (caseStatus === 200 && fullCase) {
           setCaseData(fullCase);
+          setStep(determineStep(fullCase));
+          const { data: twinData, status: twinStatus } = await apiFetch<CreditTwin>(`/api/cases/${match.id}/credit-twin`);
+          if (twinStatus === 200 && twinData) {
+            setCreditTwin(twinData);
+          }
         } else {
           setCaseData(match);
         }
@@ -66,10 +78,23 @@ export default function GuidedDemoPage() {
     loadShaktiCase();
   }, [user]);
 
+  const handleRestartDemo = async () => {
+    setEvaluating(true);
+    const { status } = await apiFetch("/api/demo/reset", {
+      method: "POST",
+    });
+    if (status === 200) {
+      await loadShaktiCase();
+    } else {
+      setError("Failed to restart demo sandbox.");
+    }
+    setEvaluating(false);
+  };
+
   const runEvaluation = async () => {
     if (!caseData?.id) return;
     setEvaluating(true);
-    const idempotencyKey = `demo-eval-${caseData.id}-${Date.now()}`;
+    const idempotencyKey = crypto.randomUUID();
     const { status } = await apiFetch(`/api/cases/${caseData.id}/evaluate`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
@@ -79,7 +104,7 @@ export default function GuidedDemoPage() {
       await loadShaktiCase();
       setStep(4);
     } else {
-      alert("Assessment engine failed. Ensure API is running.");
+      setError("Assessment engine failed.");
     }
     setEvaluating(false);
   };
@@ -87,8 +112,8 @@ export default function GuidedDemoPage() {
   const submitAnalystRecommendation = async () => {
     if (!caseData?.id) return;
     setEvaluating(true);
-    const idempotencyKey = `demo-rec-${caseData.id}-${Date.now()}`;
-    const limit = caseData.evaluation_result?.decision?.binding_limit || 20000000;
+    const idempotencyKey = crypto.randomUUID();
+    const limit = creditTwin?.binding_limit || 0;
     const { status } = await apiFetch(`/api/cases/${caseData.id}/analyst-recommendation`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
@@ -101,7 +126,7 @@ export default function GuidedDemoPage() {
     if (status === 200 || status === 201) {
       await loadShaktiCase();
     } else {
-      alert("Recommendation failed.");
+      setError("Recommendation failed.");
     }
     setEvaluating(false);
   };
@@ -110,10 +135,9 @@ export default function GuidedDemoPage() {
     setSwitchingRole(true);
     const res = await demoLogin("SANCTIONING_AUTHORITY");
     if (res.success) {
-      setStep(6);
       await loadShaktiCase();
     } else {
-      alert("Failed to switch roles.");
+      setError("Failed to switch roles.");
     }
     setSwitchingRole(false);
   };
@@ -121,8 +145,8 @@ export default function GuidedDemoPage() {
   const submitSanctionDecision = async () => {
     if (!caseData?.id) return;
     setEvaluating(true);
-    const idempotencyKey = `demo-dec-${caseData.id}-${Date.now()}`;
-    const limit = caseData.evaluation_result?.decision?.binding_limit || 20000000;
+    const idempotencyKey = crypto.randomUUID();
+    const limit = creditTwin?.binding_limit || 0;
     const { status } = await apiFetch(`/api/cases/${caseData.id}/human-decision`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
@@ -136,7 +160,7 @@ export default function GuidedDemoPage() {
     if (status === 200 || status === 201) {
       await loadShaktiCase();
     } else {
-      alert("Sanction failed.");
+      setError("Sanction failed.");
     }
     setEvaluating(false);
   };
@@ -150,18 +174,23 @@ export default function GuidedDemoPage() {
     );
   }
 
-  if (error || !caseData) {
+  if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-brand-nav">
         <div className="bg-white p-8 rounded-lg max-w-md text-center shadow-xl">
           <AlertTriangle className="w-12 h-12 text-brand-red mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-light-text mb-2">Sandbox Unavailable</h2>
+          <h2 className="text-xl font-bold text-light-text mb-2">Sandbox Error</h2>
           <p className="text-light-secondary text-sm mb-6">{error}</p>
-          <Link href="/login" className="px-4 py-2 bg-brand-teal text-white rounded font-medium">Return to Login</Link>
+          <div className="space-x-4">
+             <button onClick={() => { setError(null); loadShaktiCase(); }} className="px-4 py-2 bg-brand-teal text-white rounded font-medium">Retry Connection</button>
+             <Link href="/login" className="px-4 py-2 bg-light-bg text-light-text border border-light-border rounded font-medium hover:bg-gray-100">Back to Login</Link>
+          </div>
         </div>
       </div>
     );
   }
+
+  if (!caseData) return null;
 
   const steps = [
     { id: 1, label: "Business & request" },
@@ -172,33 +201,18 @@ export default function GuidedDemoPage() {
     { id: 6, label: "Human sanction & audit" },
   ];
 
-  const renderStepIndicator = () => (
-    <div className="mb-8">
-      <div className="flex items-center justify-between relative">
-        <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-light-border -z-10 transform -translate-y-1/2"></div>
-        {steps.map((s) => (
-          <div key={s.id} className="flex flex-col items-center relative z-10 bg-brand-nav px-2">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step >= s.id ? 'bg-brand-teal border-brand-teal text-white' : 'bg-light-bg border-light-border text-light-secondary'}`}>
-              {step > s.id ? <Check className="w-4 h-4" /> : s.id}
-            </div>
-            <span className={`text-[10px] sm:text-xs mt-2 font-medium max-w-[80px] text-center hidden sm:block ${step >= s.id ? 'text-brand-teal' : 'text-light-border'}`}>
-              {s.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-brand-nav text-light-text p-4 pb-20">
       <div className="max-w-5xl mx-auto space-y-6">
-        
-        {/* Header */}
         <div className="flex items-center justify-between pt-4">
-          <Link href="/login" className="text-brand-teal hover:text-white flex items-center gap-2 text-sm font-bold transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Leave Sandbox
-          </Link>
+          <div className="flex gap-4 items-center">
+             <Link href="/login" className="text-brand-teal hover:text-white flex items-center gap-2 text-sm font-bold transition-colors">
+               <ArrowLeft className="w-4 h-4" /> Leave Sandbox
+             </Link>
+             <button onClick={handleRestartDemo} disabled={evaluating} className="text-brand-amber hover:text-white flex items-center gap-1 text-sm font-bold transition-colors">
+               <RefreshCw className={`w-4 h-4 ${evaluating ? "animate-spin" : ""}`} /> Restart Sandbox
+             </button>
+          </div>
           <div className="flex items-center gap-3">
             <div className="px-3 py-1 bg-brand-softTeal text-brand-teal text-xs font-bold rounded border border-brand-teal">
               DSCR_SANDBOX_V1
@@ -210,17 +224,28 @@ export default function GuidedDemoPage() {
           </div>
         </div>
 
-        {/* Title */}
         <div className="text-center py-6">
           <h1 className="text-3xl font-extrabold text-white mb-2">Live Case Evaluation</h1>
           <p className="text-light-border text-sm">Guided walkthrough of deterministic credit scoring and multi-actor governance</p>
         </div>
 
-        {renderStepIndicator()}
+        <div className="mb-8">
+          <div className="flex items-center justify-between relative">
+            <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-light-border -z-10 transform -translate-y-1/2"></div>
+            {steps.map((s) => (
+              <div key={s.id} className="flex flex-col items-center relative z-10 bg-brand-nav px-2">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step >= s.id ? 'bg-brand-teal border-brand-teal text-white' : 'bg-light-bg border-light-border text-light-secondary'}`}>
+                  {step > s.id ? <Check className="w-4 h-4" /> : s.id}
+                </div>
+                <span className={`text-[10px] sm:text-xs mt-2 font-medium max-w-[80px] text-center hidden sm:block ${step >= s.id ? 'text-brand-teal' : 'text-light-border'}`}>
+                  {s.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        {/* Content Area */}
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-light-border">
-          
           {step === 1 && (
             <div className="p-8">
               <div className="flex items-center gap-4 mb-6">
@@ -228,26 +253,26 @@ export default function GuidedDemoPage() {
                   <Building2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-light-text">{caseData.business?.legal_name || "Shakti Precision Components"}</h2>
+                  <h2 className="text-2xl font-bold text-light-text">{caseData.business?.legal_name}</h2>
                   <p className="text-sm text-light-secondary font-mono">Business ID: {caseData.business_id_fk}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Requested Amount</div>
-                  <div className="text-lg font-mono font-bold text-light-text">₹2.00 Cr</div>
+                  <div className="text-lg font-mono font-bold text-light-text">₹{(caseData.requested_amount || 0).toLocaleString("en-IN")}</div>
                 </div>
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Product</div>
-                  <div className="text-lg font-bold text-light-text">Term Loan</div>
+                  <div className="text-lg font-bold text-light-text">{caseData.requested_product}</div>
                 </div>
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Sector</div>
-                  <div className="text-lg font-bold text-light-text">{caseData.business?.sector || "Manufacturing"}</div>
+                  <div className="text-lg font-bold text-light-text">{caseData.business?.sector}</div>
                 </div>
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Status</div>
-                  <div className="text-lg font-bold text-brand-amber">Initiated</div>
+                  <div className="text-lg font-bold text-brand-amber">{caseData.status}</div>
                 </div>
               </div>
               <div className="flex justify-end border-t border-light-border pt-6">
@@ -286,7 +311,7 @@ export default function GuidedDemoPage() {
                 <Scale className="w-16 h-16 text-brand-teal mx-auto mb-4" />
                 <h2 className="text-2xl font-bold text-light-text">Run Deterministic Reconciliation</h2>
                 <p className="text-light-secondary text-sm">
-                  The assessment engine will extract features, compute reconciliation scores, and generate a Credit Twin based strictly on verified evidence.
+                  The assessment engine will extract features, compute reconciliation scores, and generate a deterministic Credit Twin based strictly on verified evidence.
                 </p>
                 <div className="pt-4">
                   <button 
@@ -320,12 +345,12 @@ export default function GuidedDemoPage() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">System Recommendation</div>
-                     <div className="text-xl font-extrabold text-brand-teal">CONDITIONAL OFFER</div>
+                     <div className="text-xl font-extrabold text-brand-teal">{creditTwin?.recommendation || "N/A"}</div>
                    </div>
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">Binding Support Limit</div>
                      <div className="text-xl font-extrabold font-mono text-brand-teal">
-                       ₹{(caseData.evaluation_result?.decision?.binding_limit || 14500000).toLocaleString("en-IN")}
+                       ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")}
                      </div>
                    </div>
                 </div>
@@ -373,7 +398,7 @@ export default function GuidedDemoPage() {
                   </div>
                   <div className="p-4 bg-light-bg border border-light-border rounded-lg">
                     <div className="text-xs font-bold text-light-secondary mb-2 uppercase">Rationale</div>
-                    <div className="text-sm text-light-text">Deterministic reconciliation successful. Recommend ₹{(caseData.evaluation_result?.decision?.binding_limit || 14500000).toLocaleString("en-IN")} alternative structure based on verified cash flows.</div>
+                    <div className="text-sm text-light-text">Deterministic reconciliation successful. Recommend ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")} alternative structure based on verified cash flows.</div>
                   </div>
                   <button 
                     onClick={submitAnalystRecommendation}
@@ -398,12 +423,12 @@ export default function GuidedDemoPage() {
                 </div>
               </div>
 
-              {caseData.status === "HUMAN_APPROVED" ? (
+              {caseData.status === "HUMAN_APPROVED" || caseData.status === "HUMAN_DECLINED" ? (
                 <div className="space-y-6">
                   <div className="p-6 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                     <ShieldCheck className="w-12 h-12 text-brand-teal mx-auto mb-3" />
-                    <h3 className="text-2xl font-bold text-brand-teal mb-1">SANCTION APPROVED</h3>
-                    <p className="text-sm text-light-secondary font-mono">Limit: ₹{(caseData.evaluation_result?.decision?.binding_limit || 14500000).toLocaleString("en-IN")}</p>
+                    <h3 className="text-2xl font-bold text-brand-teal mb-1">SANCTION {caseData.status === "HUMAN_APPROVED" ? "APPROVED" : "DECLINED"}</h3>
+                    <p className="text-sm text-light-secondary font-mono">Limit: ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")}</p>
                   </div>
                   <div className="pt-4 border-t border-light-border">
                     <h4 className="text-sm font-bold text-light-text mb-4 flex items-center gap-2">
@@ -422,7 +447,7 @@ export default function GuidedDemoPage() {
                   <div className="p-5 bg-brand-softAmber border border-brand-amber rounded-lg">
                     <div className="text-sm font-bold text-brand-amber mb-2 uppercase flex items-center justify-between">
                       <span>Recommendation Review</span>
-                      <span className="font-mono text-xs">Limit: ₹{(caseData.evaluation_result?.decision?.binding_limit || 14500000).toLocaleString("en-IN")}</span>
+                      <span className="font-mono text-xs">Limit: ₹{(creditTwin?.binding_limit || 0).toLocaleString("en-IN")}</span>
                     </div>
                     <p className="text-sm text-light-text font-medium">{caseData.human_decision || "Analyst recommends alternative structure."}</p>
                   </div>

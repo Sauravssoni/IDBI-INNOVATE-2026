@@ -18,7 +18,7 @@ def is_localhost_origin(origin: str) -> bool:
 class Settings:
     def __init__(self):
         self.APP_ENV: str = os.getenv("APP_ENV", "development").lower()
-        
+
         raw_demo_access = os.getenv("DEMO_ACCESS_ENABLED", "false").lower()
         self.DEMO_ACCESS_ENABLED: bool = raw_demo_access in ("true", "1", "t", "yes")
 

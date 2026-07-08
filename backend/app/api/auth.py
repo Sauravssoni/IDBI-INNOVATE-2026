@@ -1,4 +1,7 @@
 import secrets
+import time
+from collections import defaultdict
+import logging
 import hashlib
 from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Response, Request
@@ -74,41 +77,64 @@ def create_session(db: Session, user_id: str):
     return session_token, csrf_token
 
 
-import time
-from collections import defaultdict
-import logging
-
-demo_rate_limits = defaultdict(list)
+demo_rate_limits: defaultdict[str, list[float]] = defaultdict(list)
 DEMO_MAX_REQUESTS = 20
 DEMO_TIME_WINDOW = 60
 
+
 @router.post("/demo/session", response_model=LoginResponse)
-def create_demo_session(req: DemoSessionRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+def create_demo_session(
+    req: DemoSessionRequest,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     settings = get_settings()
     if not settings.DEMO_ACCESS_ENABLED:
-        raise HTTPException(status_code=404, detail="Guided demo access is unavailable in this environment.")
-    
+        raise HTTPException(
+            status_code=404,
+            detail="Guided demo access is unavailable in this environment.",
+        )
+
+    if settings.APP_ENV not in ("development", "demo"):
+        raise HTTPException(
+            status_code=404,
+            detail="Demo session is only available in development or demo environments.",
+        )
+
     # Rate limit based on IP
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
-    demo_rate_limits[client_ip] = [t for t in demo_rate_limits[client_ip] if now - t < DEMO_TIME_WINDOW]
+    demo_rate_limits[client_ip] = [
+        t for t in demo_rate_limits[client_ip] if now - t < DEMO_TIME_WINDOW
+    ]
     if len(demo_rate_limits[client_ip]) >= DEMO_MAX_REQUESTS:
-        raise HTTPException(status_code=429, detail="Too many demo session requests. Please try again later.")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many demo session requests. Please try again later.",
+        )
     demo_rate_limits[client_ip].append(now)
 
-    allowed_roles = ["CREDIT_ANALYST", "SANCTIONING_AUTHORITY", "RELATIONSHIP_MANAGER", "AUDITOR"]
+    allowed_roles = [
+        "CREDIT_ANALYST",
+        "SANCTIONING_AUTHORITY",
+        "RELATIONSHIP_MANAGER",
+        "AUDITOR",
+    ]
     if req.role not in allowed_roles:
-        raise HTTPException(status_code=403, detail="Requested role is not permitted for demo access.")
-    
+        raise HTTPException(
+            status_code=403, detail="Requested role is not permitted for demo access."
+        )
+
     role_email_map = {
-        "CREDIT_ANALYST": "analyst@vyaparpulse.com",
-        "SANCTIONING_AUTHORITY": "sa@vyaparpulse.com",
-        "RELATIONSHIP_MANAGER": "rm@vyaparpulse.com",
-        "AUDITOR": "auditor@vyaparpulse.com"
+        "CREDIT_ANALYST": "credit@bank.example",
+        "SANCTIONING_AUTHORITY": "sa@bank.example",
+        "RELATIONSHIP_MANAGER": "rm@bank.example",
+        "AUDITOR": "auditor@bank.example",
     }
     target_email = role_email_map[req.role]
     user = db.query(User).filter(User.email == target_email).first()
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="Demo user not found.")
 
@@ -120,22 +146,6 @@ def create_demo_session(req: DemoSessionRequest, response: Response, request: Re
 
     # Revoke all prior login sessions for this user upon new login (session rotation policy)
     db.query(SessionStore).filter(SessionStore.user_id == str(user.id)).delete()
-
-    # Initialize a clean synthetic demo state safely if starting a new journey
-    if req.role == "CREDIT_ANALYST":
-        from app.db.orm.cases import Case, CaseStatus, AuditEvent, IdempotencyRecord
-        shakti_case = db.query(Case).filter(Case.business_id_fk == "SHAKTI_PRECISION_001").first()
-        if shakti_case:
-            shakti_case.status = CaseStatus.INITIATED
-            shakti_case.recommendation = None
-            shakti_case.analyst_recommendation = None
-            shakti_case.human_decision = None
-            shakti_case.dscr = None
-            
-            # Delete audit events and idempotency records for this case to start clean
-            db.query(AuditEvent).filter(AuditEvent.case_id == shakti_case.id).delete()
-            db.query(IdempotencyRecord).filter(IdempotencyRecord.case_id == str(shakti_case.id)).delete()
-
     db.commit()
 
     session_token, csrf_token = create_session(db, str(user.id))
