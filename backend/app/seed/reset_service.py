@@ -34,9 +34,7 @@ class DemoResetConflict(Exception):
 def execute_bounded_reset(db: Session, actor_email: str = "system"):
     # 1. Acquire advisory lock
     lock_id = 9991234
-    lock_acquired = db.execute(
-        text(f"SELECT pg_try_advisory_xact_lock({lock_id})")
-    ).scalar()
+    lock_acquired = db.execute(text(f"SELECT pg_try_advisory_lock({lock_id})")).scalar()
 
     if not lock_acquired:
         logger.warning(
@@ -104,18 +102,20 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
             synchronize_session=False
         )
 
+        seed_shakti(db)
+        seed_navprerna(db)
+        seed_rangrez(db)
+        seed_aarohan(db)
+
+        run_evaluations(db)
+
         db.commit()
-
-        seed_shakti()
-        seed_navprerna()
-        seed_rangrez()
-        seed_aarohan()
-
-        run_evaluations()
-
         logger.info(f"DEMO_RESET_COMPLETED: User={actor_email}")
 
     except Exception as e:
         db.rollback()
         logger.error(f"DEMO_RESET_FAILED: User={actor_email}, Error={str(e)}")
         raise e
+    finally:
+        db.execute(text(f"SELECT pg_advisory_unlock({lock_id})"))
+        db.commit()  # Important to commit the unlock

@@ -29,6 +29,7 @@ import {
   Database,
   ShieldCheck,
 } from "lucide-react";
+import { CaseListItem, EvaluateResponse, HumanDecisionResponse, AnalystRecommendationResponse } from "@/types";
 
 export default function CaseEvaluationPage() {
   const { user } = useAuth();
@@ -91,7 +92,7 @@ export default function CaseEvaluationPage() {
         data: listData,
         status: listStatus,
         error: listErr,
-      } = await apiFetch<any[]>("/api/cases/");
+      } = await apiFetch<CaseListItem[]>("/api/cases/");
       if (listStatus === 200 && Array.isArray(listData)) {
         const isShaktiAlias =
           targetId.toLowerCase() === "shakti" ||
@@ -126,7 +127,7 @@ export default function CaseEvaluationPage() {
     if (foundCase) {
       setCaseData(foundCase);
 
-      const isAarohan = foundCase.business_id_fk === "AAROHAN_INFRA_001";
+      const isAarohan = foundCase.business_id === "AAROHAN_INFRA_001";
       const reqAmt = foundCase.requested_amount || 0;
       let limit = reqAmt;
 
@@ -194,7 +195,7 @@ export default function CaseEvaluationPage() {
     setActionSuccess(null);
 
     const idempotencyKey = `eval-${caseData.id}-${crypto.randomUUID()}`;
-    const { data, status, error } = await apiFetch<any>(
+    const { data, status, error } = await apiFetch<EvaluateResponse>(
       `/api/cases/${caseData.id}/evaluate`,
       {
         method: "POST",
@@ -306,7 +307,7 @@ export default function CaseEvaluationPage() {
       payload.approved_amount = Number(approvedAmount);
     }
 
-    const { data, status, error } = await apiFetch<any>(
+    const { data, status, error } = await apiFetch<HumanDecisionResponse>(
       `/api/cases/${caseData.id}/human-decision`,
       {
         method: "POST",
@@ -534,7 +535,7 @@ export default function CaseEvaluationPage() {
               </div>
               <div className="glass-card p-4">
                 <span className="text-xs text-light-secondary uppercase font-medium">Evidence Confidence</span>
-                <div className="font-bold text-light-text mt-1 text-lg">{creditTwin?.evidence_confidence_score ?? "-"}%</div>
+                <div className="font-bold text-light-text mt-1 text-lg">{creditTwin?.evidence_confidence ?? "-"}%</div>
               </div>
             </div>
           ) : (
@@ -573,16 +574,46 @@ export default function CaseEvaluationPage() {
                   
                   <div className="space-y-4 text-sm">
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
-                      <span className="text-light-secondary font-medium">Evidence Completeness</span>
-                      <span className="font-bold text-light-text">
-                        {creditTwin?.evidence_completeness_score !== undefined && creditTwin?.evidence_completeness_score !== null ? `${creditTwin.evidence_completeness_score}%` : "-"}
-                      </span>
+                      <span className="text-light-secondary font-medium">Source Coverage</span>
+                      <div className="text-right">
+                        {creditTwin?.source_coverage !== undefined && creditTwin?.source_coverage !== null ? `${creditTwin.source_coverage}%` : "-"}
+                      </div>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-brand-teal h-full"
                         style={{
-                          width: `${creditTwin?.evidence_completeness_score || 0}%`,
+                          width: `${creditTwin?.source_coverage || 0}%`,
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
+                      <span className="text-light-secondary font-medium">Evidence Confidence</span>
+                      <span className="font-bold text-light-text">
+                        {creditTwin?.evidence_confidence !== undefined && creditTwin?.evidence_confidence !== null ? `${creditTwin.evidence_confidence}%` : "-"}
+                      </span>
+                    </div>
+                    <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full"
+                        style={{
+                          width: `${creditTwin?.evidence_confidence || 0}%`,
+                        }}
+                      />
+                    </div>
+                    
+                    <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
+                      <span className="text-light-secondary font-medium">Reconciliation Quality</span>
+                      <span className="font-bold text-light-text">
+                        {creditTwin?.reconciliation_quality !== undefined && creditTwin?.reconciliation_quality !== null ? `${creditTwin.reconciliation_quality}%` : "-"}
+                      </span>
+                    </div>
+                    <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
+                      <div
+                        className="bg-purple-500 h-full"
+                        style={{
+                          width: `${creditTwin?.reconciliation_quality || 0}%`,
                         }}
                       />
                     </div>
