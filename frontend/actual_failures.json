@@ -1,0 +1,45 @@
+[
+  {
+    "type": "console_error",
+    "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  },
+  {
+    "type": "network_failure",
+    "url": "http://localhost:8000/api/auth/me",
+    "method": "GET",
+    "status": 401,
+    "body": "{\"detail\":\"Could not validate credentials\"}"
+  },
+  {
+    "type": "console_error",
+    "text": "Access to fetch at 'http://localhost:8000/api/cases/fc9be520-44de-4fea-a585-9c4a592e423d' from origin 'http://localhost:3005' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+    "type": "console_error",
+    "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+    "type": "console_error",
+    "text": "Access to fetch at 'http://localhost:8000/api/cases/fc9be520-44de-4fea-a585-9c4a592e423d' from origin 'http://localhost:3005' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+    "type": "console_error",
+    "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+    "type": "console_error",
+    "text": "Access to fetch at 'http://localhost:8000/api/cases/fc9be520-44de-4fea-a585-9c4a592e423d' from origin 'http://localhost:3005' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+    "type": "console_error",
+    "text": "Failed to load resource: net::ERR_FAILED"
+  },
+  {
+    "type": "console_error",
+    "text": "Access to fetch at 'http://localhost:8000/api/cases/fc9be520-44de-4fea-a585-9c4a592e423d' from origin 'http://localhost:3005' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource."
+  },
+  {
+    "type": "console_error",
+    "text": "Failed to load resource: net::ERR_FAILED"
+  }
+]

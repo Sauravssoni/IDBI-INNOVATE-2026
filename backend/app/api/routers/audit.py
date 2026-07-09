@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
-from typing import Any
+from typing import List, Optional
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, ConfigDict
 
 from app.db.session import get_db
 from app.api.dependencies import get_current_user
@@ -12,15 +13,49 @@ from app.services.authz import can_view_case, can_view_audit, apply_case_list_sc
 
 router = APIRouter(tags=["audit"])
 
+class AuditEventMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
 
-@router.get("/api/cases/{case_id}/audit")
-@router.get("/api/audit/cases/{case_id}")
-@router.get("/api/audit/cases/{case_id}/events")
+class AuditEventResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    case_id: str
+    event_sequence: int
+    event_type: str
+    actor: str
+    actor_role: str
+    prior_case_version: int
+    resulting_case_version: int
+    prior_event_hash: str
+    event_hash: str
+    reason: str
+    created_at: Optional[str] = None
+    timestamp: Optional[str] = None
+    metadata_json: Optional[dict] = None
+
+class PortfolioAuditItemResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    case_id: str
+    event_sequence: int
+    event_type: str
+    actor: str
+    actor_role: str
+    prior_case_version: int
+    resulting_case_version: int
+    prior_event_hash: str
+    event_hash: str
+    reason: str
+    created_at: Optional[str] = None
+
+@router.get("/api/cases/{case_id}/audit", response_model=List[AuditEventResponse])
+@router.get("/api/audit/cases/{case_id}", response_model=List[AuditEventResponse])
+@router.get("/api/audit/cases/{case_id}/events", response_model=List[AuditEventResponse])
 def get_case_audit_trail(
     case_id: UUID,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> Any:
+):
     case = can_view_case(db, user, case_id)
     can_view_audit(db, case, user)
 
@@ -52,13 +87,13 @@ def get_case_audit_trail(
     ]
 
 
-@router.get("/api/audit/logs")
+@router.get("/api/audit/logs", response_model=List[PortfolioAuditItemResponse])
 def get_recent_audit_logs(
     limit: int = Query(50, le=100, ge=1),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> Any:
+):
     if user.role == UserRole.SYSTEM_ADMIN:
         raise HTTPException(
             status_code=403,

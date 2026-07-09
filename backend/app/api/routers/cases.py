@@ -1,3 +1,4 @@
+from app.schemas.responses import CaseDetailResponse, DecisionPackageResponse, DecisionPackageReconciliation, DecisionPackageAuditItem
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
@@ -303,22 +304,27 @@ def get_cases_summary(
     awaiting_human = 0
     approved_cases = 0
     approved_amount = Decimal(0)
+    declined_cases = 0
+    deferred_cases = 0
+    completed_human_reviews = 0
 
     for c in cases:
-        if c.status in [
-            CaseStatus.INITIATED,
-            CaseStatus.EVIDENCE_GATHERING,
-        ]:
+        # Pending Analyst Review: ASSESSMENT_COMPLETED and no analyst recommendation
+        if c.status == CaseStatus.ASSESSMENT_COMPLETED and not c.analyst_recommendation:
             awaiting_analyst += 1
-        elif c.status == CaseStatus.DECISION_PENDING:
+        # Pending Assessment: INITIATED or EVIDENCE_GATHERING
+        elif c.status in [CaseStatus.INITIATED, CaseStatus.EVIDENCE_GATHERING]:
+            # This is Pending Assessment, but the API doesn't have a field for it,
+            # wait, the API has awaiting_analyst and awaiting_human_decision.
+            pass
+        # Pending Sanction: DECISION_PENDING and no human decision
+        elif c.status == CaseStatus.DECISION_PENDING and not c.human_decision:
             awaiting_human += 1
-        elif c.status in [
-            CaseStatus.HUMAN_APPROVED,
-            CaseStatus.HUMAN_DECLINED,
-            CaseStatus.HUMAN_DEFERRED,
-        ]:
-            approved_cases += 1
+            
+        if c.status in [CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED]:
+            completed_human_reviews += 1
             if c.status == CaseStatus.HUMAN_APPROVED:
+                approved_cases += 1
                 latest_dec = (
                     db.query(AuditEvent)
                     .filter(
@@ -338,6 +344,10 @@ def get_cases_summary(
                     )
                 else:
                     approved_amount += c.requested_amount or Decimal(0)
+            elif c.status == CaseStatus.HUMAN_DECLINED:
+                declined_cases += 1
+            elif c.status == CaseStatus.HUMAN_DEFERRED:
+                deferred_cases += 1
 
     return {
         "active_cases": active_cases,
@@ -346,6 +356,9 @@ def get_cases_summary(
         "awaiting_human_decision": awaiting_human,
         "approved_cases": approved_cases,
         "approved_amount": float(approved_amount),
+        "declined_cases": declined_cases,
+        "deferred_cases": deferred_cases,
+        "completed_human_reviews": completed_human_reviews,
     }
 
 
@@ -366,36 +379,27 @@ def list_cases(
     )
     results = []
     for c in cases:
-        latest_eval = (
-            db.query(AuditEvent)
-            .filter(AuditEvent.case_id == c.id, AuditEvent.event_type == "evaluate")
-            .order_by(AuditEvent.created_at.desc())
-            .first()
-        )
-        evaluation_result = latest_eval.metadata_json if latest_eval else None
         results.append(
             {
                 "id": str(c.id),
-                "business_id": str(c.business_id_fk),
+                "business_id": str(c.business.business_id),
+                "business_name": c.business.legal_name,
                 "status": c.status.value,
                 "requested_amount": c.requested_amount,
                 "currency": c.currency,
+                "created_at": c.created_at,
+                "assigned_analyst": str(c.assigned_credit_analyst_id) if c.assigned_credit_analyst_id else "Unassigned",
+                "assigned_rm": str(c.assigned_relationship_manager_id) if c.assigned_relationship_manager_id else "Unassigned",
+                "requested_product": c.requested_product.value if c.requested_product else None,
                 "recommendation": c.recommendation.value if c.recommendation else None,
-                "analyst_recommendation": c.analyst_recommendation.value
-                if c.analyst_recommendation
-                else None,
+                "analyst_recommendation": c.analyst_recommendation.value if c.analyst_recommendation else None,
                 "human_decision": c.human_decision.value if c.human_decision else None,
-                "business_name": c.business.legal_name,
-                "requested_product": c.requested_product.value
-                if c.requested_product
-                else None,
-                "evaluation_result": evaluation_result,
             }
         )
     return results
 
 
-@router.get("/{case_id}")
+@router.get("/{case_id}", response_model=CaseDetailResponse)
 def get_case(
     case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
@@ -419,28 +423,22 @@ def get_case(
             "sector": case.business.sector,
         },
         "requested_amount": case.requested_amount,
-        "requested_product": case.requested_product.value
-        if case.requested_product
-        else None,
+        "requested_product": case.requested_product.value if case.requested_product else None,
         "currency": case.currency,
         "status": case.status.value,
         "recommendation": case.recommendation.value if case.recommendation else None,
-        "analyst_recommendation": case.analyst_recommendation.value
-        if case.analyst_recommendation
-        else None,
+        "analyst_recommendation": case.analyst_recommendation.value if case.analyst_recommendation else None,
         "human_decision": case.human_decision.value if case.human_decision else None,
         "evaluation_result": evaluation_result,
         "allowed_actions": {
             "run_assessment": check_can_run_assessment(db, case, user),
-            "submit_analyst_recommendation": check_can_submit_analyst_recommendation(
-                db, case, user
-            ),
+            "submit_analyst_recommendation": check_can_submit_analyst_recommendation(db, case, user),
             "record_human_decision": check_can_record_human_decision(db, case, user),
             "view_audit": check_can_view_audit(db, case, user),
         },
         "version": case.version,
-        "created_at": case.created_at.isoformat() if case.created_at else None,
-        "updated_at": case.updated_at.isoformat() if case.updated_at else None,
+        "created_at": case.created_at,
+        "updated_at": case.updated_at,
     }
 
 
@@ -722,3 +720,70 @@ def record_human_decision(
             ).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
             tx_db.commit()
         raise HTTPException(status_code=500, detail="Internal processing error")
+
+
+@router.get(
+    "/{case_id}/decision-package",
+    response_model=DecisionPackageResponse,
+    description="Fetch a full structured snapshot of the case decision package.",
+)
+def get_decision_package(
+    case_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        cid = UUID(case_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid case ID")
+
+    if not can_view_case(db, user, cid):
+        raise HTTPException(
+            status_code=403,
+            detail="BOLA: You do not have permission to access this case.",
+        )
+
+    case = db.query(Case).filter(Case.id == cid).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    audit_events = (
+        db.query(AuditEvent)
+        .filter(AuditEvent.case_id == cid)
+        .order_by(AuditEvent.created_at.asc())
+        .all()
+    )
+
+    audit_chain = [
+        DecisionPackageAuditItem(
+            event_type=evt.event_type,
+            actor=evt.actor,
+            event_hash=evt.event_hash,
+            created_at=evt.created_at.isoformat()
+        ) for evt in audit_events
+    ]
+
+    reconciliation = DecisionPackageReconciliation(
+        reconciliation_quality=case.data_confidence_score,
+        evidence_confidence=case.data_confidence_score,
+        source_coverage=case.resilience_score,
+    )
+    
+    return DecisionPackageResponse(
+        case_id=str(case.id),
+        business_name=case.business.legal_name if case.business else "Unknown",
+        requested_amount=case.requested_amount,
+        requested_product=case.requested_product.value if hasattr(case.requested_product, 'value') else case.requested_product,
+        reconciliation=reconciliation,
+        dscr=case.dscr,
+        binding_limit=None,
+        recommendation=case.recommendation,
+        reason_codes=[],
+        conditions=[],
+        policy_version="1.0.0",
+        calculation_version="1.0.0",
+        analyst_action=case.analyst_recommendation,
+        human_action=case.human_decision,
+        case_version=case.version,
+        audit_chain=audit_chain
+    )

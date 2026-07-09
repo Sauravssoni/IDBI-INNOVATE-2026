@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { CaseListItem } from "@/types";
+import { CaseListItem, CaseDetailResponse, CreditTwinResponse } from "@/types";
 import { apiFetch } from "@/lib/api";
 import EvidenceTab from "../cases/[caseId]/tabs/EvidenceTab";
 import ReconciliationTab from "../cases/[caseId]/tabs/ReconciliationTab";
@@ -14,35 +14,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, humanise } from "@/lib/formatters";
-interface CreditTwin {
-  case_id: string;
-  business_id: string;
-  dscr: number | null;
-  calculation_version: string;
-  total_annual_revenue: number;
-  binding_limit: number | null;
-  recommendation: string | null;
-  source_coverage: number | null;
-  reconciliation_quality: number | null;
-  evidence_confidence: number | null;
-  
-  evaluated_at: string | null;
-  policy_version?: string;
-}
 
 export default function GuidedDemoPage() {
   const { user, demoLogin } = useAuth();
   const router = useRouter();
 
-  const [caseData, setCaseData] = useState<any | null>(null);
-  const [creditTwin, setCreditTwin] = useState<CreditTwin | null>(null);
+  const [caseData, setCaseData] = useState<CaseDetailResponse | null>(null);
+  const [creditTwin, setCreditTwin] = useState<CreditTwinResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [evaluating, setEvaluating] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
+  const [activeRole, setActiveRole] = useState<string | null>(null);
 
-  const determineStep = (fullCase: any, role: string | undefined) => {
+  const determineStep = (fullCase: CaseDetailResponse, role: string | undefined | null) => {
     if (fullCase.status === "HUMAN_APPROVED" || fullCase.status === "HUMAN_DECLINED") return 6;
     if (fullCase.analyst_recommendation) {
       return role === "SANCTIONING_AUTHORITY" ? 6 : 5;
@@ -52,22 +38,22 @@ export default function GuidedDemoPage() {
     return 1; // Default
   };
 
-  const loadShaktiCase = async () => {
+  const loadShaktiCase = async (currentRole?: string) => {
     setLoading(true);
     const { data: listData, status: listStatus } = await apiFetch<CaseListItem[]>("/api/cases/");
     if (listStatus === 200 && Array.isArray(listData)) {
       const match = listData.find((c) => c.business_id === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
       if (match) {
-        const { data: fullCase, status: caseStatus } = await apiFetch(`/api/cases/${match.id}`);
+        const { data: fullCase, status: caseStatus } = await apiFetch<CaseDetailResponse>(`/api/cases/${match.id}`);
         if (caseStatus === 200 && fullCase) {
           setCaseData(fullCase);
-          setStep(determineStep(fullCase, user?.role));
-          const { data: twinData, status: twinStatus } = await apiFetch<CreditTwin>(`/api/cases/${match.id}/credit-twin`);
+          setStep(determineStep(fullCase, currentRole || activeRole || user?.role));
+          const { data: twinData, status: twinStatus } = await apiFetch<CreditTwinResponse>(`/api/cases/${match.id}/credit-twin`);
           if (twinStatus === 200 && twinData) {
             setCreditTwin(twinData);
           }
         } else {
-          setCaseData(match);
+          setError("Failed to load full case details.");
         }
       } else {
         setError("Shakti case not found in sandbox.");
@@ -79,6 +65,9 @@ export default function GuidedDemoPage() {
   };
 
   useEffect(() => {
+    if (user?.role) {
+      setActiveRole(user.role);
+    }
     loadShaktiCase();
   }, [user]);
 
@@ -113,17 +102,19 @@ export default function GuidedDemoPage() {
     setEvaluating(false);
   };
 
-  const submitAnalystRecommendation = async () => {
-    if (!caseData?.id) return;
+  const handleAnalystRecommendation = async () => {
+    if (!caseData || !caseData.allowed_actions.submit_analyst_recommendation) return;
+    if (activeRole !== "CREDIT_ANALYST") return;
+    
     setEvaluating(true);
     const idempotencyKey = crypto.randomUUID();
-    const limit = creditTwin?.binding_limit ?? "-";
+    const limit = creditTwin?.binding_limit;
     const { status } = await apiFetch(`/api/cases/${caseData.id}/analyst-recommendation`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
         recommendation: "RECOMMEND_ALTERNATIVE_STRUCTURE",
-        reason: `Deterministic reconciliation successful. Recommend ₹${limit} alternative structure based on verified cash flows.`,
+        reason: `Deterministic reconciliation successful. Recommend ${limit} alternative structure based on verified cash flows.`,
         expected_version: caseData.version || 1,
       }),
     });
@@ -139,25 +130,34 @@ export default function GuidedDemoPage() {
     setSwitchingRole(true);
     const res = await demoLogin("SANCTIONING_AUTHORITY");
     if (res.success) {
-      await loadShaktiCase();
+      const { data: meData, status: meStatus } = await apiFetch<{role: string}>("/api/auth/me");
+      if (meStatus === 200 && meData?.role === "SANCTIONING_AUTHORITY") {
+         setActiveRole("SANCTIONING_AUTHORITY");
+         await loadShaktiCase("SANCTIONING_AUTHORITY");
+         setStep(6);
+      } else {
+         setError("Failed to verify SA role switch.");
+      }
     } else {
       setError("Failed to switch roles.");
     }
     setSwitchingRole(false);
   };
 
-  const submitSanctionDecision = async () => {
-    if (!caseData?.id) return;
+  const handleSanctionDecision = async (decision: "APPROVED" | "REJECTED") => {
+    if (!caseData || !caseData.allowed_actions.record_human_decision) return;
+    if (activeRole !== "SANCTIONING_AUTHORITY") return;
+
     setEvaluating(true);
     const idempotencyKey = crypto.randomUUID();
-    const limit = creditTwin?.binding_limit ?? "-";
+    const limit = creditTwin?.binding_limit;
     const { status } = await apiFetch(`/api/cases/${caseData.id}/human-decision`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
-        decision: "APPROVE_ALTERNATIVE_STRUCTURE",
+        decision: decision === "APPROVED" ? "APPROVE_ALTERNATIVE_STRUCTURE" : "DECLINE_ALTERNATIVE_STRUCTURE",
         approved_amount: limit,
-        reason: `Approved alternative structure for ₹${limit}. Reconciled evidence supports repayment capacity. DSCR Sandbox V1 limits apply.`,
+        reason: `Approved alternative structure for ${limit}. Reconciled evidence supports repayment capacity. DSCR Sandbox V1 limits apply.`,
         expected_version: caseData.version || 1,
       }),
     });
@@ -223,7 +223,7 @@ export default function GuidedDemoPage() {
             </div>
             <div className="px-3 py-1 bg-light-elevated text-light-secondary text-xs font-bold rounded flex items-center gap-2 border border-light-border">
               <User className="w-3.5 h-3.5" />
-              {user?.role === 'CREDIT_ANALYST' ? 'Credit Analyst' : 'Sanctioning Authority'}
+              {activeRole === 'CREDIT_ANALYST' ? 'Credit Analyst' : 'Sanctioning Authority'}
             </div>
           </div>
         </div>
@@ -257,26 +257,26 @@ export default function GuidedDemoPage() {
                   <Building2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-light-text">{caseData.business?.legal_name}</h2>
-                  <p className="text-sm text-light-secondary font-mono">Business ID: {caseData.business_id_fk}</p>
+                  <h2 className="text-2xl font-bold text-light-text">{caseData.business?.legal_name || "Unknown"}</h2>
+                  <p className="text-sm text-light-secondary font-mono">Business ID: {caseData.business?.business_id || "Unknown"}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Requested Amount</div>
-                  <div className="text-lg font-mono font-bold text-light-text">₹{(caseData.requested_amount || 0).toLocaleString("en-IN")}</div>
+                  <div className="text-lg font-mono font-bold text-light-text">{caseData.requested_amount ? `₹${caseData.requested_amount.toLocaleString("en-IN")}` : "Unavailable"}</div>
                 </div>
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Product</div>
-                  <div className="text-lg font-bold text-light-text">{caseData.requested_product}</div>
+                  <div className="text-lg font-bold text-light-text">{caseData.requested_product ? humanise(caseData.requested_product) : "Unavailable"}</div>
                 </div>
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Sector</div>
-                  <div className="text-lg font-bold text-light-text">{caseData.business?.sector}</div>
+                  <div className="text-lg font-bold text-light-text">{caseData.business?.sector || "Unavailable"}</div>
                 </div>
                 <div className="p-4 bg-light-bg rounded-lg border border-light-border">
                   <div className="text-xs text-light-secondary uppercase font-bold mb-1">Status</div>
-                  <div className="text-lg font-bold text-brand-amber">{caseData.status}</div>
+                  <div className="text-lg font-bold text-brand-amber">{humanise(caseData.status) || "Unavailable"}</div>
                 </div>
               </div>
               <div className="flex justify-end border-t border-light-border pt-6">
@@ -320,7 +320,7 @@ export default function GuidedDemoPage() {
                 <div className="pt-4">
                   <button 
                     onClick={runEvaluation} 
-                    disabled={evaluating}
+                    disabled={evaluating || !caseData.allowed_actions.run_assessment}
                     className="w-full py-4 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all text-lg shadow-lg disabled:opacity-50"
                   >
                     {evaluating ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6" />}
@@ -349,12 +349,12 @@ export default function GuidedDemoPage() {
                 <div className="grid grid-cols-2 gap-4 mb-6">
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">System Recommendation</div>
-                     <div className="text-xl font-extrabold text-brand-teal">{humanise(creditTwin?.recommendation || undefined)}</div>
+                     <div className="text-xl font-extrabold text-brand-teal">{creditTwin?.recommendation ? humanise(creditTwin.recommendation) : "Unavailable"}</div>
                    </div>
                    <div className="p-4 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                      <div className="text-xs font-bold text-brand-teal uppercase mb-1">Binding Support Limit</div>
                      <div className="text-xl font-extrabold font-mono text-brand-teal">
-                       {formatCurrency(creditTwin?.binding_limit)}
+                       {creditTwin?.binding_limit !== null && creditTwin?.binding_limit !== undefined ? formatCurrency(creditTwin.binding_limit) : "Unavailable"}
                      </div>
                    </div>
                 </div>
@@ -402,11 +402,11 @@ export default function GuidedDemoPage() {
                   </div>
                   <div className="p-4 bg-light-bg border border-light-border rounded-lg">
                     <div className="text-xs font-bold text-light-secondary mb-2 uppercase">Rationale</div>
-                    <div className="text-sm text-light-text">Deterministic reconciliation successful. Recommend {formatCurrency(creditTwin?.binding_limit)} alternative structure based on verified cash flows.</div>
+                    <div className="text-sm text-light-text">Deterministic reconciliation successful. Recommend {creditTwin?.binding_limit ? formatCurrency(creditTwin.binding_limit) : "Unavailable"} alternative structure based on verified cash flows.</div>
                   </div>
                   <button 
-                    onClick={submitAnalystRecommendation}
-                    disabled={evaluating}
+                    onClick={handleAnalystRecommendation}
+                    disabled={evaluating || creditTwin?.binding_limit === null || creditTwin?.binding_limit === undefined || creditTwin.binding_limit <= 0 || !caseData.allowed_actions.submit_analyst_recommendation || activeRole !== "CREDIT_ANALYST"}
                     className="w-full py-4 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                   >
                     {evaluating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
@@ -432,7 +432,7 @@ export default function GuidedDemoPage() {
                   <div className="p-6 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                     <ShieldCheck className="w-12 h-12 text-brand-teal mx-auto mb-3" />
                     <h3 className="text-2xl font-bold text-brand-teal mb-1">SANCTION {caseData.status === "HUMAN_APPROVED" ? "APPROVED" : "DECLINED"}</h3>
-                    <p className="text-sm text-light-secondary font-mono">Limit: {formatCurrency(creditTwin?.binding_limit)}</p>
+                    <p className="text-sm text-light-secondary font-mono">Limit: {creditTwin?.binding_limit !== null && creditTwin?.binding_limit !== undefined ? formatCurrency(creditTwin.binding_limit) : "Unavailable"}</p>
                   </div>
                   <div className="pt-4 border-t border-light-border">
                     <h4 className="text-sm font-bold text-light-text mb-4 flex items-center gap-2">
@@ -454,23 +454,23 @@ export default function GuidedDemoPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="text-light-secondary">Requested Amount</div>
-                      <div className="text-right font-mono font-medium">{formatCurrency(caseData.requested_amount)}</div>
+                      <div className="text-right font-mono font-medium">{caseData.requested_amount !== null && caseData.requested_amount !== undefined ? formatCurrency(caseData.requested_amount) : "Unavailable"}</div>
                       <div className="text-light-secondary">Supportable Amount</div>
-                      <div className="text-right font-mono font-medium">{formatCurrency(creditTwin?.binding_limit)}</div>
+                      <div className="text-right font-mono font-medium">{creditTwin?.binding_limit !== null && creditTwin?.binding_limit !== undefined ? formatCurrency(creditTwin.binding_limit) : "Unavailable"}</div>
                       <div className="text-light-secondary">DSCR</div>
-                      <div className="text-right font-mono font-medium">{creditTwin?.dscr ? `${creditTwin.dscr}×` : "-"}</div>
+                      <div className="text-right font-mono font-medium">{creditTwin?.dscr ? `${creditTwin.dscr}×` : "Unavailable"}</div>
                       <div className="text-light-secondary">Analyst Action</div>
-                      <div className="text-right font-medium">{humanise(caseData.analyst_recommendation)}</div>
+                      <div className="text-right font-medium">{caseData.analyst_recommendation ? humanise(caseData.analyst_recommendation) : "Unavailable"}</div>
                       <div className="text-light-secondary">Mandate Status</div>
                       <div className="text-right font-medium text-brand-teal">Within Mandate</div>
                       <div className="text-light-secondary">Policy Version</div>
-                      <div className="text-right font-mono text-xs mt-1">{creditTwin?.policy_version || "DSCR_SANDBOX_V1"}</div>
+                      <div className="text-right font-mono text-xs mt-1">{creditTwin?.policy_version || "Unavailable"}</div>
                     </div>
                   </div>
                   
                   <button 
-                    onClick={submitSanctionDecision}
-                    disabled={evaluating}
+                    onClick={() => handleSanctionDecision("APPROVED")}
+                    disabled={evaluating || creditTwin?.binding_limit === null || creditTwin?.binding_limit === undefined || creditTwin.binding_limit <= 0 || !caseData.allowed_actions.record_human_decision || activeRole !== "SANCTIONING_AUTHORITY"}
                     className="w-full py-4 bg-brand-amber hover:bg-amber-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                   >
                     {evaluating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
