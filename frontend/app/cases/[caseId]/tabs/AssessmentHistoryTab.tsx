@@ -2,19 +2,23 @@
 
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
-import { Clock, CheckCircle2, User, PlayCircle, FileText } from "lucide-react";
-import { AuditLogEvent } from "@/types";
+import { Clock, CheckCircle2, User, PlayCircle, FileText, AlertCircle } from "lucide-react";
+import { AssessmentHistoryItem } from "@/types";
 
 export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
-  const [history, setHistory] = useState<AuditLogEvent[]>([]);
+  const [history, setHistory] = useState<AssessmentHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchHistory() {
       setLoading(true);
-      const { data, status } = await apiFetch<AuditLogEvent[]>(`/api/cases/${caseId}/assessment-history`);
-      if (status === 200) {
+      setError(null);
+      const { data, status, error: fetchErr } = await apiFetch<AssessmentHistoryItem[]>(`/api/cases/${caseId}/assessment-history`);
+      if (status === 200 && Array.isArray(data)) {
         setHistory(data);
+      } else {
+        setError(fetchErr || "Failed to load assessment history. Please try again later.");
       }
       setLoading(false);
     }
@@ -22,7 +26,16 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
   }, [caseId]);
 
   if (loading) {
-    return <div className="text-center p-8 text-light-secondary font-mono text-sm">Loading Assessment History...</div>;
+    return <div className="text-center p-8 text-light-secondary font-mono text-sm flex items-center justify-center gap-2"><Clock className="w-4 h-4 animate-spin" /> Loading Assessment History...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 text-brand-red rounded-xl border border-red-100 flex items-center justify-center gap-2 text-sm">
+        <AlertCircle className="w-5 h-5" />
+        {error}
+      </div>
+    );
   }
 
   if (history.length === 0) {
@@ -89,9 +102,21 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
                     </div>
                   )}
                   
-                  {event.metadata_json && Object.keys(event.metadata_json).length > 0 && (
+                  {event.recommendation && (
                     <div className="mt-2 text-[10px] font-mono text-light-muted overflow-x-auto">
-                      <pre>{JSON.stringify(event.metadata_json, null, 2)}</pre>
+                      <pre>
+                        {JSON.stringify(
+                          {
+                            recommendation: event.recommendation,
+                            binding_limit: event.binding_limit,
+                            dscr: event.dscr,
+                            policy_version: event.policy_version,
+                            calculation_version: event.calculation_version,
+                          },
+                          null,
+                          2
+                        )}
+                      </pre>
                     </div>
                   )}
                 </div>

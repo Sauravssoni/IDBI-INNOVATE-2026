@@ -93,6 +93,8 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
             scores = metadata["scores"]
         timestamp = latest_eval.created_at.isoformat()
 
+    from app.db.orm.evidence import Invoice, EmploymentPeriod, Obligation
+
     has_gst = len(gst_periods) > 0
     has_bank = (
         db.query(BankTransaction)
@@ -100,25 +102,70 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
         .first()
         is not None
     )
-    evidence_completeness_score = (
-        100 if (has_gst and has_bank) else (50 if has_gst or has_bank else 0)
+    has_invoices = (
+        db.query(Invoice).filter(Invoice.business_id_fk == business_id).first()
+        is not None
     )
+    has_employment = (
+        db.query(EmploymentPeriod)
+        .filter(EmploymentPeriod.business_id_fk == business_id)
+        .first()
+        is not None
+    )
+    has_obligations = (
+        db.query(Obligation).filter(Obligation.business_id_fk == business_id).first()
+        is not None
+    )
+
+    # Source Coverage Formula:
+    # Calculates the breadth of data domains provided by the borrower.
+    # 5 domains (GST, Bank, Invoices, Employment, Obligations), each worth 20 points.
+    # Max Score = 100
+    coverage_points = 0
+    if has_gst:
+        coverage_points += 20
+    if has_bank:
+        coverage_points += 20
+    if has_invoices:
+        coverage_points += 20
+    if has_employment:
+        coverage_points += 20
+    if has_obligations:
+        coverage_points += 20
+
+    source_coverage = Decimal(str(coverage_points)) if coverage_points > 0 else None
+
+    # Evidence Confidence Formula:
+    # Extracted directly from the core Scoring Engine (evidence_confidence_score).
+    # It evaluates the depth of history (e.g., >18 months GST) and volume of corroborating records.
+    evidence_confidence = None
+    if scores and scores.get("evidence_confidence_score") is not None:
+        evidence_confidence = Decimal(str(scores["evidence_confidence_score"]))
+
+    # Reconciliation Quality Formula:
+    # Extracted from the Reconciliation Engine, reflecting the percentage of bank receipts
+    # that deterministically match with declared GST revenue and invoices.
+    from app.services.reconciliation import run_reconciliation
+
+    recon = run_reconciliation(db, str(case_id))
+    recon_quality = None
+    if (
+        recon
+        and "reconciliation_match_percent" in recon
+        and recon["reconciliation_match_percent"] is not None
+    ):
+        recon_quality = Decimal(str(recon["reconciliation_match_percent"]))
 
     return {
         "case_id": str(case_id),
         "business_id": str(business_id),
-        "dscr": float(dscr) if dscr is not None else None,
+        "dscr": dscr if dscr is not None else None,
         "calculation_version": "DSCR_SANDBOX_V1",
-        "total_annual_revenue": float(total_annual_revenue),
-        "binding_limit": float(binding_limit) if binding_limit is not None else None,
+        "total_annual_revenue": total_annual_revenue,
+        "binding_limit": binding_limit if binding_limit is not None else None,
         "recommendation": case.recommendation.value if case.recommendation else None,
-        "evidence_completeness_score": evidence_completeness_score,
-        "financial_health_score": scores.get("financial_health_score")
-        if scores
-        else None,
-        "evidence_confidence_score": scores.get("evidence_confidence_score")
-        if scores
-        else None,
-        "resilience_score": scores.get("resilience_score") if scores else None,
+        "source_coverage": source_coverage,
+        "evidence_confidence": evidence_confidence,
+        "reconciliation_quality": recon_quality,
         "evaluated_at": timestamp,
     }

@@ -78,7 +78,7 @@ def create_session(db: Session, user_id: str):
 
 
 demo_rate_limits: defaultdict[str, list[float]] = defaultdict(list)
-DEMO_MAX_REQUESTS = 20
+DEMO_MAX_REQUESTS = 200
 DEMO_TIME_WINDOW = 60
 
 
@@ -120,6 +120,8 @@ def create_demo_session(
         "SANCTIONING_AUTHORITY",
         "RELATIONSHIP_MANAGER",
         "AUDITOR",
+        "SYSTEM_ADMIN",
+        "RISK_ADMIN",
     ]
     if req.role not in allowed_roles:
         raise HTTPException(
@@ -131,6 +133,8 @@ def create_demo_session(
         "SANCTIONING_AUTHORITY": "sa@bank.example",
         "RELATIONSHIP_MANAGER": "rm@bank.example",
         "AUDITOR": "auditor@bank.example",
+        "SYSTEM_ADMIN": "system@bank.example",
+        "RISK_ADMIN": "admin@bank.example",
     }
     target_email = role_email_map[req.role]
     user = db.query(User).filter(User.email == target_email).first()

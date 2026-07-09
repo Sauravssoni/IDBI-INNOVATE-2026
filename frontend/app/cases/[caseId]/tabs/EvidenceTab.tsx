@@ -3,6 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { FileText, Database, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { 
+  GSTEvidence, 
+  BankEvidence, 
+  InvoiceEvidence, 
+  EmploymentEvidence, 
+  ObligationEvidence 
+} from '@/types';
 
 const formatCurrency = (val: unknown) => {
   if (val === "-" || val === null || val === undefined) return "-";
@@ -15,22 +22,22 @@ const formatCurrency = (val: unknown) => {
 };
 
 export default function EvidenceTab({ caseId }: { caseId: string }) {
-  const [gstRecords, setGstRecords] = useState<any[]>([]);
-  const [bankRecords, setBankRecords] = useState<any[]>([]);
-  const [invoiceRecords, setInvoiceRecords] = useState<any[]>([]);
-  const [employmentRecords, setEmploymentRecords] = useState<any[]>([]);
-  const [obligationRecords, setObligationRecords] = useState<any[]>([]);
+  const [gstRecords, setGstRecords] = useState<GSTEvidence[]>([]);
+  const [bankRecords, setBankRecords] = useState<BankEvidence[]>([]);
+  const [invoiceRecords, setInvoiceRecords] = useState<InvoiceEvidence[]>([]);
+  const [employmentRecords, setEmploymentRecords] = useState<EmploymentEvidence[]>([]);
+  const [obligationRecords, setObligationRecords] = useState<ObligationEvidence[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchEvidence() {
       setLoading(true);
       const [gstRes, bankRes, invoiceRes, empRes, obRes] = await Promise.all([
-        apiFetch<any>(`/api/cases/${caseId}/evidence/gst`),
-        apiFetch<any>(`/api/cases/${caseId}/evidence/bank`),
-        apiFetch<any>(`/api/cases/${caseId}/evidence/invoices`),
-        apiFetch<any>(`/api/cases/${caseId}/evidence/employment`),
-        apiFetch<any>(`/api/cases/${caseId}/evidence/obligations`)
+        apiFetch<GSTEvidence[]>(`/api/cases/${caseId}/evidence/gst`),
+        apiFetch<BankEvidence[]>(`/api/cases/${caseId}/evidence/bank`),
+        apiFetch<InvoiceEvidence[]>(`/api/cases/${caseId}/evidence/invoices`),
+        apiFetch<EmploymentEvidence[]>(`/api/cases/${caseId}/evidence/employment`),
+        apiFetch<ObligationEvidence[]>(`/api/cases/${caseId}/evidence/obligations`)
       ]);
       if (gstRes.status === 200) setGstRecords(gstRes.data || []);
       if (bankRes.status === 200) setBankRecords(bankRes.data || []);

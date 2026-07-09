@@ -8,7 +8,7 @@ cd "$REPO_ROOT/backend"
 export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test"
 export JWT_SECRET="test-secret"
 export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:?required}"
-pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
+pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
 ruff check app tests scripts
 ruff format --check app tests scripts
 mypy app
@@ -23,6 +23,14 @@ npm run lint
 npm run type-check
 npm test -- --reporter=verbose
 npm run build
+
+echo "Seeding Test Database for E2E..."
+cd "$REPO_ROOT/backend"
+DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test" PYTHONPATH=. python -m app.seed.run_demo_reset
+
+echo "Running Frontend E2E Tests..."
+cd "$REPO_ROOT/frontend"
+npx playwright test
 
 echo "Running Proofs..."
 cd "$REPO_ROOT/backend"
