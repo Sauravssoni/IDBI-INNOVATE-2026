@@ -1,33 +1,74 @@
 export interface CaseListItem {
   id: string;
   business_id: string;
-  business_name: string;
+  business_name?: string; // Keep optional if needed, but remove if strict
   status: string;
   requested_amount: number;
   currency: string;
   created_at: string;
-  assigned_analyst: string;
-  assigned_rm: string;
   requested_product?: string | null;
   recommendation?: string | null;
   analyst_recommendation?: string | null;
   human_decision?: string | null;
-  evaluation_result?: any | null;
+}
+
+export interface CaseBusinessResponse {
+  id: string;
+  business_id: string;
+  legal_name: string;
+  sector: string;
+}
+
+export interface AllowedActionsResponse {
+  run_assessment: boolean;
+  submit_analyst_recommendation: boolean;
+  record_human_decision: boolean;
+  view_audit: boolean;
 }
 
 export interface CaseDetailResponse {
   id: string;
-  business_id: string;
-  business_name: string;
-  status: string;
+  business_id_fk: string;
+  business: CaseBusinessResponse;
   requested_amount: number;
+  requested_product?: string | null;
   currency: string;
+  status: string;
+  recommendation?: string | null;
+  analyst_recommendation?: string | null;
+  human_decision?: string | null;
+  evaluation_result?: EvaluationResultResponse | null;
+  allowed_actions: AllowedActionsResponse;
+  version: number;
   created_at: string;
-  assigned_analyst: string;
-  assigned_rm: string;
-  industry: string;
-  region: string;
-  branch: string;
+  updated_at: string;
+}
+
+export interface EvaluateResponseDecision {
+  decision?: string | null;
+  recommendation?: string | null;
+  binding_limit?: number | null;
+  reason_codes?: string[] | null;
+}
+
+export interface EvaluateResponseFeatures {
+  total_revenue?: number | null;
+  total_obligations?: number | null;
+  dscr?: number | null;
+  reconciliation_metrics?: Record<string, unknown> | null;
+  gst_metrics?: Record<string, unknown> | null;
+  bank_metrics?: Record<string, unknown> | null;
+}
+
+export interface EvaluateResponseScores {
+  evidence_confidence?: number | null;
+  reconciliation_quality?: number | null;
+}
+
+export interface EvaluationResultResponse {
+  decision?: EvaluateResponseDecision | null;
+  features?: EvaluateResponseFeatures | null;
+  scores?: EvaluateResponseScores | null;
 }
 
 export interface AssessmentHistoryItem {
@@ -66,6 +107,7 @@ export interface CreditTwinResponse {
   evidence_confidence: number | null;
   reconciliation_quality: number | null;
   evaluated_at: string | null;
+  policy_version?: string;
 }
 
 export interface EvidenceMetadata {
@@ -136,9 +178,20 @@ export interface ReconciliationCheck {
 export interface EvaluateResponse {
   case_id: string;
   business_name: string;
-  features: Record<string, any>;
-  scores: Record<string, any>;
-  decision: Record<string, any>;
+  features: {
+    total_revenue?: number;
+    total_obligations?: number;
+    dscr?: number;
+  };
+  scores: {
+    evidence_confidence?: number;
+    reconciliation_quality?: number;
+  };
+  decision: {
+    recommendation?: string;
+    binding_limit?: number;
+    reason_codes?: string[];
+  };
 }
 
 export interface HumanDecisionResponse {
@@ -166,10 +219,41 @@ export interface DashboardSummaryResponse {
   awaiting_human_decision: number;
   approved_cases: number;
   approved_amount: number;
+  declined_cases: number;
+  deferred_cases: number;
+  completed_human_reviews: number;
 }
 
 export interface HealthResponse {
   status: string;
   version: string;
   environment: string;
+}
+
+export interface DecisionPackageResponse {
+  case_id: string;
+  business_name: string;
+  requested_amount: number;
+  requested_product: string | null;
+  reconciliation: {
+    reconciliation_quality: number | null;
+    evidence_confidence: number | null;
+    source_coverage: number | null;
+  };
+  dscr: number | null;
+  binding_limit: number | null;
+  recommendation: string | null;
+  reason_codes: string[];
+  conditions: string[];
+  policy_version: string;
+  calculation_version: string;
+  analyst_action: string | null;
+  human_action: string | null;
+  case_version: number;
+  audit_chain: {
+    event_type: string;
+    actor: string;
+    event_hash: string;
+    created_at: string;
+  }[];
 }
