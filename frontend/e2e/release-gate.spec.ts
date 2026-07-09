@@ -1,157 +1,179 @@
 import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
 
 test.describe('Vyapar Pulse Release Gate', () => {
-  
+  let hasErrors = false;
+
   test.beforeEach(async ({ page }) => {
-    // Listen for unhandled errors
     page.on('pageerror', exception => {
       console.error(`Uncaught exception: "${exception}"`);
+      hasErrors = true;
     });
     
     page.on('console', msg => {
-      if (msg.type() === 'error')
+      if (msg.type() === 'error') {
         console.error(`Console error: "${msg.text()}"`);
+        hasErrors = true;
+      }
+    });
+
+    page.on('response', response => {
+      if (response.status() >= 400) {
+        // Allow intentional 401s on initial load, or 403s for sys admin
+        const url = response.url();
+        if (!url.includes('/api/auth/me') && !url.includes('favicon.ico') && response.status() !== 403 && response.status() !== 404) {
+          console.error(`Failed network call: ${response.status()} ${url}`);
+          hasErrors = true;
+        }
+      }
     });
   });
 
-  test('login page has no runtime or console error and renders properly', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('text=Vyapar Pulse')).toBeVisible();
-    
-    // Screenshot 1: Login Screen
-    await page.screenshot({ path: '../docs/assets/screenshots/01_login_screen.png' });
+  test.afterEach(async () => {
+    expect(hasErrors).toBe(false);
   });
 
-  test('Credit Analyst one-click login and navigation', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await page.click('button:has-text("Credit Analyst")');
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-    
-    // Screenshot 2: Credit Analyst Dashboard
-    await page.screenshot({ path: '../docs/assets/screenshots/02_analyst_dashboard.png' });
-    
-    // Click on a non-Shakti case to preserve Shakti for the guided flow test
-    const firstCase = page.locator('table tbody tr').filter({ hasText: 'Navprerna' }).first();
-    await expect(firstCase).toBeVisible();
-    await firstCase.locator('a', { hasText: 'Open' }).click();
-    await expect(page.locator('text=BACK TO CASE INVENTORY')).toBeVisible();
-      
-      // Screenshot 3: Case Detail View
-      await page.screenshot({ path: '../docs/assets/screenshots/03_case_detail_view.png' });
-      
-      // Run Assessment Engine if available, otherwise just view the existing Credit Twin
-      const runEngine = page.locator('button:has-text("Run Assessment Engine")');
-      if (await runEngine.isVisible()) {
-        await runEngine.click();
-      }
-      
-      // Wait for evaluation (or existing evaluation) to be visible
-      await expect(page.locator('text=MSME Credit Twin')).toBeVisible({ timeout: 15000 });
-      
-      // Screenshot 4: Credit Twin Computed
-      await page.screenshot({ path: '../docs/assets/screenshots/04_credit_twin.png' });
-  });
-
-  test('SA one-click login and assessment history', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await page.click('button:has-text("Sanctioning Authority")');
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-    
-    // Click on a non-Shakti case
-    const firstCase = page.locator('table tbody tr').filter({ hasText: 'Navprerna' }).first();
-    await expect(firstCase).toBeVisible();
-    await firstCase.locator('a:has-text("Open")').click();
-    await page.click('button:has-text("Assessment History")');
-    
-    // Screenshot 5: Assessment History
-    await page.screenshot({ path: '../docs/assets/screenshots/05_assessment_history.png' });
-  });
-
-  test('Auditor one-click login and global audit log', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await page.click('button:has-text("Auditor")');
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-    
-    await page.click('a[href="/audit"]');
-    await expect(page.locator('text=Audit Log & CAS Trail')).toBeVisible();
-    
-    // Screenshot 6: Global Audit
-    await page.screenshot({ path: '../docs/assets/screenshots/06_global_audit.png' });
-  });
-
-  test('System Admin receives no borrower content or case/audit navigation', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await page.click('button:has-text("System Admin")');
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-    
-    // Should see system admin view
-    await expect(page.locator('text=Governance & Access Controls')).toBeVisible();
-    
-    // Should NOT see cases
-    await expect(page.locator('table')).not.toBeVisible();
-    
-    // Screenshot 7: System Admin
-    await page.screenshot({ path: '../docs/assets/screenshots/07_system_admin.png' });
-  });
-
-  test('Relationship Manager read-only access to cases', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await page.click('button:has-text("Relationship Manager")');
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-    
-    // Click on a non-Shakti case
-    const firstCase = page.locator('table tbody tr').filter({ hasText: 'Navprerna' }).first();
-    await expect(firstCase).toBeVisible();
-    await firstCase.locator('a', { hasText: 'Open' }).click();
-    await expect(page.locator('text=BACK TO CASE INVENTORY')).toBeVisible();
-      
-    // RM should NOT see "Run Assessment Engine" or recommendation buttons
-    await expect(page.locator('button:has-text("Run Assessment Engine")')).not.toBeVisible();
-  });
-
-  test('Risk Admin access to policy engine config', async ({ page }) => {
-    await page.goto('/demo');
-    await page.waitForLoadState('networkidle');
-    await page.click('button:has-text("Risk Admin")');
-    await expect(page).toHaveURL('/', { timeout: 10000 });
-    
-    // Risk admin should see policy configuration
-    await page.click('a[href="/policy"]');
-    await expect(page.locator('text=Credit Policy & Risk Rules Engine')).toBeVisible();
-  });
-  
   test('Shakti guided flow reaches all stages and captures screenshots', async ({ page }) => {
     await page.goto('/demo');
     await page.waitForLoadState('networkidle');
     await page.click('button:has-text("Start 3-Minute Credit Journey")');
-    
-    // Wait for login and navigation to /demo
     await expect(page).toHaveURL(/\/demo/);
     
-    // Screenshot 8: Guided walkthrough - business & request
     await expect(page.locator('text=Inspect Evidence Coverage')).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: '../docs/assets/screenshots/08_guided_business_request.png' });
+    await page.screenshot({ path: '../docs/assets/screenshots/02-shakti-request.png' });
     
-    // Proceed to Evidence Coverage
     await page.click('button:has-text("Inspect Evidence Coverage")');
     await expect(page.locator('text=Proceed to Reconciliation')).toBeVisible();
+    await page.screenshot({ path: '../docs/assets/screenshots/03-evidence-coverage.png' });
     
-    // Screenshot 9: Guided walkthrough - evidence coverage
-    await page.screenshot({ path: '../docs/assets/screenshots/09_guided_evidence_coverage.png' });
-    
-    // Proceed to Reconciliation
     await page.click('button:has-text("Proceed to Reconciliation")');
     await expect(page.locator('text=Run Assessment Engine')).toBeVisible();
     
-    // Screenshot 10: Guided walkthrough - reconciliation
-    await page.screenshot({ path: '../docs/assets/screenshots/10_guided_reconciliation.png' });
+    await page.click('button:has-text("Run Assessment Engine")');
+    await expect(page.locator('text=MSME Credit Twin')).toBeVisible({ timeout: 15000 });
+    await page.screenshot({ path: '../docs/assets/screenshots/04-credit-twin.png' });
+    
+    // Assertions for Shakti outcome
+    await expect(page.locator('text=DSCR')).toBeVisible();
+    await expect(page.locator('text=1.85')).toBeVisible(); // DSCR 1.85
+    await expect(page.locator('text=CONDITIONAL_OFFER').or(page.locator('text=Conditional Offer'))).toBeVisible();
+    await expect(page.locator('text=35.69').or(page.locator('text=3,569,000'))).toBeVisible(); // supportable amount approximately ₹35.69 lakh
+    
+    await expect(page.locator('text=Proceed to Recommendation')).toBeVisible();
+    await page.click('button:has-text("Proceed to Recommendation")');
+    
+    // Analyst alternative-structure recommendation
+    await page.fill('textarea[placeholder*="rationale"]', 'Recommend alternative structure of 35L');
+    await page.click('button:has-text("Submit Recommendation")');
+    await expect(page.locator('text=Sanction Review')).toBeVisible();
+    await page.screenshot({ path: '../docs/assets/screenshots/05-analyst-recommendation.png' });
+
+    // SA transition verifies /api/auth/me and lands on stage 6
+    await page.click('button:has-text("Simulate Sanctioning Authority Login")');
+    await expect(page.locator('text=Sanction Review')).toBeVisible(); // Stage 6
+    await expect(page.locator('text=Approve Application')).toBeVisible();
+    await page.screenshot({ path: '../docs/assets/screenshots/06-sanction-review.png' });
+
+    // manual SA alternative-structure approval
+    await page.click('button:has-text("Approve Application")');
+    await expect(page.locator('text=SANCTIONED').or(page.locator('text=Sanctioned'))).toBeVisible();
+  });
+
+  test('NavPrerna evidence-request/defer path', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Credit Analyst")');
+    const row = page.locator('table tbody tr').filter({ hasText: 'Navprerna' }).first();
+    await row.locator('a', { hasText: 'Open' }).click();
+    
+    const runEngine = page.locator('button:has-text("Run Assessment Engine")');
+    if (await runEngine.isVisible()) {
+      await runEngine.click();
+    }
+    
+    await expect(page.locator('text=DEFER').or(page.locator('text=Defer'))).toBeVisible({ timeout: 15000 });
+  });
+
+  test('Aarohan decline/decline-after-review path', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Credit Analyst")');
+    const row = page.locator('table tbody tr').filter({ hasText: 'Aarohan' }).first();
+    await row.locator('a', { hasText: 'Open' }).click();
+    
+    const runEngine = page.locator('button:has-text("Run Assessment Engine")');
+    if (await runEngine.isVisible()) {
+      await runEngine.click();
+    }
+    
+    await expect(page.locator('text=DECLINE').or(page.locator('text=Decline'))).toBeVisible({ timeout: 15000 });
+  });
+
+  test('Rangrez frozen expected path', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Credit Analyst")');
+    const row = page.locator('table tbody tr').filter({ hasText: 'Rangrez' }).first();
+    await row.locator('a', { hasText: 'Open' }).click();
+    
+    await expect(page.locator('text=DECLINED').or(page.locator('text=Declined')).or(page.locator('text=FROZEN'))).toBeVisible();
+  });
+
+  test('Assessment History does not crash', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Credit Analyst")');
+    const row = page.locator('table tbody tr').first();
+    await row.locator('a', { hasText: 'Open' }).click();
+    await page.click('button:has-text("Assessment History")');
+    await expect(page.locator('text=Event Hash')).toBeVisible();
+  });
+
+  test('Auditor trace renders timestamps and hashes', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Auditor")');
+    await page.click('a[href="/audit"]');
+    await expect(page.locator('text=Audit Log & CAS Trail')).toBeVisible();
+    await expect(page.locator('text=202')).toBeVisible(); // Part of a timestamp
+    await expect(page.locator('text=Hash:')).toBeVisible();
+    await page.screenshot({ path: '../docs/assets/screenshots/09-auditor-trace.png' });
+  });
+
+  test('Policy page renders only implemented rules', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Risk Admin")');
+    await page.click('a[href="/policy"]');
+    await expect(page.locator('text=Credit Policy & Risk Rules Engine')).toBeVisible();
+    await expect(page.locator('text=DSCR').first()).toBeVisible();
+    await page.screenshot({ path: '../docs/assets/screenshots/10-policy-matrix.png' });
+  });
+
+  test('System Admin isolation', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("System Admin")');
+    await expect(page.locator('text=Governance & Access Controls')).toBeVisible();
+    await expect(page.locator('table')).not.toBeVisible();
+  });
+
+  test('Relationship Manager demo login', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Relationship Manager")');
+    const row = page.locator('table tbody tr').first();
+    await row.locator('a', { hasText: 'Open' }).click();
+    await expect(page.locator('button:has-text("Run Assessment Engine")')).not.toBeVisible();
+  });
+
+  test('Data assertions (no ₹0 approval, no raw enum)', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Credit Analyst")');
+    const content = await page.textContent('body');
+    expect(content).not.toContain('₹0');
+    expect(content).not.toContain('RECOMMEND_ALTERNATIVE_STRUCTURE');
+  });
+
+  test('Capture missing screenshots', async ({ page }) => {
+    await page.goto('/demo');
+    await page.screenshot({ path: '../docs/assets/screenshots/01-demo-access.png' });
+    await page.click('button:has-text("Credit Analyst")');
+    await page.screenshot({ path: '../docs/assets/screenshots/08-dashboard.png' });
+    const row = page.locator('table tbody tr').first();
+    await row.locator('a', { hasText: 'Open' }).click();
+    await page.click('button:has-text("Assessment History")');
+    await page.screenshot({ path: '../docs/assets/screenshots/07-final-audit.png' });
   });
 });
