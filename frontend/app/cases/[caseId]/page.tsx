@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import EvidenceTab from "./tabs/EvidenceTab";
 import ReconciliationTab from "./tabs/ReconciliationTab";
 import AssessmentHistoryTab from "./tabs/AssessmentHistoryTab";
+import DecisionPackageTab from "./tabs/DecisionPackageTab";
 import {
   Sparkles,
   Building2,
@@ -206,7 +207,7 @@ export default function CaseEvaluationPage() {
 
     if (status === 200 || status === 201) {
       setEvalResult(data);
-      const decision = data?.decision?.decision ?? "-";
+      const decision = data?.decision?.recommendation ?? "-";
       setActionSuccess(
         `AI-assisted credit assessment completed successfully! Recommendation: ${humaniseEnum(decision)}`,
       );
@@ -463,6 +464,7 @@ export default function CaseEvaluationPage() {
           { id: "evidence", label: "Evidence Data", icon: Database },
           { id: "reconciliation", label: "Reconciliation", icon: Scale },
           { id: "history", label: "Assessment History", icon: Clock },
+          { id: "decision_package", label: "Sensitivity Lab", icon: FileText },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -488,6 +490,7 @@ export default function CaseEvaluationPage() {
         <ReconciliationTab caseId={caseData.id} />
       )}
       {activeTab === "history" && <AssessmentHistoryTab caseId={caseData.id} />}
+      {activeTab === "decision_package" && <DecisionPackageTab caseId={caseData.id} />}
 
       {activeTab === "overview" && (
         <div className="space-y-6">

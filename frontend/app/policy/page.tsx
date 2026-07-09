@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ShieldAlert, Cpu, CheckCircle2, Lock, Sliders, AlertTriangle } from "lucide-react";
+import { ShieldAlert, Cpu, CheckCircle2, Lock, Sliders, AlertTriangle, FileText, UserCheck, Calculator } from "lucide-react";
 
 export default function PolicyEnginePage() {
   return (
@@ -16,41 +16,96 @@ export default function PolicyEnginePage() {
           <span>Credit Policy & Risk Rules Engine</span>
         </h1>
         <p className="text-light-secondary text-sm mt-2">
-          Configurable decision parameters, debt-service thresholds, and automated fraud flags.
+          Configurable decision parameters and debt-service thresholds.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Consent</span>
+            <Lock className="w-4 h-4 text-brand-teal" />
+          </div>
+          <div className="text-xl font-bold text-light-text font-mono">Valid Required</div>
+          <p className="text-xs text-light-secondary font-medium">
+            No data processing without verifiable digital consent.
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Evidence Confidence</span>
+            <FileText className="w-4 h-4 text-brand-teal" />
+          </div>
+          <div className="text-xl font-bold text-light-text font-mono">&ge; 40</div>
+          <p className="text-xs text-light-secondary font-medium">
+            Minimum confidence threshold for acceptable digital evidence.
+          </p>
+        </div>
+
         <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">DSCR Thresholds</span>
             <Sliders className="w-4 h-4 text-brand-teal" />
           </div>
-          <div className="text-2xl font-bold text-light-text font-mono">&ge; 1.15x</div>
+          <div className="text-xl font-bold text-light-text font-mono">&ge; 1.15x</div>
           <p className="text-xs text-light-secondary font-medium">
-            Minimum Debt Service Coverage Ratio required for deterministic evidence-linked recommendation and human-reviewed sanction decision.
+            Minimum Debt Service Coverage Ratio required for deterministic recommendation.
           </p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Circular Trading Guard</span>
-            <Lock className="w-4 h-4 text-brand-amber" />
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Integrity Flag</span>
+            <AlertTriangle className="w-4 h-4 text-brand-amber" />
           </div>
-          <div className="text-2xl font-bold text-light-text font-mono">Active (0 Tol)</div>
+          <div className="text-xl font-bold text-light-text font-mono">Enhanced DD</div>
           <p className="text-xs text-light-secondary font-medium">
-            Real-time graph analysis across GST vendor/customer networks to block shell loops.
+            Failed integrity checks immediately mandate Enhanced Due Diligence (EDD).
           </p>
         </div>
 
         <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Gearing Cap</span>
-            <AlertTriangle className="w-4 h-4 text-brand-red" />
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Amount Check</span>
+            <Calculator className="w-4 h-4 text-brand-teal" />
           </div>
-          <div className="text-2xl font-bold text-light-text font-mono">&le; 3.00x</div>
+          <div className="text-xl font-bold text-light-text font-mono">Req &le; Supportable</div>
           <p className="text-xs text-light-secondary font-medium">
-            Maximum Total Debt / Equity ratio permitted without mandatory Sanction Authority escalation.
+            Requested amount must not exceed the calculated supportable amount for unconditional approval.
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Sanction</span>
+            <UserCheck className="w-4 h-4 text-brand-teal" />
+          </div>
+          <div className="text-xl font-bold text-light-text font-mono">Human Required</div>
+          <p className="text-xs text-light-secondary font-medium">
+            A human Sanctioning Authority must explicitly review and approve all sanctions.
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Policy Version</span>
+            <Cpu className="w-4 h-4 text-brand-teal" />
+          </div>
+          <div className="text-xl font-bold text-light-text font-mono">1.1</div>
+          <p className="text-xs text-light-secondary font-medium">
+            Strict versioning of evaluation policy matrix.
+          </p>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-light-border space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-light-secondary uppercase tracking-wider">Calc Version</span>
+            <Calculator className="w-4 h-4 text-brand-teal" />
+          </div>
+          <div className="text-xl font-bold text-light-text font-mono">2.0</div>
+          <p className="text-xs text-light-secondary font-medium">
+            Strict versioning of financial twin calculation engine.
           </p>
         </div>
       </div>

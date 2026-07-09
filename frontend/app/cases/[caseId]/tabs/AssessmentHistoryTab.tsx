@@ -46,12 +46,15 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
     );
   }
 
-  const renderEventIcon = (eventType: string) => {
+  const renderEventIcon = (eventType: string | null) => {
     switch (eventType) {
+      case "evaluate":
       case "SYSTEM_EVALUATION":
         return <PlayCircle className="w-5 h-5 text-brand-teal" />;
+      case "analyst_recommendation":
       case "ANALYST_RECOMMENDATION":
         return <FileText className="w-5 h-5 text-brand-teal" />;
+      case "human_decision":
       case "HUMAN_DECISION":
         return <CheckCircle2 className="w-5 h-5 text-emerald-600" />;
       default:
@@ -70,7 +73,6 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
         <div className="space-y-6">
           {history.map((event, idx) => (
             <div key={idx} className="relative flex gap-4">
-              {/* Timeline line */}
               {idx !== history.length - 1 && (
                 <div className="absolute left-6 top-10 bottom-[-24px] w-0.5 bg-light-border" />
               )}
@@ -82,18 +84,18 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
               <div className="flex-1 bg-light-elevated border border-light-border p-4 rounded-xl hover:bg-light-bg transition-colors shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                   <div className="text-sm font-bold text-light-text">
-                    {event.event_type ? event.event_type.replace(/_/g, " ") : "UNKNOWN"}
+                    {event.event_type ? event.event_type.replace(/_/g, " ") : "Not recorded"}
                   </div>
                   <div className="text-xs font-mono text-light-secondary bg-light-bg border border-light-border px-2 py-1 rounded">
-                    {event.created_at ? new Date(event.created_at).toLocaleString() : "-"}
+                    {event.created_at ? new Date(event.created_at).toLocaleString() : "Not recorded"}
                   </div>
                 </div>
                 
                 <div className="text-xs text-light-text space-y-2">
                   <div className="flex items-center gap-2 text-[11px] font-mono">
                     <User className="w-3 h-3 text-light-secondary" />
-                    <span>{event.actor}</span>
-                    <span className="px-1.5 py-0.5 bg-light-bg border border-light-border rounded text-light-secondary">{event.actor_role}</span>
+                    <span>{event.actor || "Not recorded"}</span>
+                    <span className="px-1.5 py-0.5 bg-light-bg border border-light-border rounded text-light-secondary">{event.actor_role || "Not recorded"}</span>
                   </div>
                   
                   {event.reason && (
@@ -107,11 +109,11 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
                       <pre>
                         {JSON.stringify(
                           {
-                            recommendation: event.recommendation,
-                            binding_limit: event.binding_limit,
-                            dscr: event.dscr,
-                            policy_version: event.policy_version,
-                            calculation_version: event.calculation_version,
+                            recommendation: event.recommendation || null,
+                            binding_limit: event.binding_limit !== undefined ? event.binding_limit : null,
+                            dscr: event.dscr !== undefined ? event.dscr : null,
+                            policy_version: event.policy_version || null,
+                            calculation_version: event.calculation_version || null,
                           },
                           null,
                           2
