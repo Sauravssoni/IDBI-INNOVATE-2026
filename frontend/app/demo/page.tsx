@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { CaseListItem } from "@/types";
 import { apiFetch } from "@/lib/api";
 import EvidenceTab from "../cases/[caseId]/tabs/EvidenceTab";
 import ReconciliationTab from "../cases/[caseId]/tabs/ReconciliationTab";
@@ -21,10 +22,10 @@ interface CreditTwin {
   total_annual_revenue: number;
   binding_limit: number | null;
   recommendation: string | null;
-  evidence_completeness_score: number;
-  financial_health_score: number | null;
-  evidence_confidence_score: number | null;
-  resilience_score: number | null;
+  source_coverage: number | null;
+  reconciliation_quality: number | null;
+  evidence_confidence: number | null;
+  
   evaluated_at: string | null;
   policy_version?: string;
 }
@@ -53,9 +54,9 @@ export default function GuidedDemoPage() {
 
   const loadShaktiCase = async () => {
     setLoading(true);
-    const { data: listData, status: listStatus } = await apiFetch<any[]>("/api/cases/");
+    const { data: listData, status: listStatus } = await apiFetch<CaseListItem[]>("/api/cases/");
     if (listStatus === 200 && Array.isArray(listData)) {
-      const match = listData.find((c) => c.business_id_fk === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
+      const match = listData.find((c) => c.business_id === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
       if (match) {
         const { data: fullCase, status: caseStatus } = await apiFetch(`/api/cases/${match.id}`);
         if (caseStatus === 200 && fullCase) {

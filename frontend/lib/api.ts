@@ -57,8 +57,17 @@ export async function apiFetch<T = unknown>(
         if (typeof localStorage !== "undefined") {
           localStorage.removeItem("vyapar_user");
         }
+        // Avoid redirecting if the URL we requested was /api/auth/me 
+        // AND it was a background refresh that might be racing with a login.
+        // Actually, let's only redirect if we're not on the login page.
+        // To fix the race condition, if a login just occurred, we shouldn't hard redirect.
         if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-          window.location.href = "/login";
+          // If the request that got 401 was for /api/auth/me, we shouldn't hard redirect 
+          // if we are already handling Auth state in React. 
+          // Let AuthContext handle it!
+          if (endpoint !== "/api/auth/me") {
+             window.location.href = "/login";
+          }
         }
       }
 

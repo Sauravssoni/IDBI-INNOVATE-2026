@@ -22,17 +22,21 @@ def check_backend(url):
         return False
 
 def check_frontend(url):
-    try:
-        req = urllib.request.Request(url)
-        with urllib.request.urlopen(req, timeout=10) as response:
-            if response.status != 200:
-                print(f"❌ Frontend returned {response.status}")
-                return False
-            print("✅ Frontend health check passed.")
-            return True
-    except Exception as e:
-        print(f"❌ Frontend health check failed: {e}")
-        return False
+    import time
+    for i in range(10):
+        try:
+            req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=10) as response:
+                if response.status != 200:
+                    print(f"❌ Frontend returned {response.status}")
+                    return False
+                print("✅ Frontend health check passed.")
+                return True
+        except Exception as e:
+            print(f"Frontend health check failed (attempt {i+1}/10): {e}")
+            time.sleep(5)
+    print("❌ Frontend health check ultimately failed.")
+    return False
 
 def run():
     target_api = os.environ.get("TARGET_API", "http://localhost:8000")

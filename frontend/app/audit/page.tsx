@@ -3,17 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
 import { History, ShieldCheck, Lock, CheckCircle2, AlertCircle, RefreshCw, FileText } from "lucide-react";
-import { AuditLogEvent } from "@/types";
+import { PortfolioAuditItem } from "@/types";
 
 export default function AuditTrailPage() {
-  const [logs, setLogs] = useState<AuditLogEvent[]>([]);
+  const [logs, setLogs] = useState<PortfolioAuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const loadAuditLogs = async () => {
     setLoading(true);
     setError(null);
-    const { data, status, error: fetchErr } = await apiFetch<AuditLogEvent[]>("/api/audit/logs");
+    const { data, status, error: fetchErr } = await apiFetch<PortfolioAuditItem[]>("/api/audit/logs");
     if (status === 200 && Array.isArray(data)) {
       setLogs(data);
     } else {
@@ -84,16 +84,16 @@ export default function AuditTrailPage() {
               </thead>
               <tbody className="divide-y divide-light-border text-sm">
                 {logs.map((log) => {
-                  const actionStr = log.event_type || log.action || "UNKNOWN_EVENT";
-                  const resourceStr = log.case_id ? `Case ${log.case_id}` : log.resource || "System";
-                  const actorStr = log.actor_role ? `${log.actor} (${log.actor_role})` : log.actor || "System";
-                  const hashStr = log.event_hash || log.hash || "N/A";
+                  const actionStr = log.event_type || "UNKNOWN_EVENT";
+                  const resourceStr = log.case_id ? `Case ${log.case_id}` : "System";
+                  const actorStr = log.actor || "System";
+                  const hashStr = log.event_hash || "N/A";
 
                   return (
                     <tr key={log.id} className="hover:bg-light-bg transition-colors">
                       <td className="py-4 px-6">
                         <div className="font-bold text-light-text">{log.id}</div>
-                        <div className="text-xs text-light-secondary">{(log.timestamp || log.created_at) ? new Date((log.timestamp || log.created_at) as string).toLocaleString("en-IN") : "-"}</div>
+                        <div className="text-xs text-light-secondary">{log.created_at ? new Date(log.created_at as string).toLocaleString("en-IN") : "-"}</div>
                       </td>
                       <td className="py-4 px-6 text-light-text font-medium">
                         {actorStr}

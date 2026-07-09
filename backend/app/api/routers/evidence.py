@@ -2,6 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from app.schemas.responses import (
+    AssessmentHistoryItem,
+    CreditTwinResponse,
+    ReconciliationResponse,
+)
 from app.db.session import SessionLocal
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User
@@ -161,7 +166,7 @@ def get_obligation_evidence(
     ]
 
 
-@router.get("/{case_id}/credit-twin")
+@router.get("/{case_id}/credit-twin", response_model=CreditTwinResponse)
 def get_case_credit_twin(
     case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
@@ -169,7 +174,7 @@ def get_case_credit_twin(
     return get_credit_twin(db, str(case_id))
 
 
-@router.get("/{case_id}/reconciliation")
+@router.get("/{case_id}/reconciliation", response_model=ReconciliationResponse)
 def get_case_reconciliation(
     case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
@@ -177,7 +182,7 @@ def get_case_reconciliation(
     return run_reconciliation(db, str(case_id))
 
 
-@router.get("/{case_id}/assessment-history")
+@router.get("/{case_id}/assessment-history", response_model=list[AssessmentHistoryItem])
 def get_assessment_history(
     case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
@@ -190,13 +195,26 @@ def get_assessment_history(
         .all()
     )
 
-    return [
-        {
-            "id": str(e.id),
-            "sequence": e.event_sequence,
-            "actor": e.actor,
-            "created_at": e.created_at.isoformat(),
-            "metadata": e.metadata_json,
-        }
-        for e in events
-    ]
+    res = []
+    for e in events:
+        meta = e.metadata_json or {}
+        dec = meta.get("decision", {})
+        res.append(
+            {
+                "id": str(e.id),
+                "sequence": e.event_sequence,
+                "event_type": e.event_type,
+                "actor": e.actor,
+                "actor_role": meta.get("actor_role", "SYSTEM"),
+                "reason": meta.get("reason", dec.get("reason", "Automated Assessment")),
+                "created_at": e.created_at.isoformat(),
+                "recommendation": dec.get("recommendation", "UNKNOWN"),
+                "binding_limit": dec.get("binding_limit", None),
+                "dscr": meta.get("scores", {}).get("dscr", None),
+                "policy_version": meta.get("policy_version", "1.1"),
+                "calculation_version": meta.get(
+                    "calculation_version", "DSCR_SANDBOX_V1"
+                ),
+            }
+        )
+    return res

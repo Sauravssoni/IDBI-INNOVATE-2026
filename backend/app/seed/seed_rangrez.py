@@ -3,7 +3,6 @@ import math
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-from app.db.session import SessionLocal
 from app.db.orm.cases import Business, Case, CaseStatus
 from app.db.orm.consents import Consent, DataConnection, ConsentStatus
 from app.db.orm.evidence import (
@@ -21,8 +20,17 @@ from app.db.orm.org import (
 )
 
 
-def seed_rangrez():
-    db = SessionLocal()
+def seed_rangrez(db_session=None):
+    if db_session is None:
+        from app.db.session import SessionLocal
+
+        db = SessionLocal()
+    else:
+        db = db_session
+    if db_session is None:
+        from app.db.session import SessionLocal
+    else:
+        db = db_session
     existing_business = (
         db.query(Business)
         .filter(Business.business_id == "RANGREZ_TEXTILES_001")
@@ -103,7 +111,7 @@ def seed_rangrez():
             last_sync_at=today,
         )
         db.add(d)
-        db.flush()
+        db.commit()
         consents_by_source[source] = c.id
         connections_by_source[source] = d.id
     db.commit()
