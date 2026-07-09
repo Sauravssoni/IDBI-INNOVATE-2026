@@ -21,7 +21,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'cd ../backend && APP_ENV=development DATABASE_URL=postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test JWT_SECRET=test-secret DEMO_USER_PASSWORD="VyaparPulseDemo2026!" DEMO_ACCESS_ENABLED=true uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      command: 'cd ../backend && uvicorn app.main:app --host 127.0.0.1 --port 8000',
+      env: {
+        APP_ENV: 'development',
+        DATABASE_URL: process.env.DATABASE_URL || 'postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test',
+        JWT_SECRET: process.env.JWT_SECRET || 'test-secret',
+        DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || 'VyaparPulseDemo2026!',
+        DEMO_ACCESS_ENABLED: 'true'
+      },
       port: 8000,
       reuseExistingServer: !process.env.CI,
       stdout: 'pipe',

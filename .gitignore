@@ -82,3 +82,8 @@ htmlcov/
 
 # Artifacts
 artifacts/runtime/
+frontend/playwright-report/
+frontend/test-results/
+frontend/blob-report/
+playwright/.cache/
+frontend/playwright/.cache/

@@ -180,4 +180,12 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.click('button:has-text("Assessment History")');
     await page.screenshot({ path: '../docs/assets/screenshots/07-final-audit.png' });
   });
+
+  test('SA-only login test', async ({ page }) => {
+    await page.goto('/demo');
+    await page.click('button:has-text("Sanctioning Authority")');
+    await expect(page.locator('text=Case Inventory')).toBeVisible();
+    await page.click('a[href="/cases"]');
+    await expect(page.locator('table')).toBeVisible();
+  });
 });
