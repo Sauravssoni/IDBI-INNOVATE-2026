@@ -312,4 +312,31 @@ def run_reconciliation(db: Session, case_id: str) -> Dict[str, Any]:
         }
     )
 
-    return {"case_id": str(case_id), "checks": checks}
+    # Calculate top level metrics for response
+    total_gst = Decimal("0.0")
+    total_bank = Decimal("0.0")
+
+    # We can extract it from the first check if it ran, or recompute
+    gst_check = next((c for c in checks if c["check_id"] == "GST_BANK_RECON"), None)
+    if gst_check and gst_check["status"] != MISSING_EVIDENCE:
+        total_gst = Decimal(str(gst_check["reference_value"]))
+        total_bank = Decimal(str(gst_check["observed_value"]))
+
+    variance_amount = abs(total_gst - total_bank)
+    variance_percentage = (variance_amount / max(total_gst, Decimal("1.0"))) * 100
+    reconciliation_match_percent = max(
+        Decimal("0.0"), Decimal("100.0") - variance_percentage
+    )
+
+    overall_status = MATCHED if variance_percentage <= Decimal("10.0") else VARIANCE
+    if gst_check and gst_check["status"] == MISSING_EVIDENCE:
+        overall_status = MISSING_EVIDENCE
+
+    return {
+        "case_id": str(case_id),
+        "total_bank_credits": total_bank,
+        "total_gst_sales": total_gst,
+        "reconciliation_match_percent": reconciliation_match_percent,
+        "status": overall_status,
+        "checks": checks,
+    }

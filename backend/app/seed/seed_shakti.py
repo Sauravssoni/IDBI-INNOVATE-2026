@@ -2,7 +2,6 @@ import random
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-from app.db.session import SessionLocal
 from app.db.orm.cases import Business, Case, CaseStatus
 from app.db.orm.consents import Consent, DataConnection, ConsentStatus
 from app.db.orm.evidence import (
@@ -27,12 +26,20 @@ import os
 import sys
 
 
-def seed_shakti():
+def seed_shakti(db_session=None):
+    if db_session is None:
+        from app.db.session import SessionLocal
+
+        db = SessionLocal()
+    else:
+        db = db_session
+    if db_session is None:
+        from app.db.session import SessionLocal
+    else:
+        db = db_session
     if os.environ.get("APP_ENV") == "production":
         print("Demo seeding is refused in production.")
         sys.exit(1)
-
-    db = SessionLocal()
 
     # Clean previous data to be idempotent
     existing_business = (
@@ -86,7 +93,7 @@ def seed_shakti():
 
         db.query(Case).filter(Case.business_id_fk == existing_business.id).delete()
         db.delete(existing_business)
-        db.commit()
+        db.flush()
 
     # Clear previously seeded Org and Users if we want strict idempotency?
     # Simpler: just get or create
@@ -96,7 +103,7 @@ def seed_shakti():
     if not jaipur_region:
         jaipur_region = Region(code="RJ-JAIPUR", name="Jaipur Region")
         db.add(jaipur_region)
-        db.commit()
+        db.flush()
         db.refresh(jaipur_region)
 
     malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
@@ -105,7 +112,7 @@ def seed_shakti():
             code="BR-MN-JAI", name="Jaipur/Malviya Nagar", region_id=jaipur_region.id
         )
         db.add(malviya_nagar_branch)
-        db.commit()
+        db.flush()
         db.refresh(malviya_nagar_branch)
 
     # Seed users
@@ -167,7 +174,7 @@ def seed_shakti():
             db.add(user)
         else:
             user.hashed_password = get_password_hash(u["password"])
-        db.commit()
+        db.flush()
         db.refresh(user)
         seeded_users[user.role] = user
 
@@ -195,7 +202,7 @@ def seed_shakti():
                     scope_role=scope_role_map[user.role],
                 )
                 db.add(scope)
-    db.commit()
+    db.flush()
 
     sa_user = seeded_users[UserRole.SANCTIONING_AUTHORITY]
     mandate = (
@@ -213,7 +220,7 @@ def seed_shakti():
             region_id=jaipur_region.id,
         )
         db.add(mandate)
-        db.commit()
+        db.flush()
 
     # Seed deterministic random for reproducibility
     random.seed(42)
@@ -225,7 +232,7 @@ def seed_shakti():
         sector="Manufacturing - Auto Ancillary",
     )
     db.add(shakti)
-    db.commit()
+    db.flush()
     db.refresh(shakti)
 
     # 3. Create Consents & Connections
@@ -252,7 +259,7 @@ def seed_shakti():
         db.flush()
         consents_by_source[source] = c.id
         connections_by_source[source] = d.id
-    db.commit()
+    db.flush()
 
     # 4. Generate 18 months of deterministic data
     start_date = today - relativedelta(months=18)
@@ -444,7 +451,7 @@ def seed_shakti():
         )
     )
 
-    db.commit()
+    db.flush()
 
     # 5. Create Case
     case = Case(

@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import List, Any, Dict
+from typing import Any
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ def get_case_audit_trail(
     case_id: UUID,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> List[Dict[str, Any]]:
+) -> Any:
     case = can_view_case(db, user, case_id)
     can_view_audit(db, case, user)
 
@@ -58,7 +58,7 @@ def get_recent_audit_logs(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> List[Dict[str, Any]]:
+) -> Any:
     if user.role == UserRole.SYSTEM_ADMIN:
         raise HTTPException(
             status_code=403,

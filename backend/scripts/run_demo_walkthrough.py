@@ -102,15 +102,15 @@ def run():
         )
         twin_data = resp_twin.json()
 
-        assert twin_data["dscr"] == 1.85, f"DSCR mismatch: {twin_data['dscr']}"
+        assert float(twin_data["dscr"]) == 1.85, f"DSCR mismatch: {twin_data['dscr']}"
         assert twin_data["recommendation"] == "CONDITIONAL_OFFER", (
             f"Recommendation mismatch: {twin_data['recommendation']}"
         )
-        assert abs(twin_data["binding_limit"] - 3569042.496) < 1, (
+        assert abs(float(twin_data["binding_limit"]) - 3569042.496) < 1, (
             "Supportable amount mismatch"
         )
 
-        supportable_amount = twin_data["binding_limit"]
+        supportable_amount = float(twin_data["binding_limit"])
 
         log_step(
             "Shakti Assessment",

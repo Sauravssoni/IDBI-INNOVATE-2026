@@ -108,7 +108,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     assert eval_data["decision"]["decision"] == "CONDITIONAL_OFFER"
 
     # Validate Shakti winning outcome
-    assert case_data["requested_amount"] == 5000000.00
+    assert float(case_data["requested_amount"]) == 5000000.00
     import math
 
     binding_limit = eval_data["decision"]["binding_limit"]
