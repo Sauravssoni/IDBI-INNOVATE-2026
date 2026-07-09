@@ -3,12 +3,26 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+export DATABASE_URL="${DATABASE_URL:?DATABASE_URL is required}"
+export DEMO_DATABASE_URL="${DEMO_DATABASE_URL:-$DATABASE_URL}"
+export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:?DEMO_USER_PASSWORD is required}"
+export JWT_SECRET="${JWT_SECRET:?JWT_SECRET is required}"
+
+cleanup() {
+  echo "Stopping any background services..."
+  lsof -ti:3005,8000 | xargs kill -9 2>/dev/null || true
+}
+trap cleanup EXIT
+
+echo "Checking git status before tests..."
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Git working directory is not clean before tests."
+  exit 1
+fi
+
 echo "Running Backend Tests..."
 cd "$REPO_ROOT/backend"
-export DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test"
-export JWT_SECRET="test-secret"
-export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:?required}"
-pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
+pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
 ruff check app tests scripts
 ruff format --check app tests scripts
 mypy app
@@ -18,15 +32,19 @@ pip-audit -r requirements.txt
 echo "Running Frontend Tests..."
 cd "$REPO_ROOT/frontend"
 npm ci
-npm audit --audit-level=high || true
+npm audit --audit-level=high
 npm run lint
 npm run type-check
 npm test -- --reporter=verbose
+export NEXT_PUBLIC_API_URL="http://localhost:8000"
 npm run build
+
+echo "Installing Playwright Browser..."
+npx playwright install chromium --with-deps
 
 echo "Seeding Test Database for E2E..."
 cd "$REPO_ROOT/backend"
-DATABASE_URL="postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test" PYTHONPATH=. python -m app.seed.run_demo_reset
+PYTHONPATH=. python -m app.seed.run_demo_reset
 
 echo "Running Frontend E2E Tests..."
 cd "$REPO_ROOT/frontend"
@@ -34,12 +52,20 @@ npx playwright test
 
 echo "Running Proofs..."
 cd "$REPO_ROOT/backend"
-unset DATABASE_URL
-if [ -f "$REPO_ROOT/.env" ]; then
-  export $(grep -v '^#' "$REPO_ROOT/.env" | xargs)
-fi
-export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:?required}"
 PYTHONPATH=. python -m app.seed.run_demo_reset
-PYTHONPATH=. python scripts/run_decision_assurance.py
-PYTHONPATH=. python scripts/run_demo_walkthrough.py
+
+mkdir -p "$REPO_ROOT/artifacts/runtime"
+export RUNTIME_EVIDENCE_DIR="$REPO_ROOT/artifacts/runtime"
+PYTHONPATH=. python scripts/run_decision_assurance.py > "$RUNTIME_EVIDENCE_DIR/decision_assurance.json"
+PYTHONPATH=. python scripts/run_demo_walkthrough.py > "$RUNTIME_EVIDENCE_DIR/demo_walkthrough.json"
 python ../scripts/deployment_smoke_test.py
+
+echo "Checking git status after tests..."
+cd "$REPO_ROOT"
+if [ -n "$(git status --porcelain | grep -v 'artifacts/runtime/')" ]; then
+  echo "Git working directory is not clean after tests. Some tests mutated the workspace."
+  git status --short
+  exit 1
+fi
+
+echo "All tests passed successfully!"
