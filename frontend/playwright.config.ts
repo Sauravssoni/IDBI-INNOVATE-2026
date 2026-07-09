@@ -27,7 +27,10 @@ export default defineConfig({
       stdout: 'pipe',
     },
     {
-      command: 'NEXT_PUBLIC_API_URL=http://localhost:8000 npm run start -- -p 3005',
+      command: 'npm run start -- -p 3005',
+      env: {
+        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+      },
       port: 3005,
       reuseExistingServer: !process.env.CI,
       stdout: 'pipe',
