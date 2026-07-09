@@ -3,6 +3,10 @@ services:
   db:
     image: postgres:15-alpine
     container_name: vyapar_pulse_db
+    profiles:
+      - production
+      - demo
+      - dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vyapar_local}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-local-development-password}
@@ -22,6 +26,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: vyapar_pulse_backend
+    profiles:
+      - production
+      - demo
+      - dev
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./backend:/app
@@ -42,8 +50,28 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?required}
     container_name: vyapar_pulse_frontend
+    command: npm run start
+    profiles:
+      - production
+      - demo
+    ports:
+      - "3005:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?required}
+    depends_on:
+      - backend
+
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: vyapar_pulse_frontend_dev
     command: npm run dev
+    profiles:
+      - dev
     volumes:
       - ./frontend:/app
       - /app/node_modules
