@@ -1,6 +1,6 @@
 {
-  "git_sha": "ec8733872a5a808ee294b7dfedfbac1464817d6c",
-  "timestamp": "2026-07-10T13:15:07.713920",
+  "git_sha": "2b76e195b6d59b96d224e07b3230cfb12ed65473",
+  "timestamp": "2026-07-10T17:53:45.390741",
   "policy_version": 1,
   "calculation_version": 1,
   "total_assertions": 18,
@@ -18,7 +18,7 @@
     "RANGREZ_TEXTILES_001": {
       "recommendation": "READY_FOR_REVIEW"
     },
-    "AAROHAN_INFRA_001": {
+    "NIRMAAN_INFRA_001": {
       "recommendation": "DECLINE_RECOMMENDED"
     }
   },
@@ -49,9 +49,9 @@
       "message": "Rangrez got READY_FOR_REVIEW"
     },
     {
-      "step": "Aarohan Recommendation",
+      "step": "Nirmaan Recommendation",
       "status": "PASS",
-      "message": "Aarohan got DECLINE_RECOMMENDED"
+      "message": "Nirmaan got DECLINE_RECOMMENDED"
     },
     {
       "step": "Idempotency Replay",
@@ -91,7 +91,7 @@
     {
       "step": "CA Recommendation Check",
       "status": "PASS",
-      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"1f6274ffe51543e07366b3341d80d0ee56e807854e281813396a54313e9de590\"}"
+      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"edbfa9aaeede20dfc358ce4fdc601ea49cb62e4e4664b9afffec4d3becbaf8a8\"}"
     },
     {
       "step": "SA Mandate Failure Check",
@@ -101,7 +101,7 @@
     {
       "step": "SA Mandate Success Check",
       "status": "PASS",
-      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"f5f0302d95502e83e176a6dc311c0c230e0823f08ef82c71999f9a9a893dfbbc\"}"
+      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"5456dd73843080da28b708b1de20b3d43716fd3973110c7640cb0b41d5b0b1c9\"}"
     },
     {
       "step": "LLM Isolation",
