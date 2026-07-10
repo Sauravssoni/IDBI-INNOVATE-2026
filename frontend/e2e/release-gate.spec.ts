@@ -98,10 +98,10 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await expect(page.locator('text=Additional Evidence Required')).toBeVisible({ timeout: 15000 });
   });
 
-  test('Aarohan decline/decline-after-review path', async ({ page }) => {
+  test('Nirmaan decline/decline-after-review path', async ({ page }) => {
     await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
-    const row = page.locator('table tbody tr').filter({ hasText: 'Aarohan' }).first();
+    const row = page.locator('table tbody tr').filter({ hasText: 'Nirmaan' }).first();
     await row.locator('a', { hasText: 'Open' }).click();
     
     const runEngine = page.locator('button:has-text("Run Assessment Engine")');
