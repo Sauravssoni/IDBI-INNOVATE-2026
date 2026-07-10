@@ -13,6 +13,7 @@ cleanup() {
   lsof -ti:3005,8000 | xargs -I {} sh -c 'ps -p {} -o comm= | grep -qE "(node|python|uvicorn)" && kill -9 {}' 2>/dev/null || true
 }
 trap cleanup EXIT
+cleanup || true
 
 echo "Checking git status before tests..."
 if [ -n "$(git status --porcelain)" ]; then
