@@ -66,6 +66,12 @@ def validate_invariants(db: Session):
             f"Invariant failed: Expected exactly 4 canonical businesses, found {biz_count}"
         )
 
+    total_biz = db.query(Business).count()
+    if total_biz != 4:
+        raise RuntimeError(
+            f"Invariant failed: Expected exactly 4 total businesses after reset, found {total_biz}"
+        )
+
     case_count = (
         db.query(Case)
         .join(Business)
@@ -102,62 +108,19 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
     logger.info(f"DB_FINGERPRINT: {fingerprint}")
 
     try:
-        # Get target businesses
-        businesses = (
-            db.query(Business)
-            .filter(Business.business_id.in_(TARGET_BUSINESS_IDS))
-            .all()
-        )
-        business_uuids = [b.id for b in businesses]
-
-        if business_uuids:
-            # Get target cases
-            cases = db.query(Case).filter(Case.business_id_fk.in_(business_uuids)).all()
-            case_ids = [c.id for c in cases]
-
-            if case_ids:
-                db.query(AuditEvent).filter(AuditEvent.case_id.in_(case_ids)).delete(
-                    synchronize_session=False
-                )
-                db.query(IdempotencyRecord).filter(
-                    IdempotencyRecord.case_id.in_(case_ids)
-                ).delete(synchronize_session=False)
-
-            db.query(GSTPeriod).filter(
-                GSTPeriod.business_id_fk.in_(business_uuids)
-            ).delete(synchronize_session=False)
-            db.query(BankTransaction).filter(
-                BankTransaction.business_id_fk.in_(business_uuids)
-            ).delete(synchronize_session=False)
-            invoice_ids = db.query(Invoice.id).filter(
-                Invoice.business_id_fk.in_(business_uuids)
-            )
-            db.query(InvoicePayment).filter(
-                InvoicePayment.invoice_id_fk.in_(invoice_ids)
-            ).delete(synchronize_session=False)
-            db.query(Invoice).filter(Invoice.business_id_fk.in_(business_uuids)).delete(
-                synchronize_session=False
-            )
-            db.query(EmploymentPeriod).filter(
-                EmploymentPeriod.business_id_fk.in_(business_uuids)
-            ).delete(synchronize_session=False)
-            db.query(Obligation).filter(
-                Obligation.business_id_fk.in_(business_uuids)
-            ).delete(synchronize_session=False)
-
-            db.query(DataConnection).filter(
-                DataConnection.business_id_fk.in_(business_uuids)
-            ).delete(synchronize_session=False)
-            db.query(Consent).filter(Consent.business_id_fk.in_(business_uuids)).delete(
-                synchronize_session=False
-            )
-
-            db.query(Case).filter(Case.business_id_fk.in_(business_uuids)).delete(
-                synchronize_session=False
-            )
-        db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).delete(
-            synchronize_session=False
-        )
+        # Delete all existing case and business data to guarantee clean four-persona state
+        db.query(AuditEvent).delete(synchronize_session=False)
+        db.query(IdempotencyRecord).delete(synchronize_session=False)
+        db.query(GSTPeriod).delete(synchronize_session=False)
+        db.query(BankTransaction).delete(synchronize_session=False)
+        db.query(InvoicePayment).delete(synchronize_session=False)
+        db.query(Invoice).delete(synchronize_session=False)
+        db.query(EmploymentPeriod).delete(synchronize_session=False)
+        db.query(Obligation).delete(synchronize_session=False)
+        db.query(DataConnection).delete(synchronize_session=False)
+        db.query(Consent).delete(synchronize_session=False)
+        db.query(Case).delete(synchronize_session=False)
+        db.query(Business).delete(synchronize_session=False)
 
         seed_demo_principals(db)
         seed_shakti(db)

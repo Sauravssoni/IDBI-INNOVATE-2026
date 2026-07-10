@@ -48,7 +48,7 @@ def test_reset_concurrency():
 
     db = SessionLocal()
     businesses = db.query(Business).all()
-    assert len(businesses) == 5, (
-        f"Expected exactly 5 businesses, found {len(businesses)}"
+    assert len(businesses) == 4, (
+        f"Expected exactly 4 businesses, found {len(businesses)}"
     )
     db.close()
