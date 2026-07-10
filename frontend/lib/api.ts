@@ -1,6 +1,6 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  ((process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test") ? "http://localhost:8000" : "");
+  (typeof window === "undefined" ? "http://localhost:8000" : "");
 
 export function getCsrfToken(): string {
   if (typeof document === "undefined") return "";

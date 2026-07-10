@@ -12,6 +12,7 @@ app = FastAPI(
     title="VYAPAR PULSE AI API",
     version="1.0.0",
     description="Evidence-First Financial Health Card and Credit-Twin for MSMEs.",
+    redirect_slashes=False,
 )
 
 try:
