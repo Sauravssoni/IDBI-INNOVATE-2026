@@ -30,7 +30,7 @@ export default defineConfig({
         DEMO_ACCESS_ENABLED: 'true'
       },
       port: 8000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       stdout: 'pipe',
     },
     {
@@ -39,7 +39,7 @@ export default defineConfig({
         NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
       },
       port: 3005,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       stdout: 'pipe',
     },
   ],
