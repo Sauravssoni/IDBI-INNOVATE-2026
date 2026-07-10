@@ -358,9 +358,13 @@ def can_record_human_decision(
         "DECLINE_AFTER_HUMAN_REVIEW",
     ]
 
-    if case.requested_amount <= max_amount_limit and (approved_amount is None or approved_amount <= max_amount_limit):
+    if case.requested_amount <= max_amount_limit and (
+        approved_amount is None or approved_amount <= max_amount_limit
+    ):
         allowed_actions.append("APPROVE_AS_REQUESTED")
-    if (approved_amount is not None and approved_amount <= max_amount_limit) or (approved_amount is None and case.requested_amount <= max_amount_limit):
+    if (approved_amount is not None and approved_amount <= max_amount_limit) or (
+        approved_amount is None and case.requested_amount <= max_amount_limit
+    ):
         allowed_actions.append("APPROVE_ALTERNATIVE_STRUCTURE")
 
     if action is not None:
