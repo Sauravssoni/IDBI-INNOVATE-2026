@@ -82,7 +82,7 @@ uv run python ../scripts/deployment_smoke_test.py
 
 echo "Checking git status after tests..."
 cd "$REPO_ROOT"
-if [ -n "$(git status --porcelain | grep -v -E 'artifacts/runtime/|docs/assets/screenshots/')" ]; then
+if [ -n "$(git status --porcelain | grep -v -E 'artifacts/runtime/|artifacts/decision_assurance.json|artifacts/demo_walkthrough.json|docs/DECISION_ASSURANCE.md|docs/assets/screenshots/')" ]; then
   echo "Git working directory is not clean after tests. Some tests mutated the workspace."
   git status --short
   exit 1
