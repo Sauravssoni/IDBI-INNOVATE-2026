@@ -16,7 +16,7 @@ Access the demo, select the **Credit Analyst** role, and click **Start 3-Minute 
 ## Four Canonical Personas
 1. **Shakti Precision** (Manufacturing — Auto Ancillary, Working Capital Line): ₹50 lakh requested, DSCR 1.85, ₹35.69 lakh supportable. Expected outcome: CONDITIONAL_OFFER.
 2. **NavPrerna Traders** (Retail): Missing crucial GST filings. Expected outcome: ADDITIONAL_EVIDENCE_REQUIRED.
-3. **Aarohan Plastics** (Manufacturing): Poor cash flow and over-leveraged. Expected outcome: DECLINE_RECOMMENDED.
+3. **Nirmaan Infrastructure Services** (Construction): Poor cash flow and over-leveraged. Expected outcome: DECLINE_RECOMMENDED.
 4. **Rangrez Textiles** (Textiles): Currently in a cooldown state. Expected outcome: READY_FOR_REVIEW, but ultimately declined.
 
 ## Decision Package
