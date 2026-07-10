@@ -13,8 +13,10 @@ from app.services.authz import can_view_case, can_view_audit, apply_case_list_sc
 
 router = APIRouter(tags=["audit"])
 
+
 class AuditEventMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
+
 
 class AuditEventResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -33,6 +35,7 @@ class AuditEventResponse(BaseModel):
     timestamp: Optional[str] = None
     metadata_json: Optional[dict] = None
 
+
 class PortfolioAuditItemResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
@@ -48,9 +51,12 @@ class PortfolioAuditItemResponse(BaseModel):
     reason: Optional[str] = None
     created_at: Optional[str] = None
 
+
 @router.get("/api/cases/{case_id}/audit", response_model=List[AuditEventResponse])
 @router.get("/api/audit/cases/{case_id}", response_model=List[AuditEventResponse])
-@router.get("/api/audit/cases/{case_id}/events", response_model=List[AuditEventResponse])
+@router.get(
+    "/api/audit/cases/{case_id}/events", response_model=List[AuditEventResponse]
+)
 def get_case_audit_trail(
     case_id: UUID,
     db: Session = Depends(get_db),

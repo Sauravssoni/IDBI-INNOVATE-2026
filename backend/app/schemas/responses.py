@@ -161,14 +161,17 @@ class EvaluateResponseDecision(BaseModel):
     binding_limit: Optional[Decimal] = None
     reason_codes: Optional[List[str]] = None
 
+
 class EvaluateResponseFeatures(BaseModel):
     total_revenue: Optional[Decimal] = None
     total_obligations: Optional[Decimal] = None
     dscr: Optional[Decimal] = None
 
+
 class EvaluateResponseScores(BaseModel):
     evidence_confidence: Optional[Decimal] = None
     reconciliation_quality: Optional[Decimal] = None
+
 
 class EvaluateResponse(BaseModel):
     case_id: str
@@ -196,11 +199,13 @@ class DecisionPackageReconciliation(BaseModel):
     evidence_confidence: Optional[Decimal] = None
     source_coverage: Optional[Decimal] = None
 
+
 class DecisionPackageAuditItem(BaseModel):
     event_type: str
     actor: str
     event_hash: str
     created_at: str
+
 
 class DecisionPackageResponse(BaseModel):
     case_id: str

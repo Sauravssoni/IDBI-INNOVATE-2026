@@ -10,13 +10,16 @@ from app.db.orm.org import (
 )
 from app.api.auth import get_password_hash
 
+
 def seed_demo_principals(db):
     if os.environ.get("APP_ENV") == "production":
         raise RuntimeError("Demo seeding is refused in production.")
 
     default_pw = os.environ.get("DEMO_USER_PASSWORD")
     if not default_pw:
-        raise RuntimeError("DEMO_USER_PASSWORD environment variable must be explicitly supplied for development/test seeding.")
+        raise RuntimeError(
+            "DEMO_USER_PASSWORD environment variable must be explicitly supplied for development/test seeding."
+        )
 
     # 1. Org Structure
     jaipur_region = db.query(Region).filter(Region.code == "RJ-JAIPUR").first()
@@ -35,12 +38,42 @@ def seed_demo_principals(db):
 
     # Seed users
     users_to_seed = [
-        {"email": "rm@bank.example", "password": default_pw, "full_name": "Relationship Manager", "role": UserRole.RELATIONSHIP_MANAGER},
-        {"email": "credit@bank.example", "password": default_pw, "full_name": "Credit Analyst", "role": UserRole.CREDIT_ANALYST},
-        {"email": "sa@bank.example", "password": default_pw, "full_name": "Sanctioning Authority", "role": UserRole.SANCTIONING_AUTHORITY},
-        {"email": "admin@bank.example", "password": default_pw, "full_name": "Risk Admin", "role": UserRole.RISK_ADMIN},
-        {"email": "auditor@bank.example", "password": default_pw, "full_name": "Auditor", "role": UserRole.AUDITOR},
-        {"email": "system@bank.example", "password": default_pw, "full_name": "System Admin", "role": UserRole.SYSTEM_ADMIN},
+        {
+            "email": "rm@bank.example",
+            "password": default_pw,
+            "full_name": "Relationship Manager",
+            "role": UserRole.RELATIONSHIP_MANAGER,
+        },
+        {
+            "email": "credit@bank.example",
+            "password": default_pw,
+            "full_name": "Credit Analyst",
+            "role": UserRole.CREDIT_ANALYST,
+        },
+        {
+            "email": "sa@bank.example",
+            "password": default_pw,
+            "full_name": "Sanctioning Authority",
+            "role": UserRole.SANCTIONING_AUTHORITY,
+        },
+        {
+            "email": "admin@bank.example",
+            "password": default_pw,
+            "full_name": "Risk Admin",
+            "role": UserRole.RISK_ADMIN,
+        },
+        {
+            "email": "auditor@bank.example",
+            "password": default_pw,
+            "full_name": "Auditor",
+            "role": UserRole.AUDITOR,
+        },
+        {
+            "email": "system@bank.example",
+            "password": default_pw,
+            "full_name": "System Admin",
+            "role": UserRole.SYSTEM_ADMIN,
+        },
     ]
 
     seeded_users = {}
@@ -52,7 +85,7 @@ def seed_demo_principals(db):
                 hashed_password=get_password_hash(u["password"]),
                 full_name=u["full_name"],
                 role=u["role"],
-                is_active=True
+                is_active=True,
             )
             db.add(user)
         else:
@@ -68,7 +101,7 @@ def seed_demo_principals(db):
             UserRole.AUDITOR: "AUDIT",
             UserRole.SANCTIONING_AUTHORITY: "REVIEW",
             UserRole.CREDIT_ANALYST: "ASSESSMENT",
-            UserRole.RELATIONSHIP_MANAGER: "ORIGINATION"
+            UserRole.RELATIONSHIP_MANAGER: "ORIGINATION",
         }
 
         if user.role in scope_role_map:

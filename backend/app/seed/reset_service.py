@@ -36,30 +36,53 @@ class DemoResetConflict(Exception):
 
 
 def get_db_fingerprint(db: Session) -> str:
-    row = db.execute(text("SELECT inet_server_addr()::text, inet_server_port()::text, current_database()::text, current_schema()::text;")).fetchone()
-    host = row[0] or 'localhost'
-    port = row[1] or '5432'
-    db_name = row[2] or 'postgres'
-    schema = row[3] or 'public'
+    row = db.execute(
+        text(
+            "SELECT inet_server_addr()::text, inet_server_port()::text, current_database()::text, current_schema()::text;"
+        )
+    ).fetchone()
+    host = row[0] or "localhost"
+    port = row[1] or "5432"
+    db_name = row[2] or "postgres"
+    schema = row[3] or "public"
     s = f"{host}:{port}:{db_name}:{schema}"
-    return hashlib.sha256(s.encode('utf-8')).hexdigest()[:8]
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:8]
+
 
 def validate_invariants(db: Session):
     user_count = db.query(User).filter(User.is_active.is_(True)).count()
     if user_count < 6:
-        raise RuntimeError(f"Invariant failed: Expected at least 6 canonical active users, found {user_count}")
-    
-    biz_count = db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).count()
+        raise RuntimeError(
+            f"Invariant failed: Expected at least 6 canonical active users, found {user_count}"
+        )
+
+    biz_count = (
+        db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).count()
+    )
     if biz_count != 4:
-        raise RuntimeError(f"Invariant failed: Expected exactly 4 canonical businesses, found {biz_count}")
-    
-    case_count = db.query(Case).join(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).count()
+        raise RuntimeError(
+            f"Invariant failed: Expected exactly 4 canonical businesses, found {biz_count}"
+        )
+
+    case_count = (
+        db.query(Case)
+        .join(Business)
+        .filter(Business.business_id.in_(TARGET_BUSINESS_IDS))
+        .count()
+    )
     if case_count != 4:
-        raise RuntimeError(f"Invariant failed: Expected exactly 4 canonical cases, found {case_count}")
-        
-    mandate_count = db.query(SanctioningMandate).filter(SanctioningMandate.active.is_(True)).count()
+        raise RuntimeError(
+            f"Invariant failed: Expected exactly 4 canonical cases, found {case_count}"
+        )
+
+    mandate_count = (
+        db.query(SanctioningMandate).filter(SanctioningMandate.active.is_(True)).count()
+    )
     if mandate_count < 1:
-        raise RuntimeError(f"Invariant failed: Expected at least 1 valid active SA mandate, found {mandate_count}")
+        raise RuntimeError(
+            f"Invariant failed: Expected at least 1 valid active SA mandate, found {mandate_count}"
+        )
+
 
 def execute_bounded_reset(db: Session, actor_email: str = "system"):
     # 1. Acquire advisory lock
@@ -133,7 +156,7 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
         db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).delete(
             synchronize_session=False
         )
-        
+
         seed_demo_principals(db)
         seed_shakti(db)
         seed_navprerna(db)
@@ -141,7 +164,7 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
         seed_aarohan(db)
 
         run_evaluations(db)
-        
+
         validate_invariants(db)
 
         db.commit()
@@ -154,4 +177,3 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
     finally:
         db.execute(text(f"SELECT pg_advisory_unlock({lock_id})"))
         db.commit()  # Important to commit the unlock
-
