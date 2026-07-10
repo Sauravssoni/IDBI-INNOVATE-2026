@@ -3,10 +3,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-export DATABASE_URL="${DATABASE_URL:?DATABASE_URL is required}"
+export DATABASE_URL="${DATABASE_URL:-postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test}"
 export DEMO_DATABASE_URL="${DEMO_DATABASE_URL:-$DATABASE_URL}"
-export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:?DEMO_USER_PASSWORD is required}"
-export JWT_SECRET="${JWT_SECRET:?JWT_SECRET is required}"
+export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:-testpassword123}"
+export JWT_SECRET="${JWT_SECRET:-replace_this_with_a_secure_random_string_for_production}"
 
 cleanup() {
   echo "Stopping any background services..."
