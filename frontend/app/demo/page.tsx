@@ -15,31 +15,65 @@ import {
 import Link from "next/link";
 import { formatCurrency, humanise } from "@/lib/formatters";
 
+type DemoStatus =
+  | "INITIAL_LOADING"
+  | "ERROR"
+  | "STEP_1_BUSINESS"
+  | "STEP_2_EVIDENCE"
+  | "STEP_3_RECONCILIATION"
+  | "EVALUATING"
+  | "STEP_4_TWIN"
+  | "STEP_5_RECOMMENDATION"
+  | "SUBMITTING_RECOMMENDATION"
+  | "RECOMMENDATION_SUBMITTED"
+  | "SWITCHING_TO_SA"
+  | "STEP_6_SA_REVIEW"
+  | "SUBMITTING_DECISION"
+  | "FINALIZED"
+  | "RESTARTING";
+
 export default function GuidedDemoPage() {
   const { user, demoLogin } = useAuth();
   const router = useRouter();
 
   const [caseData, setCaseData] = useState<CaseDetailResponse | null>(null);
   const [creditTwin, setCreditTwin] = useState<CreditTwinResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState(1);
-  const [evaluating, setEvaluating] = useState(false);
-  const [switchingRole, setSwitchingRole] = useState(false);
+  const [status, setStatus] = useState<DemoStatus>("INITIAL_LOADING");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
 
-  const determineStep = (fullCase: CaseDetailResponse, role: string | undefined | null) => {
-    if (fullCase.status === "HUMAN_APPROVED" || fullCase.status === "HUMAN_DECLINED") return 6;
-    if (fullCase.analyst_recommendation) {
-      return role === "SANCTIONING_AUTHORITY" ? 6 : 5;
+  const getStepNumber = (s: DemoStatus) => {
+    switch (s) {
+      case "STEP_1_BUSINESS": return 1;
+      case "STEP_2_EVIDENCE": return 2;
+      case "STEP_3_RECONCILIATION": return 3;
+      case "EVALUATING": return 3;
+      case "STEP_4_TWIN": return 4;
+      case "STEP_5_RECOMMENDATION": return 5;
+      case "SUBMITTING_RECOMMENDATION": return 5;
+      case "RECOMMENDATION_SUBMITTED": return 5;
+      case "SWITCHING_TO_SA": return 5;
+      case "STEP_6_SA_REVIEW": return 6;
+      case "SUBMITTING_DECISION": return 6;
+      case "FINALIZED": return 6;
+      default: return 1;
     }
-    if (fullCase.recommendation) return 4;
-    if (fullCase.status === "ASSESSMENT_COMPLETED") return 4;
-    return 1; // Default
+  };
+
+  const determineInitialStatus = (fullCase: CaseDetailResponse, role: string | undefined | null): DemoStatus => {
+    if (fullCase.status === "HUMAN_APPROVED" || fullCase.status === "HUMAN_DECLINED") return "FINALIZED";
+    if (fullCase.analyst_recommendation) {
+      return role === "SANCTIONING_AUTHORITY" ? "STEP_6_SA_REVIEW" : "RECOMMENDATION_SUBMITTED";
+    }
+    if (fullCase.recommendation) return "STEP_4_TWIN";
+    if (fullCase.status === "ASSESSMENT_COMPLETED") return "STEP_4_TWIN";
+    return "STEP_1_BUSINESS";
   };
 
   const loadShaktiCase = async (currentRole?: string) => {
-    setLoading(true);
+    if (status !== "RESTARTING" && status !== "EVALUATING" && status !== "SUBMITTING_RECOMMENDATION" && status !== "SUBMITTING_DECISION" && status !== "SWITCHING_TO_SA") {
+      setStatus("INITIAL_LOADING");
+    }
     const { data: listData, status: listStatus } = await apiFetch<CaseListItem[]>("/api/cases/");
     if (listStatus === 200 && Array.isArray(listData)) {
       const match = listData.find((c) => c.business_id === "SHAKTI_PRECISION_001" || c.id === "SHAKTI_PRECISION_001" || c.business_name?.toLowerCase().includes("shakti"));
@@ -47,21 +81,22 @@ export default function GuidedDemoPage() {
         const { data: fullCase, status: caseStatus } = await apiFetch<CaseDetailResponse>(`/api/cases/${match.id}`);
         if (caseStatus === 200 && fullCase) {
           setCaseData(fullCase);
-          setStep(determineStep(fullCase, currentRole || activeRole || user?.role));
+          setStatus(determineInitialStatus(fullCase, currentRole || activeRole || user?.role));
           const { data: twinData, status: twinStatus } = await apiFetch<CreditTwinResponse>(`/api/cases/${match.id}/credit-twin`);
           if (twinStatus === 200 && twinData) {
             setCreditTwin(twinData);
           }
+          return;
         } else {
-          setError("Failed to load full case details.");
+          setErrorMessage("Failed to load full case details.");
         }
       } else {
-        setError("Shakti case not found in sandbox.");
+        setErrorMessage("Shakti case not found in sandbox.");
       }
     } else {
-      setError("Failed to load cases.");
+      setErrorMessage("Failed to load cases.");
     }
-    setLoading(false);
+    setStatus("ERROR");
   };
 
   useEffect(() => {
@@ -72,44 +107,44 @@ export default function GuidedDemoPage() {
   }, [user]);
 
   const handleRestartDemo = async () => {
-    setEvaluating(true);
-    const { status } = await apiFetch("/api/demo/reset", {
+    setStatus("RESTARTING");
+    const { status: fetchStatus } = await apiFetch("/api/demo/reset", {
       method: "POST",
     });
-    if (status === 200) {
+    if (fetchStatus === 200) {
       await loadShaktiCase();
     } else {
-      setError("Failed to restart demo sandbox.");
+      setErrorMessage("Failed to restart demo sandbox.");
+      setStatus("ERROR");
     }
-    setEvaluating(false);
   };
 
   const runEvaluation = async () => {
     if (!caseData?.id) return;
-    setEvaluating(true);
+    setStatus("EVALUATING");
     const idempotencyKey = crypto.randomUUID();
-    const { status } = await apiFetch(`/api/cases/${caseData.id}/evaluate`, {
+    const { status: fetchStatus } = await apiFetch(`/api/cases/${caseData.id}/evaluate`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({ expected_version: caseData.version || 1 }),
     });
-    if (status === 200 || status === 201) {
+    if (fetchStatus === 200 || fetchStatus === 201) {
       await loadShaktiCase();
-      setStep(4);
+      setStatus("STEP_4_TWIN");
     } else {
-      setError("Assessment engine failed.");
+      setErrorMessage("Assessment engine failed.");
+      setStatus("ERROR");
     }
-    setEvaluating(false);
   };
 
   const handleAnalystRecommendation = async () => {
     if (!caseData || !caseData.allowed_actions.submit_analyst_recommendation) return;
     if (activeRole !== "CREDIT_ANALYST") return;
     
-    setEvaluating(true);
+    setStatus("SUBMITTING_RECOMMENDATION");
     const idempotencyKey = crypto.randomUUID();
     const limit = creditTwin?.binding_limit;
-    const { status } = await apiFetch(`/api/cases/${caseData.id}/analyst-recommendation`, {
+    const { status: fetchStatus } = await apiFetch(`/api/cases/${caseData.id}/analyst-recommendation`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
@@ -118,40 +153,40 @@ export default function GuidedDemoPage() {
         expected_version: caseData.version || 1,
       }),
     });
-    if (status === 200 || status === 201) {
+    if (fetchStatus === 200 || fetchStatus === 201) {
       await loadShaktiCase();
     } else {
-      setError("Recommendation failed.");
+      setErrorMessage("Recommendation failed.");
+      setStatus("ERROR");
     }
-    setEvaluating(false);
   };
 
   const switchToSanctioningAuthority = async () => {
-    setSwitchingRole(true);
+    setStatus("SWITCHING_TO_SA");
     const res = await demoLogin("SANCTIONING_AUTHORITY");
     if (res.success) {
       const { data: meData, status: meStatus } = await apiFetch<{role: string}>("/api/auth/me");
       if (meStatus === 200 && meData?.role === "SANCTIONING_AUTHORITY") {
          setActiveRole("SANCTIONING_AUTHORITY");
          await loadShaktiCase("SANCTIONING_AUTHORITY");
-         setStep(6);
       } else {
-         setError("Failed to verify SA role switch.");
+         setErrorMessage("Failed to verify SA role switch.");
+         setStatus("ERROR");
       }
     } else {
-      setError("Failed to switch roles.");
+      setErrorMessage("Failed to switch roles.");
+      setStatus("ERROR");
     }
-    setSwitchingRole(false);
   };
 
   const handleSanctionDecision = async (decision: "APPROVED" | "REJECTED") => {
     if (!caseData || !caseData.allowed_actions.record_human_decision) return;
     if (activeRole !== "SANCTIONING_AUTHORITY") return;
 
-    setEvaluating(true);
+    setStatus("SUBMITTING_DECISION");
     const idempotencyKey = crypto.randomUUID();
     const limit = creditTwin?.binding_limit;
-    const { status } = await apiFetch(`/api/cases/${caseData.id}/human-decision`, {
+    const { status: fetchStatus } = await apiFetch(`/api/cases/${caseData.id}/human-decision`, {
       method: "POST",
       headers: { "Idempotency-Key": idempotencyKey },
       body: JSON.stringify({
@@ -161,15 +196,15 @@ export default function GuidedDemoPage() {
         expected_version: caseData.version || 1,
       }),
     });
-    if (status === 200 || status === 201) {
+    if (fetchStatus === 200 || fetchStatus === 201) {
       await loadShaktiCase();
     } else {
-      setError("Sanction failed.");
+      setErrorMessage("Sanction failed.");
+      setStatus("ERROR");
     }
-    setEvaluating(false);
   };
 
-  if (loading) {
+  if (status === "INITIAL_LOADING") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4 bg-brand-nav">
         <Sparkles className="w-10 h-10 text-brand-teal animate-bounce" />
@@ -178,15 +213,15 @@ export default function GuidedDemoPage() {
     );
   }
 
-  if (error) {
+  if (status === "ERROR") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-brand-nav">
         <div className="bg-white p-8 rounded-lg max-w-md text-center shadow-xl">
           <AlertTriangle className="w-12 h-12 text-brand-red mx-auto mb-4" />
           <h2 className="text-xl font-bold text-light-text mb-2">Sandbox Error</h2>
-          <p className="text-light-secondary text-sm mb-6">{error}</p>
+          <p className="text-light-secondary text-sm mb-6">{errorMessage}</p>
           <div className="space-x-4">
-             <button onClick={() => { setError(null); loadShaktiCase(); }} className="px-4 py-2 bg-brand-teal text-white rounded font-medium">Retry Connection</button>
+             <button onClick={() => { setErrorMessage(null); loadShaktiCase(); }} className="px-4 py-2 bg-brand-teal text-white rounded font-medium">Retry Connection</button>
              <Link href="/login" className="px-4 py-2 bg-light-bg text-light-text border border-light-border rounded font-medium hover:bg-gray-100">Back to Login</Link>
           </div>
         </div>
@@ -195,6 +230,9 @@ export default function GuidedDemoPage() {
   }
 
   if (!caseData) return null;
+
+  const currentStep = getStepNumber(status);
+  const evaluating = status === "EVALUATING" || status === "SUBMITTING_RECOMMENDATION" || status === "SUBMITTING_DECISION" || status === "RESTARTING";
 
   const steps = [
     { id: 1, label: "Business & request" },
@@ -238,10 +276,10 @@ export default function GuidedDemoPage() {
             <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-light-border -z-10 transform -translate-y-1/2"></div>
             {steps.map((s) => (
               <div key={s.id} className="flex flex-col items-center relative z-10 bg-brand-nav px-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${step >= s.id ? 'bg-brand-teal border-brand-teal text-white' : 'bg-light-bg border-light-border text-light-secondary'}`}>
-                  {step > s.id ? <Check className="w-4 h-4" /> : s.id}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${currentStep >= s.id ? 'bg-brand-teal border-brand-teal text-white' : 'bg-light-bg border-light-border text-light-secondary'}`}>
+                  {currentStep > s.id ? <Check className="w-4 h-4" /> : s.id}
                 </div>
-                <span className={`text-[10px] sm:text-xs mt-2 font-medium max-w-[80px] text-center hidden sm:block ${step >= s.id ? 'text-brand-teal' : 'text-light-border'}`}>
+                <span className={`text-[10px] sm:text-xs mt-2 font-medium max-w-[80px] text-center hidden sm:block ${currentStep >= s.id ? 'text-brand-teal' : 'text-light-border'}`}>
                   {s.label}
                 </span>
               </div>
@@ -250,7 +288,7 @@ export default function GuidedDemoPage() {
         </div>
 
         <div className="bg-white rounded-xl shadow-2xl overflow-hidden border border-light-border">
-          {step === 1 && (
+          {currentStep === 1 && (
             <div className="p-8">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-12 h-12 bg-brand-softTeal text-brand-teal rounded-lg flex items-center justify-center">
@@ -280,14 +318,14 @@ export default function GuidedDemoPage() {
                 </div>
               </div>
               <div className="flex justify-end border-t border-light-border pt-6">
-                <button onClick={() => setStep(2)} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
+                <button onClick={() => setStatus("STEP_2_EVIDENCE")} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
                   Inspect Evidence Coverage <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
 
-          {step === 2 && (
+          {currentStep === 2 && (
             <div>
               <div className="p-6 border-b border-light-border bg-light-bg">
                 <h2 className="text-xl font-bold text-light-text flex items-center gap-2">
@@ -300,8 +338,8 @@ export default function GuidedDemoPage() {
                   <EvidenceTab caseId={caseData.id} />
                 </div>
                 <div className="flex justify-between items-center border-t border-light-border pt-6">
-                  <button onClick={() => setStep(1)} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
-                  <button onClick={() => setStep(3)} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
+                  <button onClick={() => setStatus("STEP_1_BUSINESS")} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
+                  <button onClick={() => setStatus("STEP_3_RECONCILIATION")} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
                     Proceed to Reconciliation <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -309,7 +347,7 @@ export default function GuidedDemoPage() {
             </div>
           )}
 
-          {step === 3 && (
+          {currentStep === 3 && (
             <div className="p-8">
               <div className="text-center max-w-lg mx-auto space-y-6">
                 <Scale className="w-16 h-16 text-brand-teal mx-auto mb-4" />
@@ -320,21 +358,21 @@ export default function GuidedDemoPage() {
                 <div className="pt-4">
                   <button 
                     onClick={runEvaluation} 
-                    disabled={evaluating || !caseData.allowed_actions.run_assessment}
+                    disabled={status === "EVALUATING" || !caseData.allowed_actions.run_assessment}
                     className="w-full py-4 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all text-lg shadow-lg disabled:opacity-50"
                   >
-                    {evaluating ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6" />}
-                    {evaluating ? "Evaluating Evidence..." : "Run Assessment Engine"}
+                    {status === "EVALUATING" ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6" />}
+                    {status === "EVALUATING" ? "Evaluating Evidence..." : "Run Assessment Engine"}
                   </button>
                 </div>
                 <div className="flex justify-between items-center pt-8">
-                  <button onClick={() => setStep(2)} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
+                  <button onClick={() => setStatus("STEP_2_EVIDENCE")} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
                 </div>
               </div>
             </div>
           )}
 
-          {step === 4 && (
+          {currentStep === 4 && (
             <div>
               <div className="p-6 border-b border-light-border bg-light-bg">
                 <h2 className="text-xl font-bold text-light-text flex items-center gap-2">
@@ -359,8 +397,8 @@ export default function GuidedDemoPage() {
                    </div>
                 </div>
                 <div className="flex justify-between items-center border-t border-light-border pt-6">
-                  <button onClick={() => setStep(3)} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
-                  <button onClick={() => setStep(5)} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
+                  <button onClick={() => setStatus("STEP_3_RECONCILIATION")} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
+                  <button onClick={() => setStatus("STEP_5_RECOMMENDATION")} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
                     Prepare Recommendation <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -368,7 +406,7 @@ export default function GuidedDemoPage() {
             </div>
           )}
 
-          {step === 5 && (
+          {currentStep === 5 && (
             <div className="p-8">
               <div className="mb-6 flex items-center gap-3">
                 <User className="w-8 h-8 text-brand-teal" />
@@ -378,7 +416,7 @@ export default function GuidedDemoPage() {
                 </div>
               </div>
 
-              {caseData.analyst_recommendation ? (
+              {status === "RECOMMENDATION_SUBMITTED" || status === "SWITCHING_TO_SA" ? (
                 <div className="p-6 bg-brand-softTeal border border-brand-teal rounded-lg text-center space-y-6">
                   <CheckCircle2 className="w-12 h-12 text-brand-teal mx-auto" />
                   <div>
@@ -387,10 +425,10 @@ export default function GuidedDemoPage() {
                   </div>
                   <button 
                     onClick={switchToSanctioningAuthority}
-                    disabled={switchingRole}
+                    disabled={status === "SWITCHING_TO_SA"}
                     className="w-full py-3 bg-brand-amber hover:bg-amber-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                   >
-                    {switchingRole ? <RefreshCw className="w-5 h-5 animate-spin" /> : <UserCheck className="w-5 h-5" />}
+                    {status === "SWITCHING_TO_SA" ? <RefreshCw className="w-5 h-5 animate-spin" /> : <UserCheck className="w-5 h-5" />}
                     Continue as Sanctioning Authority
                   </button>
                 </div>
@@ -406,10 +444,10 @@ export default function GuidedDemoPage() {
                   </div>
                   <button 
                     onClick={handleAnalystRecommendation}
-                    disabled={evaluating || creditTwin?.binding_limit === null || creditTwin?.binding_limit === undefined || creditTwin.binding_limit <= 0 || !caseData.allowed_actions.submit_analyst_recommendation || activeRole !== "CREDIT_ANALYST"}
+                    disabled={status === "SUBMITTING_RECOMMENDATION" || creditTwin?.binding_limit === null || creditTwin?.binding_limit === undefined || creditTwin.binding_limit <= 0 || !caseData.allowed_actions.submit_analyst_recommendation || activeRole !== "CREDIT_ANALYST"}
                     className="w-full py-4 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                   >
-                    {evaluating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                    {status === "SUBMITTING_RECOMMENDATION" ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                     Submit Recommendation
                   </button>
                 </div>
@@ -417,7 +455,7 @@ export default function GuidedDemoPage() {
             </div>
           )}
 
-          {step === 6 && (
+          {currentStep === 6 && (
             <div className="p-8">
               <div className="mb-6 flex items-center gap-3">
                 <UserCheck className="w-8 h-8 text-brand-amber" />
@@ -427,7 +465,7 @@ export default function GuidedDemoPage() {
                 </div>
               </div>
 
-              {caseData.status === "HUMAN_APPROVED" || caseData.status === "HUMAN_DECLINED" ? (
+              {status === "FINALIZED" ? (
                 <div className="space-y-6">
                   <div className="p-6 bg-brand-softTeal border border-brand-teal rounded-lg text-center">
                     <ShieldCheck className="w-12 h-12 text-brand-teal mx-auto mb-3" />
@@ -470,10 +508,10 @@ export default function GuidedDemoPage() {
                   
                   <button 
                     onClick={() => handleSanctionDecision("APPROVED")}
-                    disabled={evaluating || creditTwin?.binding_limit === null || creditTwin?.binding_limit === undefined || creditTwin.binding_limit <= 0 || !caseData.allowed_actions.record_human_decision || activeRole !== "SANCTIONING_AUTHORITY"}
+                    disabled={status === "SUBMITTING_DECISION" || creditTwin?.binding_limit === null || creditTwin?.binding_limit === undefined || creditTwin.binding_limit <= 0 || !caseData.allowed_actions.record_human_decision || activeRole !== "SANCTIONING_AUTHORITY"}
                     className="w-full py-4 bg-brand-amber hover:bg-amber-600 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
                   >
-                    {evaluating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+                    {status === "SUBMITTING_DECISION" ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
                     Approve Alternative Structure
                   </button>
                 </div>
