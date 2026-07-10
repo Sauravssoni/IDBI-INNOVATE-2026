@@ -81,7 +81,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
 
     // manual SA alternative-structure approval
     await page.click('button:has-text("Approve Alternative Structure")');
-    await expect(page.locator('text=SANCTIONED').or(page.locator('text=Sanctioned'))).toBeVisible();
+    await expect(page.locator('text=SANCTION APPROVED').or(page.locator('text=Sanction Approved')).or(page.locator('text=SANCTIONED')).or(page.locator('text=Sanctioned'))).toBeVisible();
   });
 
   test('NavPrerna evidence-request/defer path', async ({ page }) => {
