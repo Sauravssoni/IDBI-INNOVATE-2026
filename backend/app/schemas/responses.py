@@ -195,6 +195,7 @@ class HealthResponse(BaseModel):
 
 
 class DecisionPackageReconciliation(BaseModel):
+    model_config = ConfigDict(extra="allow")
     reconciliation_quality: Optional[Decimal] = None
     evidence_confidence: Optional[Decimal] = None
     source_coverage: Optional[Decimal] = None
@@ -208,6 +209,7 @@ class DecisionPackageAuditItem(BaseModel):
 
 
 class DecisionPackageResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
     case_id: str
     business_name: str
     requested_amount: Decimal

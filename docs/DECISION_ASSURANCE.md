@@ -1,7 +1,7 @@
 # Decision Assurance Report
 
-**Final SHA:** `27f572939b74c454abf51e3947a58eaa3bac1c37`
-**Timestamp:** 2026-07-10T09:51:52.855844
+**Final SHA:** `b261a46cc045331906dff833640bfd5deaafefa4`
+**Timestamp:** 2026-07-10T11:35:22.556702
 **Policy Version:** 1
 **Calculation Version:** 1
 
@@ -30,8 +30,8 @@
 - [PASS] **Evidence-confidence Monotonicity**: evidence-confidence monotonicity verified
 - [PASS] **RM RBAC**: RM cannot evaluate verified
 - [PASS] **Analyst RBAC**: Analyst cannot sanction verified
-- [PASS] **CA Recommendation Check**: Analyst recommendation succeeded with 200, got 200: {"status":"success","recommendation":"RECOMMEND_ALTERNATIVE_STRUCTURE","prior_version":3,"resulting_version":4,"audit_hash":"3afa2861664b18b7c87897298e4f9ea2d804c7c8d44d0487fa7dc5c3760e0af4"}
+- [PASS] **CA Recommendation Check**: Analyst recommendation succeeded with 200, got 200: {"status":"success","recommendation":"RECOMMEND_ALTERNATIVE_STRUCTURE","prior_version":3,"resulting_version":4,"audit_hash":"b442926c4e3c0637d04fd0bf0ad1d0b74a56de8c00e37bd6eab3524aaa1477ad"}
 - [PASS] **SA Mandate Failure Check**: SA above-mandate approval failed with 403, got 403: {"detail":{"code":"OUTSIDE_SANCTION_MANDATE","message":"Escalation required—outside current sanction mandate."}}
-- [PASS] **SA Mandate Success Check**: SA within-mandate approval succeeded with 200, got 200: {"status":"success","decision":"APPROVE_ALTERNATIVE_STRUCTURE","approved_amount":300000.0,"prior_version":4,"resulting_version":5,"audit_hash":"c2d088d8612bf9abf9497c851a6ace388bcf75accb2aa558be5b196c60bf82e7"}
+- [PASS] **SA Mandate Success Check**: SA within-mandate approval succeeded with 200, got 200: {"status":"success","decision":"APPROVE_ALTERNATIVE_STRUCTURE","approved_amount":300000.0,"prior_version":4,"resulting_version":5,"audit_hash":"8549036ee112673c50955242db719de0f9d5052d0b20798a88ccee5fe34dc509"}
 - [PASS] **LLM Isolation**: LLM not called in scoring/policy verified
 - [PASS] **Audit Hash Chain**: Continuous audit hash chain verified
