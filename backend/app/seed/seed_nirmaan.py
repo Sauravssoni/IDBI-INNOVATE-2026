@@ -116,95 +116,110 @@ def seed_nirmaan(db_session=None):
         connections_by_source[source] = connection.id
     db.commit()
 
-    for m in range(1, 4):
-        p_date = date(2026, m, 15)
-        gst = GSTPeriod(
-            business_id_fk=nirmaan.id,
-            data_connection_id_fk=connections_by_source["GST"],
-            period_month=f"2026-{m:02d}",
-            declared_revenue=Decimal("0"),
-            tax_paid=Decimal("0"),
-            source_system="GSTN",
-            source_record_id=f"GST-{m}-{nirmaan.id}",
-            ingestion_mode="SEEDED_PROTOTYPE",
-            consent_id_fk=consents_by_source["GST"],
-        )
-        db.add(gst)
+    start_date = today - relativedelta(months=18)
+    base_revenue = Decimal("5500000.00")
 
-    for m in range(1, 4):
-        txn_date = date(2026, m, 10)
-        txn = BankTransaction(
-            business_id_fk=nirmaan.id,
-            data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
-            transaction_date=txn_date,
-            amount=Decimal("0"),
-            transaction_type="CREDIT",
-            category="BUYER_RECEIPT",
-            source_system="ACCOUNT_AGGREGATOR",
-            source_record_id=f"TXN-CR-{m}-{nirmaan.id}",
-            ingestion_mode="SEEDED_PROTOTYPE",
-            consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
-        )
-        db.add(txn)
+    for m in range(18):
+        current_month = start_date + relativedelta(months=m)
+        month_start = date(current_month.year, current_month.month, 1)
 
-    for m in range(1, 4):
-        s_date = date(2026, m, 12)
-        s_txn = BankTransaction(
-            business_id_fk=nirmaan.id,
-            data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
-            transaction_date=s_date,
-            amount=Decimal("0"),
-            transaction_type="DEBIT",
-            category="SUPPLIER_PAYMENT",
-            source_system="ACCOUNT_AGGREGATOR",
-            source_record_id=f"TXN-SUP-{m}-{nirmaan.id}",
-            ingestion_mode="SEEDED_PROTOTYPE",
-            consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
-        )
-        db.add(s_txn)
+        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.1, 0.1), 4)))
+        monthly_rev = round(base_revenue * fluctuation, 2)
 
-    for m in range(1, 4):
-        epfo_date = date(2026, m, 20)
-        emp = EmploymentPeriod(
-            business_id_fk=nirmaan.id,
-            data_connection_id_fk=connections_by_source["EPFO"],
-            period_month=f"2026-{m:02d}",
-            employee_count=0,
-            total_pf_remittance=Decimal("0"),
-            source_system="EPFO",
-            source_record_id=f"EPFO-{m}-{nirmaan.id}",
-            ingestion_mode="SEEDED_PROTOTYPE",
-            consent_id_fk=consents_by_source["EPFO"],
-        )
-        db.add(emp)
+        # Huge GST variance
+        # GST reports 55L, but Bank gets only 20L for the last 6 months
+        if m >= 12:
+            gst_revenue = monthly_rev
+            bank_credits = round(monthly_rev * Decimal("0.3"), 2)
+        else:
+            gst_revenue = monthly_rev
+            bank_credits = round(
+                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2
+            )
 
-    for m in range(1, 4):
-        d_date = date(2026, m, 25)
-        d_txn = BankTransaction(
-            business_id_fk=nirmaan.id,
-            data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
-            transaction_date=d_date,
-            amount=Decimal("0"),
-            transaction_type="DEBIT",
-            category="DEBT_SERVICE",
-            source_system="ACCOUNT_AGGREGATOR",
-            source_record_id=f"TXN-DEBT-{m}-{nirmaan.id}",
-            ingestion_mode="SEEDED_PROTOTYPE",
-            consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+        db.add(
+            GSTPeriod(
+                business_id_fk=nirmaan.id,
+                period_month=month_start,
+                declared_revenue=gst_revenue,
+                tax_paid=round(gst_revenue * Decimal("0.18"), 2),
+                source_system="GSTN",
+                source_record_id=f"GST-{m}-{nirmaan.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["GST"],
+                data_connection_id_fk=connections_by_source["GST"],
+            )
         )
-        db.add(d_txn)
+
+        db.add(
+            BankTransaction(
+                business_id_fk=nirmaan.id,
+                transaction_date=month_start + timedelta(days=5),
+                amount=bank_credits,
+                transaction_type="CREDIT",
+                category="BUYER_RECEIPT",
+                source_system="ACCOUNT_AGGREGATOR",
+                source_record_id=f"TXN-CR-{m}-{nirmaan.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
+            )
+        )
+        db.add(
+            BankTransaction(
+                business_id_fk=nirmaan.id,
+                transaction_date=month_start + timedelta(days=10),
+                amount=round(monthly_rev * Decimal("0.60"), 2),
+                transaction_type="DEBIT",
+                category="SUPPLIER_PAYMENT",
+                source_system="ACCOUNT_AGGREGATOR",
+                source_record_id=f"TXN-SUP-{m}-{nirmaan.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
+            )
+        )
+
+        db.add(
+            EmploymentPeriod(
+                business_id_fk=nirmaan.id,
+                period_month=month_start,
+                employee_count=120,
+                total_pf_remittance=round(monthly_rev * Decimal("0.08"), 2),
+                source_system="EPFO",
+                source_record_id=f"EPFO-{m}-{nirmaan.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["EPFO"],
+                data_connection_id_fk=connections_by_source["EPFO"],
+            )
+        )
+
+        db.add(
+            BankTransaction(
+                business_id_fk=nirmaan.id,
+                transaction_date=month_start + timedelta(days=20),
+                amount=Decimal("450000.00"),
+                transaction_type="DEBIT",
+                category="DEBT_SERVICE",
+                source_system="ACCOUNT_AGGREGATOR",
+                source_record_id=f"TXN-DEBT-{m}-{nirmaan.id}",
+                ingestion_mode="SEEDED_PROTOTYPE",
+                consent_id_fk=consents_by_source["ACCOUNT_AGGREGATOR"],
+                data_connection_id_fk=connections_by_source["ACCOUNT_AGGREGATOR"],
+            )
+        )
 
     db.add(
         Obligation(
             business_id_fk=nirmaan.id,
-            data_connection_id_fk=connections_by_source["CIBIL"],
             facility_type="TERM_LOAN",
-            monthly_emi=Decimal("0"),
-            outstanding_balance=Decimal("0"),
+            monthly_emi=Decimal("450000.00"),
+            outstanding_balance=Decimal("15000000.00"),
             source_system="CIBIL",
             source_record_id=f"OBL-1-{nirmaan.id}",
             ingestion_mode="SEEDED_PROTOTYPE",
             consent_id_fk=consents_by_source["CIBIL"],
+            data_connection_id_fk=connections_by_source["CIBIL"],
         )
     )
 
