@@ -22,16 +22,16 @@ fi
 
 echo "Seeding Test Database for Backend Tests..."
 cd "$REPO_ROOT/backend"
-PYTHONPATH=. python -m app.seed.run_demo_reset
+PYTHONPATH=. uv run python -m app.seed.run_demo_reset
 
 echo "Running Backend Tests..."
 cd "$REPO_ROOT/backend"
-pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
-ruff check app tests scripts
-ruff format --check app tests scripts
-mypy app
-bandit -r app -ll
-pip-audit -r requirements.txt
+uv run pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
+uv run ruff check app tests scripts
+uv run ruff format --check app tests scripts
+uv run mypy app
+uv run bandit -r app -ll
+uv run pip-audit -r requirements.txt
 
 echo "Running Frontend Tests..."
 cd "$REPO_ROOT/frontend"
@@ -48,7 +48,7 @@ npx playwright install chromium --with-deps
 
 echo "Seeding Test Database for E2E..."
 cd "$REPO_ROOT/backend"
-PYTHONPATH=. python -m app.seed.run_demo_reset
+PYTHONPATH=. uv run python -m app.seed.run_demo_reset
 
 echo "Running Frontend E2E Tests..."
 cd "$REPO_ROOT/frontend"
@@ -56,13 +56,29 @@ npx playwright test
 
 echo "Running Proofs..."
 cd "$REPO_ROOT/backend"
-PYTHONPATH=. python -m app.seed.run_demo_reset
+PYTHONPATH=. uv run python -m app.seed.run_demo_reset
 
 mkdir -p "$REPO_ROOT/artifacts/runtime"
 export RUNTIME_EVIDENCE_DIR="$REPO_ROOT/artifacts/runtime"
-PYTHONPATH=. python scripts/run_decision_assurance.py > "$RUNTIME_EVIDENCE_DIR/decision_assurance.json"
-PYTHONPATH=. python scripts/run_demo_walkthrough.py > "$RUNTIME_EVIDENCE_DIR/demo_walkthrough.json"
-python ../scripts/deployment_smoke_test.py
+PYTHONPATH=. uv run python scripts/run_decision_assurance.py > "$RUNTIME_EVIDENCE_DIR/decision_assurance.json"
+PYTHONPATH=. uv run python scripts/run_demo_walkthrough.py > "$RUNTIME_EVIDENCE_DIR/demo_walkthrough.json"
+echo "Starting background servers for smoke test..."
+cd "$REPO_ROOT/backend"
+APP_ENV="development" DATABASE_URL="$DATABASE_URL" JWT_SECRET="$JWT_SECRET" DEMO_USER_PASSWORD="$DEMO_USER_PASSWORD" DEMO_ACCESS_ENABLED="true" PYTHONPATH=. uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
+cd "$REPO_ROOT/frontend"
+npm run start -- -p 3005 > /dev/null 2>&1 &
+
+echo "Waiting for servers to start..."
+for i in {1..30}; do
+  if curl -s http://127.0.0.1:8000/health >/dev/null 2>&1 && curl -s http://127.0.0.1:3005 >/dev/null 2>&1; then
+    echo "Servers started successfully."
+    break
+  fi
+  sleep 1
+done
+
+cd "$REPO_ROOT/backend"
+uv run python ../scripts/deployment_smoke_test.py
 
 echo "Checking git status after tests..."
 cd "$REPO_ROOT"
