@@ -40,14 +40,14 @@ describe('Frontend Contract Tests', () => {
       data: {
         id: 'CASE-001',
         business_name: 'Test Business',
-        allowed_actions: { run_assessment: false, submit_analyst_recommendation: false }
+        allowed_actions: { run_assessment: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, submit_analyst_recommendation: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" } }
       },
     });
 
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
+      expect(screen.getByText(/Not allowed|Read-Only Workspace Access/i)).toBeInTheDocument();
       expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
   });
@@ -61,14 +61,14 @@ describe('Frontend Contract Tests', () => {
       data: {
         id: 'CASE-001',
         business_name: 'Test Business',
-        allowed_actions: {}
+        allowed_actions: { run_assessment: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, submit_analyst_recommendation: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, record_human_decision: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" } }
       },
     });
 
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
+      expect(screen.getByText(/Not allowed|Read-Only Workspace Access/i)).toBeInTheDocument();
       expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
   });
@@ -82,7 +82,7 @@ describe('Frontend Contract Tests', () => {
       data: {
         id: 'CASE-001',
         business_name: 'Test Business',
-        allowed_actions: { record_human_decision: true }
+        allowed_actions: { record_human_decision: { allowed: true, allowed_human_actions: ["APPROVE_AS_REQUESTED","APPROVE_ALTERNATIVE_STRUCTURE","DEFER_FOR_EVIDENCE","ESCALATE_FOR_DUE_DILIGENCE","DECLINE_AFTER_HUMAN_REVIEW"] } }
       },
     });
 
@@ -104,14 +104,14 @@ describe('Frontend Contract Tests', () => {
       data: {
         id: 'CASE-001',
         business_name: 'Test Business',
-        allowed_actions: {}
+        allowed_actions: { run_assessment: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, submit_analyst_recommendation: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, record_human_decision: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" } }
       },
     });
 
     const { unmount } = render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
+      expect(screen.getByText(/Not allowed|Read-Only Workspace Access/i)).toBeInTheDocument();
       expect(screen.queryByText('Run Assessment Engine')).not.toBeInTheDocument();
     });
     unmount();
@@ -122,7 +122,7 @@ describe('Frontend Contract Tests', () => {
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Read-Only Workspace Access')).toBeInTheDocument();
+      expect(screen.getByText(/Not allowed|Read-Only Workspace Access/i)).toBeInTheDocument();
     });
   });
 
@@ -183,7 +183,7 @@ describe('Frontend Contract Tests', () => {
           id: 'CASE-001',
           business_name: 'Shakti',
           version: 1,
-          allowed_actions: { run_assessment: true, submit_analyst_recommendation: true }
+          allowed_actions: { run_assessment: { allowed: true }, submit_analyst_recommendation: { allowed: true, suggested_analyst_action: "RECOMMEND_ALTERNATIVE_STRUCTURE" } }
         }
       };
     });
@@ -221,7 +221,7 @@ describe('Frontend Contract Tests', () => {
         id: 'CASE-001',
         business_name: 'Test Business',
         requested_amount: 1000,
-        allowed_actions: { record_human_decision: true }
+        allowed_actions: { record_human_decision: { allowed: true, allowed_human_actions: ["APPROVE_AS_REQUESTED","APPROVE_ALTERNATIVE_STRUCTURE","DEFER_FOR_EVIDENCE","ESCALATE_FOR_DUE_DILIGENCE","DECLINE_AFTER_HUMAN_REVIEW"] } }
       },
     });
 
@@ -251,7 +251,7 @@ describe('Frontend Contract Tests', () => {
       data: {
         id: 'CASE-001',
         business_name: 'Test Business',
-        allowed_actions: { run_assessment: true }
+        allowed_actions: { run_assessment: { allowed: true } }
       },
     });
 

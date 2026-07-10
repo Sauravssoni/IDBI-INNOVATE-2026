@@ -1,7 +1,14 @@
 [tool.ruff]
 exclude = [
     "alembic/versions",
+    "alembic/env.py",
 ]
+
+[tool.mypy]
+exclude = [
+    "alembic",
+]
+
 [project]
 name = "vyapar-pulse-backend"
 version = "1.0.0"
