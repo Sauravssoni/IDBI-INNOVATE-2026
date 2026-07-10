@@ -41,6 +41,7 @@ def run():
     print("===============================")
     db: Session = SessionLocal()
     from app.seed.reset_service import execute_bounded_reset
+
     print("Seeding deterministic demo state...")
     execute_bounded_reset(db)
 
@@ -337,10 +338,20 @@ def run():
             },
         )
         detail_dict = resp_sa_fail.json().get("detail", {})
-        detail_msg = detail_dict.get("message", "") if isinstance(detail_dict, dict) else str(detail_dict)
+        detail_msg = (
+            detail_dict.get("message", "")
+            if isinstance(detail_dict, dict)
+            else str(detail_dict)
+        )
         assert_step(
             resp_sa_fail.status_code == 403
-            and ("mandate" in detail_msg.lower() or (isinstance(detail_dict, dict) and detail_dict.get("code") == "OUTSIDE_SANCTION_MANDATE")),
+            and (
+                "mandate" in detail_msg.lower()
+                or (
+                    isinstance(detail_dict, dict)
+                    and detail_dict.get("code") == "OUTSIDE_SANCTION_MANDATE"
+                )
+            ),
             f"SA above-mandate approval failed with 403, got {resp_sa_fail.status_code}: {resp_sa_fail.text}",
             "SA Mandate Failure Check",
         )
