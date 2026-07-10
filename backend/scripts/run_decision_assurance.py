@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import uuid
 import datetime
@@ -35,14 +36,18 @@ def get_client(email: str) -> tuple[TestClient, dict]:
     return c, headers
 
 
+def log(msg: str):
+    print(msg, file=sys.stderr)
+
+
 def run():
-    print("===============================")
-    print("Running PROOF (End-to-End)...")
-    print("===============================")
+    log("===============================")
+    log("Running PROOF (End-to-End)...")
+    log("===============================")
     db: Session = SessionLocal()
     from app.seed.reset_service import execute_bounded_reset
 
-    print("Seeding deterministic demo state...")
+    log("Seeding deterministic demo state...")
     execute_bounded_reset(db)
 
     ca_client, ca_headers = get_client("credit@bank.example")
@@ -75,17 +80,17 @@ def run():
             results["details"].append(
                 {"step": step_name, "status": "FAIL", "message": message}
             )
-            print(f"❌ FAIL: {step_name} - {message}")
+            log(f"❌ FAIL: {step_name} - {message}")
             exit(1)
 
     try:
-        print("--- 1. Asserting Exactly Four Personas ---")
+        log("--- 1. Asserting Exactly Four Personas ---")
         businesses = db.query(Business).all()
         assert_step(len(businesses) == 4, "Found 4 businesses", "Persona Count")
         cases = db.query(Case).all()
         assert_step(len(cases) == 4, "Found 4 cases", "Case Count")
 
-        print("--- 2. Asserting Specific Persona Outcomes ---")
+        log("--- 2. Asserting Specific Persona Outcomes ---")
         # Shakti
         shakti = (
             db.query(Case)
@@ -198,7 +203,7 @@ def run():
         )
         results["personas"]["NIRMAAN_INFRA_001"] = {"recommendation": nir_rec}
 
-        print("--- 3. Testing Idempotency & CAS ---")
+        log("--- 3. Testing Idempotency & CAS ---")
         idem_key = f"eval-test-{uuid.uuid4()}"
         current_version = shakti.version
 
@@ -228,7 +233,7 @@ def run():
             resp3.status_code == 409, "CAS STALE_VERSION verified", "CAS STALE_VERSION"
         )
 
-        print("--- 4. Testing Monotonicities ---")
+        log("--- 4. Testing Monotonicities ---")
         features_base = {
             "consent_status": "VALID",
             "integrity_flag": False,
@@ -283,7 +288,7 @@ def run():
             "Evidence-confidence Monotonicity",
         )
 
-        print("--- 5. Testing RBAC ---")
+        log("--- 5. Testing RBAC ---")
         resp_get = ca_client.get(f"/api/cases/{shakti.id}", headers=ca_headers)
         shakti_version = resp_get.json()["version"]
         resp_rm = rm_client.post(
@@ -372,7 +377,7 @@ def run():
             "SA Mandate Success Check",
         )
 
-        print("--- 6. LLM Not Called Check ---")
+        log("--- 6. LLM Not Called Check ---")
         import unittest.mock
 
         with unittest.mock.patch("httpx.post") as mock_post:
@@ -383,7 +388,7 @@ def run():
                 "LLM Isolation",
             )
 
-        print("--- 7. Continuous Audit Hash Chain ---")
+        log("--- 7. Continuous Audit Hash Chain ---")
         audits = (
             db.query(AuditEvent)
             .filter(AuditEvent.case_id == shakti.id)
@@ -427,12 +432,21 @@ def run():
             for d in results["details"]:
                 f.write(f"- [{d['status']}] **{d['step']}**: {d['message']}\n")
 
-        print("\n✅ Decision Assurance Passed successfully!")
+        log("\n✅ Decision Assurance Passed successfully!")
+        return results
 
     except Exception as e:
-        print(f"❌ Execution Error - {e}")
+        log(f"❌ Execution Error - {e}")
         exit(1)
 
 
 if __name__ == "__main__":
-    run()
+    orig_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    try:
+        res = run()
+        if res is not None:
+            orig_stdout.write(json.dumps(res, indent=2) + "\n")
+    except Exception as e:
+        log(f"❌ Execution Error - {e}")
+        exit(1)

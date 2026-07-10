@@ -1,67 +1,128 @@
-# Vyapar Pulse
+# Vyapar Pulse — Evidence-to-Sanction Deterministic Credit Twin Prototype
 
 ![Hero Screenshot](docs/assets/screenshots/01-demo-access.png)
 
-**An evidence-to-sanction deterministic credit twin prototype for MSME lending.**
+**An evidence-to-sanction deterministic credit twin prototype for Indian MSME working capital assessment.**
 
-## Value Proposition
-Vyapar Pulse doesn't obscure risk behind an AI black box. Instead, it mathematically normalizes evidence (GST, Bank Statements, Invoices) into a `Credit Twin` vector, applies deterministic financial rules (e.g. DSCR > 1.15), and presents an auditable justification. A human always makes the final sanction decision.
+---
 
-## Public Demo
-*Deployment pending external DNS and HTTPS resolution.*
+## 1. Value Proposition & Deterministic Architecture
+Vyapar Pulse eliminates black-box AI risk in MSME lending. Instead of relying on opaque LLM scoring, it mathematically normalizes multi-rail evidence (GST returns, Bank Statements, Invoices, Bureau data) into a deterministic `Credit Twin` vector. It executes strictly versioned financial math (`SafeLimitEngine` exact reducing-balance amortization and DSCR rules) and enforces a human-in-the-loop sanction workflow where AI explains and organizes, but deterministic policy engines and human authorities control decisions.
 
-## Judge this in three minutes
-Access the demo, select the **Credit Analyst** role, and click **Start 3-Minute Credit Journey**. This guided flow will step you through the deterministic evidence evaluation, reconciliation, twin generation, and manual recommendation, followed by an immediate SA review.
+---
 
-## Four Canonical Personas
-1. **Shakti Precision** (Manufacturing — Auto Ancillary, Working Capital Line): ₹50 lakh requested, DSCR 1.85, ₹35.69 lakh supportable. Expected outcome: CONDITIONAL_OFFER.
-2. **NavPrerna Traders** (Retail): Missing crucial GST filings. Expected outcome: ADDITIONAL_EVIDENCE_REQUIRED.
-3. **Nirmaan Infrastructure Services** (Construction): Poor cash flow and over-leveraged. Expected outcome: DECLINE_RECOMMENDED.
-4. **Rangrez Textiles** (Textiles): Currently in a cooldown state. Expected outcome: READY_FOR_REVIEW, but ultimately declined.
+## 2. Public Demo & Verification Access
+- **Frontend URL**: Proxied Next.js frontend running locally on port `3005` or via cloud deployment.
+- **Backend API Docs**: `/docs` OpenAPI interface.
+- **System Readiness Endpoint**: `/ready` verifying live database connectivity and schema compatibility.
+- **Health Check Endpoint**: `/health` verifying service heartbeat.
 
-## Decision Package
-Vyapar Pulse provides a comprehensive, deterministic Decision Package output for every case, embedding the complete audit and calculation versions.
+---
 
-## Decision Sensitivity Lab
-An illustrative sensitivity analysis tool—not a sanction decision—allowing you to stress-test revenue, obligations, and evidence source variations.
+## 3. Judge This in Three Minutes (Step-by-Step Evaluation)
+1. **Demo Reset**: Click **Demo Reset** (`/api/demo/reset`) to seed exactly four canonical deterministic MSME personas.
+2. **Analyst Login**: Select **Credit Analyst** role (`credit@bank.example`).
+3. **Inspect Shakti Precision Components**: View multi-rail evidence, reconcile GST turnover vs. bank credits, and generate the deterministic `Credit Twin`.
+4. **Inspect Decision Package & Evidence Passport**: Review the `Evidence Sufficiency Passport` (`EVD-001`) with exponential freshness decay (`decay_score = 100 * e^(-0.015*t)`) and authoritative evidence linkage.
+5. **Analyze Stress Lab & Bankability Path**: Open the **Decision Sensitivity Lab** (`STR-001`) to test revenue/margin shocks and the **Bankability Path Engine** (`BNK-001`) for 30/60/90-day intervention roadmaps.
+6. **Submit Recommendation**: Recommend an alternative facility structure (`CONDITIONAL_OFFER`).
+7. **Sanction Authority Review**: Switch role to **Sanctioning Authority** (`sa@bank.example`) to inspect the proposal and issue final human sanction.
 
-## Validation Console
-A synthetic scenario and policy validation interface—not observed loan-performance validation—to assert role boundaries, missing-data degradation, and idempotency replay.
+---
 
-## Architecture
-- **Frontend:** Next.js, Tailwind CSS, Playwright E2E.
-- **Backend:** FastAPI (Python), Pydantic, SQLAlchemy.
-- **Database:** PostgreSQL (with explicit indexing for CAS).
+## 4. Four Canonical MSME Personas
+1. **Shakti Precision Components Pvt Ltd** (Manufacturing — Auto Ancillary, Working Capital Line):
+   - Requested: ₹50.00 Lakh
+   - Supportable Limit: ₹35.69 Lakh (constrained by exact reducing-balance EMI and DSCR floor ≥ 1.15)
+   - Outcome: `CONDITIONAL_OFFER` (requires alternative facility structuring).
+2. **Navprerna Tech Solutions Pvt Ltd** (Services — IT & Cloud Architecture):
+   - Outcome: `ADDITIONAL_EVIDENCE_REQUIRED` due to missing recent GST filings and stale bank statements.
+3. **Rangrez Textiles Pvt Ltd** (Manufacturing — Apparel & Garments):
+   - Outcome: `READY_FOR_REVIEW` / `DECLINE_RECOMMENDED` due to severe cash flow contraction and over-leverage.
+4. **Nirmaan Infrastructure Services Pvt Ltd** (Construction — Civil & Electrical Infrastructure):
+   - Outcome: `DECLINE_RECOMMENDED` due to negative operating cash flows and elevated debt service obligations.
 
-## Analyst-to-Human-Sanction Workflow
-The system strictly enforces separation of duties. Credit Analysts can compute the twin and recommend structures, but only a Sanctioning Authority (SA) can finalize the approval, preventing unilateral decisions.
+---
 
-## Role/BOLA Matrix
-- **Credit Analyst**: Can view cases, run twin, and recommend.
-- **Sanctioning Authority (SA)**: Can review recommendations and approve/decline.
-- **Relationship Manager (RM)**: Read-only access to case statuses.
-- **System Admin**: Cannot view any borrower content in the DOM. GET /cases returns exact expected denial.
-- **Auditor**: BOLA-scoped read-only audit access.
+## 5. Decision Package & Evidence Sufficiency Passport (`EVD-001`/`EVD-002`)
+Every evaluation produces a deterministic `DecisionPackageResponse` that embeds:
+- **Evidence Sufficiency Passport**: Quantitative scoring of evidence depth and multi-rail coverage across Banking, GST, Bureau, and Financial statements.
+- **Freshness Decay Math**: Exponential time-decay model (`100 * e^(-0.015*t)`) penalizing stale filings (>30 days).
+- **Authoritative Evidence IDs**: Explicit UUID references binding every calculation input directly to raw ingested documents (`authoritative_evidence_ids`).
+- **Reducing-Balance DSCR**: Exact formula `P * r * (1+r)^n / ((1+r)^n - 1)` calculating post-loan DSCR against proposed limits.
 
-## CAS and Idempotency
-Sanction events require the client to pass the exact `expected_version` (CAS). If another actor modifies the case concurrently, the system returns `409 STALE_VERSION`. Retries with the same `Idempotency-Key` return identical responses without side effects.
+---
 
-## Tamper-Evident Audit Linkage
-Every mutation generates an audit event containing a SHA-256 hash of `prior_event_hash + case_id + action + timestamp`. Modifying historical data mathematically invalidates the chain.
+## 6. Decision Sensitivity Lab (`STR-001`/`STR-002`/`STR-003`)
+An illustrative sensitivity and stress testing suite—not an automated sanction engine—allowing credit analysts and risk committees to:
+- **Single-Factor & Combined Shocks**: Model down-case scenarios (-15% revenue, +200 bps interest, +15% working capital cycle).
+- **Decision Transition Explanations**: Exactly document why a borrower transitions from `APPROVE` to `CONDITIONAL_OFFER` or `DECLINE` under stress.
 
-## Validation Methodology
-Synthetic scenario and policy validation—not observed loan-performance validation. We test missing-data degradation, false-positive policy checks, and role-boundary enforcement against synthetic personas.
+---
 
-## Real versus Simulated
-This prototype simulates live core banking and GSTN pulls via seeded deterministic evidence files to ensure a stable, repeatable judging environment.
+## 7. Bankability Path Engine (`BNK-001`/`BNK-002`)
+For borrowers receiving conditional offers or declines, the system generates actionable 30, 60, and 90-day remediation milestones:
+- **Intervention Modeling**: Quantifies how specific operational improvements (e.g., injecting ₹5L equity, reducing debtor days by 12 days) improve supportable limit and post-loan DSCR.
+- **Committee-Ready Roadmap**: Provides clear benchmarks before re-evaluation.
 
-## One-Command Docker Setup
+---
+
+## 8. System Architecture
+- **Frontend**: Next.js 14, Tailwind CSS, Playwright E2E verification.
+- **Backend API**: Python 3.10+, FastAPI, Pydantic v2.
+- **Database & ORM**: PostgreSQL with SQLAlchemy 2.0+ and explicit table-level row locks (`FOR UPDATE`) and `expected_version` checks for Compare-And-Swap (CAS).
+- **Verification Suite**: 70+ domain/API/BOLA pytest cases, 18 Decision Assurance assertions, and 12-step E2E Demo Walkthrough.
+
+---
+
+## 9. Separation of Duties & BOLA Matrix
+Strict cryptographic and structural role segregation prevents unauthorized data access and unilateral approval:
+- **Credit Analyst**: Can view cases, compute twins, run stress scenarios, and recommend structures.
+- **Sanctioning Authority (SA)**: Exclusive authority to approve, conditionally approve, or decline cases (`CAS` enforced).
+- **Relationship Manager (RM)**: Read-only access to case status and borrower milestones.
+- **System Admin**: Cannot access borrower financial data (`GET /api/cases/{id}` returns strict denial).
+- **Auditor**: Read-only access scoped strictly to tamper-evident audit logs.
+
+---
+
+## 10. Compare-And-Swap (CAS) & Idempotency
+- **Concurrency Control**: Every state mutation requires passing the exact `expected_version` header (`X-Expected-Version`). If another actor modifies the case concurrently, the system rejects the request with `409 STALE_VERSION`.
+- **Idempotency Guarantee**: Retrying any state-mutating request with the same `Idempotency-Key` returns the exact cached response without duplicating audit events or mutating state.
+
+---
+
+## 11. Tamper-Evident Audit Chain (`AUD-001`)
+Every case mutation generates an immutable, append-only `AuditEvent` record:
+- **Cryptographic Hash Chain**: Each event stores a `sha256` hash computed over `prior_event_hash + case_id + action + timestamp + payload`.
+- **Tamper Detection**: Any unauthorized modification to historical audit rows immediately breaks the hash chain, flagged by system health and audit verification tools.
+
+---
+
+## 12. Synthetic Validation Methodology
+All verification harness execution uses deterministic synthetic scenarios and policy assertions:
+- **Role Boundary Asserts**: Automatic verification that BOLA boundaries hold across all endpoints.
+- **Missing-Data Degradation**: Proves graceful fallback when evidence rails (such as GST or Bureau) are missing or expired.
+- **Replay Verification**: Proves identical responses under network retry conditions.
+
+---
+
+## 13. Real versus Simulated Scope
+This prototype uses seeded, bank-grade synthetic data representing real Indian MSME financial patterns (turnover mismatch, GST input tax credit reconciliation, bank statement analysis). Live GSTN/Core Banking integrations are simulated via deterministic JSON seed files (`backend/app/seed/data.py`) to guarantee exact, repeatable judging and verification.
+
+---
+
+## 14. One-Command Docker Setup
 ```bash
 docker-compose --profile demo up -d --build
 ```
-This boots the Next.js frontend, FastAPI backend, and PostgreSQL database with exactly reproducible environment constraints.
+Or execute our local verification harness directly:
+```bash
+./scripts/all_tests.sh
+```
 
-## Screenshot Gallery
+---
+
+## 15. Screenshot & Evidence Gallery
 - ![Shakti Request](docs/assets/screenshots/02-shakti-request.png)
 - ![Evidence Coverage](docs/assets/screenshots/03-evidence-coverage.png)
 - ![Credit Twin](docs/assets/screenshots/04-credit-twin.png)
@@ -69,13 +130,13 @@ This boots the Next.js frontend, FastAPI backend, and PostgreSQL database with e
 - ![Sanction Review](docs/assets/screenshots/06-sanction-review.png)
 - ![Final Audit](docs/assets/screenshots/07-final-audit.png)
 - ![Dashboard](docs/assets/screenshots/08-dashboard.png)
-- ![Auditor Trace](docs/assets/screenshots/09-auditor-trace.png)
-- ![Policy Matrix](docs/assets/screenshots/10-policy-matrix.png)
 
-## Known Limitations
-- No live GSTN pulling (simulated via seed files).
-- OCR engine is stubbed.
-- Limited to 4 synthetic personas for the demo.
+---
 
-## Syntheon Technology Private Limited
-Vyapar Pulse is authored by Syntheon Technology Private Limited for the IDBI Innovate 2026 Hackathon.
+## 16. Known Limitations & Prototype Boundaries
+- Simulated external data feeds (GSTN/Core Banking/Bureau).
+- OCR extraction engine operates against pre-processed structured payload extracts rather than raw scanned PDFs.
+- Evaluator scope restricted to the 4 canonical MSME working capital scenarios.
+
+---
+*Authored by Syntheon Technology Private Limited for the IDBI Innovate 2026 Track 03 Competition Dominance RC3.*

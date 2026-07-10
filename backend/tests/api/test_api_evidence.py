@@ -18,7 +18,7 @@ def setup_shakti_db():
     if "test" not in datname.lower():
         raise RuntimeError("Refusing to run tests against non-test database name")
 
-    test_password = os.environ.get("DEMO_USER_PASSWORD", "demo_secure_pass123")
+    test_password = os.environ.get("DEMO_USER_PASSWORD", "testpassword123")
     os.environ["DEMO_USER_PASSWORD"] = test_password
 
     seed_shakti()

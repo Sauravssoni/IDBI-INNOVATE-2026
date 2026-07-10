@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -216,10 +216,18 @@ class DecisionPackageResponse(BaseModel):
     requested_product: Optional[str] = None
     reconciliation: DecisionPackageReconciliation
     dscr: Optional[Decimal] = None
+    post_loan_dscr: Optional[Decimal] = None
     binding_limit: Optional[Decimal] = None
     recommendation: Optional[str] = None
     reason_codes: List[str]
     conditions: List[str]
+    offers: Optional[List[Dict[str, Any]]] = None
+    limit_details: Optional[List[Dict[str, Any]]] = None
+    evidence_passport: Optional[Dict[str, Any]] = None
+    assessment_certainty: Optional[str] = None
+    certainty_reasons: Optional[List[str]] = None
+    peer_context: Optional[Dict[str, Any]] = None
+    hindi_summary: Optional[Dict[str, Any]] = None
     policy_version: str
     calculation_version: str
     analyst_action: Optional[str] = None

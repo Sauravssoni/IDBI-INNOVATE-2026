@@ -2,6 +2,7 @@ from typing import Dict, Any, List, Tuple
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.limits import SafeLimitEngine
 from app.db.orm.cases import SystemRecommendation
+from app.core.versions import POLICY_VERSION, CALCULATION_VERSION
 
 
 class DecisionPolicy:
@@ -31,6 +32,7 @@ class DecisionPolicy:
                 "reasons": ["Invalid, revoked or expired consent"],
                 "offers": [],
                 "binding_limit": Decimal("0"),
+                "post_loan_dscr": None,
             }
 
         integrity_flag = self.features.get("integrity_flag", False)
@@ -40,6 +42,7 @@ class DecisionPolicy:
                 "reasons": ["Material integrity/fraud flag detected"],
                 "offers": [],
                 "binding_limit": Decimal("0"),
+                "post_loan_dscr": None,
             }
 
         evidence_confidence = Decimal(
@@ -52,6 +55,7 @@ class DecisionPolicy:
                 "reasons": ["Evidence confidence below configured decision threshold"],
                 "offers": [],
                 "binding_limit": Decimal("0"),
+                "post_loan_dscr": None,
             }
 
         # 1.5 Basic DSCR Check
@@ -67,6 +71,7 @@ class DecisionPolicy:
                     ],
                     "offers": [],
                     "binding_limit": Decimal("0"),
+                    "post_loan_dscr": None,
                 }
 
         # 2. Capacity & Limits Calculation
@@ -80,6 +85,7 @@ class DecisionPolicy:
                 ],
                 "offers": [],
                 "binding_limit": Decimal("0"),
+                "post_loan_dscr": None,
             }
 
         # The binding limit for the case is the minimum of all applicable limits to be safe
@@ -110,12 +116,16 @@ class DecisionPolicy:
             decision = SystemRecommendation.READY_FOR_REVIEW.value
             reasons = ["Requested structure supportable."]
 
+        requested_emi = self._calculate_emi(self.requested_amount, 36)
+        _, _, post_loan_dscr_req = self._derive_offer_dscrs(requested_emi)
+
         return {
             "decision": decision,
             "reasons": reasons,
             "offers": offers,
             "binding_limit": product_limit,
             "limit_details": applicable_limits,
+            "post_loan_dscr": post_loan_dscr_req,
         }
 
     def _calculate_emi(
@@ -124,18 +134,9 @@ class DecisionPolicy:
         tenure_months: int,
         annual_rate: Decimal = Decimal("0.135"),
     ) -> Decimal:
-        if principal <= 0 or tenure_months <= 0:
-            return Decimal("0.00")
-        if annual_rate <= 0:
-            return (principal / Decimal(tenure_months)).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-        r = annual_rate / Decimal("12")
-        factor = (Decimal("1") + r) ** tenure_months
-        emi = principal * (r * factor) / (factor - Decimal("1"))
-        return emi.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return SafeLimitEngine.calculate_emi_from_loan(principal, annual_rate, tenure_months)
 
-    def _derive_offer_dscrs(self, emi: Decimal) -> Tuple[str, str]:
+    def _derive_offer_dscrs(self, emi: Decimal) -> Tuple[str, str, str]:
         bank = self.features.get("bank_metrics", {})
         try:
             credits = Decimal(str(bank.get("avg_monthly_credits", "0")))
@@ -143,28 +144,31 @@ class DecisionPolicy:
             dscr_str = bank.get("dscr")
             if dscr_str and Decimal(str(dscr_str)) > 0:
                 existing_obligations = credits / Decimal(str(dscr_str))
-            else:
+            elif debits > 0:
                 existing_obligations = debits * Decimal("0.20")
+            else:
+                existing_obligations = Decimal("0")
         except Exception:
-            return ("1.50", "1.20")
+            return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
 
         total_obligations = existing_obligations + emi
-        if total_obligations <= 0:
-            return ("9.99", "9.99")
+        if total_obligations <= 0 or credits <= 0:
+            return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
 
-        base_dscr = credits / total_obligations
+        pre_loan_dscr = credits / existing_obligations if existing_obligations > 0 else (credits / total_obligations)
+        post_loan_dscr = credits / total_obligations
         stressed_inflows = credits * Decimal("0.80")
         stressed_obligations = total_obligations * Decimal("1.15")
         stressed_dscr = (
             stressed_inflows / stressed_obligations
             if stressed_obligations > 0
-            else Decimal("9.99")
+            else Decimal("0.00")
         )
 
-        return (
-            str(base_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
-            str(stressed_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
-        )
+        pre_str = str(pre_loan_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        stressed_str = str(stressed_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        post_str = str(post_loan_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        return (pre_str, stressed_str, post_str)
 
     def _generate_offers(
         self, binding_limit: Decimal, product_type: str
@@ -182,7 +186,7 @@ class DecisionPolicy:
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
         conservative_emi = self._calculate_emi(conservative_amount, 12)
-        base_dscr_c, stressed_dscr_c = self._derive_offer_dscrs(conservative_emi)
+        base_dscr_c, stressed_dscr_c, post_loan_dscr_c = self._derive_offer_dscrs(conservative_emi)
         offers.append(
             {
                 "tier": "CONSERVATIVE",
@@ -194,13 +198,14 @@ class DecisionPolicy:
                 "estimated_repayment": str(conservative_emi),
                 "base_dscr": base_dscr_c,
                 "stressed_dscr": stressed_dscr_c,
+                "post_loan_dscr": post_loan_dscr_c,
                 "liquidity_impact": "LOW",
                 "applicable_capacity_ceilings": [str(binding_limit)],
                 "binding_ceiling": str(binding_limit),
                 "conditions": ["Quarterly GST submission", rate_label],
                 "evidence_references": common_evidence_refs,
-                "policy_version": "1.0",
-                "calculation_version": "1.0",
+                "policy_version": POLICY_VERSION,
+                "calculation_version": CALCULATION_VERSION,
                 "human_review_required": True,
             }
         )
@@ -210,7 +215,7 @@ class DecisionPolicy:
             Decimal("0.01"), rounding=ROUND_HALF_UP
         )
         balanced_emi = self._calculate_emi(balanced_amount, 24)
-        base_dscr_b, stressed_dscr_b = self._derive_offer_dscrs(balanced_emi)
+        base_dscr_b, stressed_dscr_b, post_loan_dscr_b = self._derive_offer_dscrs(balanced_emi)
         offers.append(
             {
                 "tier": "BALANCED",
@@ -222,6 +227,7 @@ class DecisionPolicy:
                 "estimated_repayment": str(balanced_emi),
                 "base_dscr": base_dscr_b,
                 "stressed_dscr": stressed_dscr_b,
+                "post_loan_dscr": post_loan_dscr_b,
                 "liquidity_impact": "MEDIUM",
                 "applicable_capacity_ceilings": [str(binding_limit)],
                 "binding_ceiling": str(binding_limit),
@@ -231,8 +237,8 @@ class DecisionPolicy:
                     rate_label,
                 ],
                 "evidence_references": common_evidence_refs,
-                "policy_version": "1.0",
-                "calculation_version": "1.0",
+                "policy_version": POLICY_VERSION,
+                "calculation_version": CALCULATION_VERSION,
                 "human_review_required": True,
             }
         )
@@ -240,7 +246,7 @@ class DecisionPolicy:
         # GROWTH
         growth_amount = binding_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         growth_emi = self._calculate_emi(growth_amount, 36)
-        base_dscr_g, stressed_dscr_g = self._derive_offer_dscrs(growth_emi)
+        base_dscr_g, stressed_dscr_g, post_loan_dscr_g = self._derive_offer_dscrs(growth_emi)
         offers.append(
             {
                 "tier": "GROWTH",
@@ -252,6 +258,7 @@ class DecisionPolicy:
                 "estimated_repayment": str(growth_emi),
                 "base_dscr": base_dscr_g,
                 "stressed_dscr": stressed_dscr_g,
+                "post_loan_dscr": post_loan_dscr_g,
                 "liquidity_impact": "HIGH",
                 "applicable_capacity_ceilings": [str(binding_limit)],
                 "binding_ceiling": str(binding_limit),
@@ -262,8 +269,8 @@ class DecisionPolicy:
                     rate_label,
                 ],
                 "evidence_references": common_evidence_refs,
-                "policy_version": "1.0",
-                "calculation_version": "1.0",
+                "policy_version": POLICY_VERSION,
+                "calculation_version": CALCULATION_VERSION,
                 "human_review_required": True,
             }
         )

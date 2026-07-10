@@ -317,11 +317,20 @@ def run():
             json.dump(walkthrough_log, f, indent=2)
 
     if has_failure:
-        print("❌ Demo Walkthrough FAILED")
-        sys.exit(1)
+        print("❌ Demo Walkthrough FAILED", file=sys.stderr)
     else:
-        print("✅ Demo Walkthrough PASSED")
+        print("✅ Demo Walkthrough PASSED", file=sys.stderr)
+    return walkthrough_log, has_failure
 
 
 if __name__ == "__main__":
-    run()
+    orig_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    try:
+        log_res, failed = run()
+        orig_stdout.write(json.dumps(log_res, indent=2) + "\n")
+        if failed:
+            sys.exit(1)
+    except Exception as e:
+        print(f"❌ Execution Error - {e}", file=sys.stderr)
+        sys.exit(1)

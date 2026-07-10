@@ -185,3 +185,49 @@ def test_valid_roles_can_fetch_case(setup_data, role):
     assert "version" in data
     assert "created_at" in data
     assert "updated_at" in data
+
+
+def test_decision_package_cd_fields(setup_data):
+    user = setup_data["users"][UserRole.CREDIT_ANALYST]
+    res = login(user.email, "securepass123")
+    cookie = get_cookie(res)
+    client.cookies.set("vyapar_session", cookie)
+    res = client.get(f"/api/cases/{setup_data['case_id']}/decision-package")
+    assert res.status_code == 200
+    data = res.json()
+    assert "assessment_certainty" in data
+    assert data["assessment_certainty"] in ["HIGH_CERTAINTY", "MODERATE_CERTAINTY", "LIMITED_CERTAINTY", "INSUFFICIENT_TO_ASSESS"]
+    assert "certainty_reasons" in data
+    assert isinstance(data["certainty_reasons"], list)
+    assert "peer_context" in data
+    assert data["peer_context"]["sample_status"] in ["VALID_PEER_SAMPLE", "INSUFFICIENT_PEER_SAMPLE"]
+    assert "hindi_summary" in data
+    assert "decision_label" in data["hindi_summary"]
+    assert "reason_explanation" in data["hindi_summary"]
+
+
+def test_command_centre_and_monitoring(setup_data):
+    user = setup_data["users"][UserRole.CREDIT_ANALYST]
+    res = login(user.email, "securepass123")
+    cookie = get_cookie(res)
+    client.cookies.set("vyapar_session", cookie)
+    
+    # Test Portfolio Command Centre (CD-003)
+    p_res = client.get("/api/cases/portfolio-command-centre")
+    assert p_res.status_code == 200
+    p_data = p_res.json()
+    assert "active_cases_count" in p_data
+    assert "total_requested_exposure" in p_data
+    assert "total_supportable_exposure" in p_data
+    assert "prioritized_work_queue" in p_data
+    assert isinstance(p_data["prioritized_work_queue"], list)
+
+    # Test Post-assessment Monitoring (CD-004)
+    m_res = client.get(f"/api/cases/{setup_data['case_id']}/monitoring")
+    assert m_res.status_code == 200
+    m_data = m_res.json()
+    assert "monitoring_status" in m_data
+    assert m_data["monitoring_status"] == "ACTIVE_MONITORING"
+    assert "deterioration_alerts" in m_data
+    assert isinstance(m_data["deterioration_alerts"], list)
+    assert len(m_data["deterioration_alerts"]) == 4
