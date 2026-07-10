@@ -24,11 +24,11 @@ class AuditEventResponse(BaseModel):
     event_type: str
     actor: str
     actor_role: str
-    prior_case_version: int
-    resulting_case_version: int
-    prior_event_hash: str
-    event_hash: str
-    reason: str
+    prior_case_version: Optional[int] = None
+    resulting_case_version: Optional[int] = None
+    prior_event_hash: Optional[str] = None
+    event_hash: Optional[str] = None
+    reason: Optional[str] = None
     created_at: Optional[str] = None
     timestamp: Optional[str] = None
     metadata_json: Optional[dict] = None
@@ -41,11 +41,11 @@ class PortfolioAuditItemResponse(BaseModel):
     event_type: str
     actor: str
     actor_role: str
-    prior_case_version: int
-    resulting_case_version: int
-    prior_event_hash: str
-    event_hash: str
-    reason: str
+    prior_case_version: Optional[int] = None
+    resulting_case_version: Optional[int] = None
+    prior_event_hash: Optional[str] = None
+    event_hash: Optional[str] = None
+    reason: Optional[str] = None
     created_at: Optional[str] = None
 
 @router.get("/api/cases/{case_id}/audit", response_model=List[AuditEventResponse])
