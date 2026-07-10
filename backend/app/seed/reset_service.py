@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.db.orm.cases import Business, Case, AuditEvent, IdempotencyRecord
 from app.db.orm.users import User
-from app.db.orm.org import UserBranchScope, SanctioningMandate
+from app.db.orm.org import SanctioningMandate
 from app.db.orm.evidence import (
     GSTPeriod,
     BankTransaction,
@@ -45,7 +45,7 @@ def get_db_fingerprint(db: Session) -> str:
     return hashlib.sha256(s.encode('utf-8')).hexdigest()[:8]
 
 def validate_invariants(db: Session):
-    user_count = db.query(User).filter(User.is_active == True).count()
+    user_count = db.query(User).filter(User.is_active.is_(True)).count()
     if user_count < 6:
         raise RuntimeError(f"Invariant failed: Expected at least 6 canonical active users, found {user_count}")
     
@@ -57,7 +57,7 @@ def validate_invariants(db: Session):
     if case_count != 4:
         raise RuntimeError(f"Invariant failed: Expected exactly 4 canonical cases, found {case_count}")
         
-    mandate_count = db.query(SanctioningMandate).filter(SanctioningMandate.active == True).count()
+    mandate_count = db.query(SanctioningMandate).filter(SanctioningMandate.active.is_(True)).count()
     if mandate_count < 1:
         raise RuntimeError(f"Invariant failed: Expected at least 1 valid active SA mandate, found {mandate_count}")
 
