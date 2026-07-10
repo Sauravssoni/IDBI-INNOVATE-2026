@@ -1,6 +1,6 @@
 {
-  "git_sha": "75c4bf6b90606f6e39174e040ecfd8fe9248bcf5",
-  "timestamp": "2026-07-10T09:30:43.030171",
+  "git_sha": "b544def501b41e13749cc68a2be01f896ed57cbc",
+  "timestamp": "2026-07-10T09:37:35.257315",
   "policy_version": 1,
   "calculation_version": 1,
   "total_assertions": 18,
@@ -91,7 +91,7 @@
     {
       "step": "CA Recommendation Check",
       "status": "PASS",
-      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"72865179c859d821105caba9d9be7b52cf3d22e7e056137b219f17d307eeef2a\"}"
+      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"b13945231b741b420deb694cb142339f7b96dadd7a385480c6b4a18b8d54ec0d\"}"
     },
     {
       "step": "SA Mandate Failure Check",
@@ -101,7 +101,7 @@
     {
       "step": "SA Mandate Success Check",
       "status": "PASS",
-      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"9abd9cb886f9478ccb9e070d6d3f3c2afc9cc2f5d0c5709dd658073a262a6317\"}"
+      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"0301f068635cb94314effd849c4cd513df80c164d12578e805cb35e5852b7574\"}"
     },
     {
       "step": "LLM Isolation",

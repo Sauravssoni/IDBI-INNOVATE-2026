@@ -455,12 +455,6 @@ def evaluate_case(
     user: User = Depends(get_current_user),
 ):
     case = can_view_case(db, user, case_id)
-    ctx = can_run_assessment(db, case, user)
-    if not ctx.allowed:
-        raise HTTPException(
-            status_code=403,
-            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
-        )
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -471,6 +465,18 @@ def evaluate_case(
     )
     if cached is not None:
         return cached
+
+    ctx = can_run_assessment(db, case, user)
+    if not ctx.allowed:
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(
+                IdempotencyRecord.id == record_id
+            ).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
+        )
 
     try:
         # 1. Derive Features
@@ -529,7 +535,6 @@ def evaluate_case(
         raise
     except Exception:
         db.rollback()
-        from app.db.session import SessionLocal
 
         with SessionLocal() as tx_db:
             tx_db.query(IdempotencyRecord).filter(
@@ -566,12 +571,6 @@ def record_analyst_recommendation(
     rec_enum = req.recommendation
 
     case = can_view_case(db, user, case_id)
-    ctx = can_submit_analyst_recommendation(db, case, user)
-    if not ctx.allowed:
-        raise HTTPException(
-            status_code=403,
-            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
-        )
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -587,6 +586,18 @@ def record_analyst_recommendation(
     )
     if cached is not None:
         return cached
+
+    ctx = can_submit_analyst_recommendation(db, case, user)
+    if not ctx.allowed:
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(
+                IdempotencyRecord.id == record_id
+            ).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
+        )
 
     try:
         result_payload = {
@@ -616,7 +627,6 @@ def record_analyst_recommendation(
         raise
     except Exception:
         db.rollback()
-        from app.db.session import SessionLocal
 
         with SessionLocal() as tx_db:
             tx_db.query(IdempotencyRecord).filter(
@@ -653,24 +663,7 @@ def record_human_decision(
 
     dec_enum = req.decision
 
-    if (
-        dec_enum == HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE
-        and req.approved_amount is None
-    ):
-        raise HTTPException(
-            status_code=422,
-            detail="approved_amount is required for APPROVE_ALTERNATIVE_STRUCTURE",
-        )
-
     case = can_view_case(db, user, case_id)
-    ctx = can_record_human_decision(
-        db, case, user, action=dec_enum, approved_amount=req.approved_amount
-    )
-    if not ctx.allowed:
-        raise HTTPException(
-            status_code=403,
-            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
-        )
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -681,6 +674,34 @@ def record_human_decision(
     )
     if cached is not None:
         return cached
+
+    if (
+        dec_enum == HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE
+        and req.approved_amount is None
+    ):
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(
+                IdempotencyRecord.id == record_id
+            ).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(
+            status_code=422,
+            detail="approved_amount is required for APPROVE_ALTERNATIVE_STRUCTURE",
+        )
+
+    ctx = can_record_human_decision(
+        db, case, user, action=dec_enum, approved_amount=req.approved_amount
+    )
+    if not ctx.allowed:
+        with SessionLocal() as tx_db:
+            tx_db.query(IdempotencyRecord).filter(
+                IdempotencyRecord.id == record_id
+            ).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
+            tx_db.commit()
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
+        )
 
     try:
         result_payload: dict[str, Any] = {
@@ -726,7 +747,6 @@ def record_human_decision(
         raise
     except Exception:
         db.rollback()
-        from app.db.session import SessionLocal
 
         with SessionLocal() as tx_db:
             tx_db.query(IdempotencyRecord).filter(
