@@ -70,11 +70,11 @@ test.describe('Vyapar Pulse Release Gate', () => {
     
     // Analyst alternative-structure recommendation
     await page.click('button:has-text("Submit Recommendation")');
-    await expect(page.locator('text=Sanction Review')).toBeVisible();
+    await expect(page.locator('text=Recommendation Submitted')).toBeVisible();
     await page.screenshot({ path: '../docs/assets/screenshots/05-analyst-recommendation.png' });
 
     // SA transition verifies /api/auth/me and lands on stage 6
-    await page.click('button:has-text("Simulate Sanctioning Authority Login")');
+    await page.click('button:has-text("Continue as Sanctioning Authority")');
     await expect(page.locator('text=Sanction Review')).toBeVisible(); // Stage 6
     await expect(page.locator('text=Approve Application')).toBeVisible();
     await page.screenshot({ path: '../docs/assets/screenshots/06-sanction-review.png' });
