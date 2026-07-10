@@ -140,31 +140,8 @@ export default function CaseEvaluationPage() {
       }
       setApprovedAmount(limit);
 
-      // Initialize SA decision based on recommendation exact mapping
-      let saDefaultAction = "APPROVE_AS_REQUESTED";
-      switch (foundCase.analyst_recommendation) {
-        case "RECOMMEND_ALTERNATIVE_STRUCTURE":
-          saDefaultAction = "APPROVE_ALTERNATIVE_STRUCTURE";
-          break;
-        case "REQUEST_ADDITIONAL_EVIDENCE":
-          saDefaultAction = "DEFER_FOR_EVIDENCE";
-          break;
-        case "RECOMMEND_ENHANCED_DUE_DILIGENCE":
-          saDefaultAction = "ESCALATE_FOR_DUE_DILIGENCE";
-          break;
-        case "RECOMMEND_DECLINE":
-          saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
-          break;
-        case "RECOMMEND_AS_REQUESTED":
-        default:
-          saDefaultAction = "APPROVE_AS_REQUESTED";
-          break;
-      }
-      
-      if (isAarohan && saDefaultAction === "APPROVE_AS_REQUESTED") saDefaultAction = "APPROVE_ALTERNATIVE_STRUCTURE";
-      if (saDefaultAction === "APPROVE_ALTERNATIVE_STRUCTURE" && limit <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
-      if (saDefaultAction === "APPROVE_AS_REQUESTED" && reqAmt <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
-      
+      // Initialize SA decision based on backend suggestion
+      let saDefaultAction = foundCase.allowed_actions?.record_human_decision?.suggested_human_action || "APPROVE_AS_REQUESTED";
       setDecisionAction(saDefaultAction);
       
       // Fetch credit twin
@@ -221,23 +198,7 @@ export default function CaseEvaluationPage() {
     setEvaluating(false);
   };
 
-  const getDerivedRecAction = () => {
-    const sysDec = evalResult?.decision?.decision || creditTwin?.recommendation;
-    const isAarohan = caseData?.business_id_fk === "AAROHAN_INFRA_001";
-    let action = "RECOMMEND_AS_REQUESTED";
-    switch (sysDec) {
-      case "CONDITIONAL_OFFER": action = "RECOMMEND_ALTERNATIVE_STRUCTURE"; break;
-      case "ADDITIONAL_EVIDENCE_REQUIRED": action = "REQUEST_ADDITIONAL_EVIDENCE"; break;
-      case "ENHANCED_DUE_DILIGENCE": action = "RECOMMEND_ENHANCED_DUE_DILIGENCE"; break;
-      case "DECLINE_RECOMMENDED": action = "RECOMMEND_DECLINE"; break;
-      case "READY_FOR_REVIEW":
-      default: action = "RECOMMEND_AS_REQUESTED"; break;
-    }
-    if (isAarohan && (action === "RECOMMEND_AS_REQUESTED" || action === "RECOMMEND_ALTERNATIVE_STRUCTURE")) {
-      action = "RECOMMEND_DECLINE";
-    }
-    return action;
-  };
+
 
   const handleSubmitAnalystRec = async () => {
     if (!caseData?.id) return;
@@ -246,7 +207,7 @@ export default function CaseEvaluationPage() {
     setActionSuccess(null);
 
     const idempotencyKey = `rec-${caseData.id}-${crypto.randomUUID()}`;
-    const recAction = getDerivedRecAction();
+    const recAction = caseData.allowed_actions?.submit_analyst_recommendation?.suggested_analyst_action || "RECOMMEND_AS_REQUESTED";
     const limit = evalResult?.decision?.binding_limit || creditTwin?.binding_limit || caseData.requested_amount || 0;
     
     if ((recAction === "RECOMMEND_AS_REQUESTED" || recAction === "RECOMMEND_ALTERNATIVE_STRUCTURE") && limit <= 0) {
@@ -255,6 +216,7 @@ export default function CaseEvaluationPage() {
        return;
     }
 
+    
     const payload = {
       recommendation: recAction,
       reason: `AI-assisted credit assessment confirmed clean GST reconciliation. Recommend ${formatCurrency(limit)} under deterministic evidence-linked recommendation.`,
@@ -381,9 +343,9 @@ export default function CaseEvaluationPage() {
   }
 
   const allowedActions = caseData.allowed_actions || {};
-  const canRunAssessment = allowedActions.run_assessment === true;
-  const canSubmitAnalystRec = allowedActions.submit_analyst_recommendation === true;
-  const canSubmitHumanDecision = allowedActions.record_human_decision === true;
+  const canRunAssessment = allowedActions.run_assessment?.allowed === true;
+  const canSubmitAnalystRec = allowedActions.submit_analyst_recommendation?.allowed === true;
+  const canSubmitHumanDecision = allowedActions.record_human_decision?.allowed === true;
 
   const reqAmount = caseData.requested_amount || 0;
   const isEvaluated = creditTwin && creditTwin.evaluated_at;
@@ -391,25 +353,7 @@ export default function CaseEvaluationPage() {
   const supportLimit = creditTwin?.binding_limit ?? "-";
   const dscrVal = creditTwin?.dscr ?? "-";
 
-  const getDefaultSADecision = () => {
-    const isAarohan = caseData?.business_id_fk === "AAROHAN_INFRA_001";
-    let saDefaultAction = "APPROVE_AS_REQUESTED";
-    switch (caseData?.analyst_recommendation) {
-      case "RECOMMEND_ALTERNATIVE_STRUCTURE": saDefaultAction = "APPROVE_ALTERNATIVE_STRUCTURE"; break;
-      case "REQUEST_ADDITIONAL_EVIDENCE": saDefaultAction = "DEFER_FOR_EVIDENCE"; break;
-      case "RECOMMEND_ENHANCED_DUE_DILIGENCE": saDefaultAction = "ESCALATE_FOR_DUE_DILIGENCE"; break;
-      case "RECOMMEND_DECLINE": saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW"; break;
-      case "RECOMMEND_AS_REQUESTED":
-      default: saDefaultAction = "APPROVE_AS_REQUESTED"; break;
-    }
-    const computedLimit = evalResult?.decision?.binding_limit ?? creditTwin?.binding_limit ?? caseData?.requested_amount ?? 0;
-    if (isAarohan && (saDefaultAction === "APPROVE_AS_REQUESTED" || saDefaultAction === "APPROVE_ALTERNATIVE_STRUCTURE")) {
-      saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
-    }
-    if (saDefaultAction === "APPROVE_ALTERNATIVE_STRUCTURE" && computedLimit <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
-    if (saDefaultAction === "APPROVE_AS_REQUESTED" && reqAmount <= 0) saDefaultAction = "DECLINE_AFTER_HUMAN_REVIEW";
-    return saDefaultAction;
-  };
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16">
@@ -709,10 +653,12 @@ export default function CaseEvaluationPage() {
               <div className="p-6 text-center space-y-2 bg-light-bg rounded-xl border border-light-border">
                 <Lock className="w-8 h-8 text-light-muted mx-auto" />
                 <div className="text-sm font-bold text-light-text">
-                  Read-Only Workspace Access
+                  {user?.role === "SANCTIONING_AUTHORITY" ? (allowedActions.record_human_decision?.message || "Read-Only Workspace Access") : 
+                   user?.role === "CREDIT_ANALYST" ? (allowedActions.submit_analyst_recommendation?.message || allowedActions.run_assessment?.message || "Read-Only Workspace Access") : 
+                   "Read-Only Workspace Access"}
                 </div>
                 <p className="text-xs text-light-secondary max-w-md mx-auto">
-                  Your role ({humaniseEnum(user?.role || "")}) has read-only access to this case. Mutation workflows are restricted to assigned Credit Analysts and Sanctioning Authorities.
+                  Your role ({humaniseEnum(user?.role || "")}) has read-only access to this case.
                 </p>
               </div>
             ) : (
@@ -740,7 +686,7 @@ export default function CaseEvaluationPage() {
                         </button>
                       )}
                       {canSubmitAnalystRec && (() => {
-                        const recAction = getDerivedRecAction();
+                        const recAction = allowedActions.submit_analyst_recommendation?.suggested_analyst_action || "RECOMMEND_AS_REQUESTED";
                         const isApprovalRec = recAction === "RECOMMEND_AS_REQUESTED" || recAction === "RECOMMEND_ALTERNATIVE_STRUCTURE";
                         const computedLimit = evalResult?.decision?.binding_limit ?? creditTwin?.binding_limit ?? caseData?.requested_amount ?? 0;
                         const showLimit = isApprovalRec && computedLimit > 0;
@@ -784,12 +730,12 @@ export default function CaseEvaluationPage() {
                           onChange={(e) => setDecisionAction(e.target.value)}
                           className="w-full px-3 py-2 bg-white border border-brand-amber rounded-lg text-sm text-light-text focus:outline-none focus:ring-1 focus:ring-brand-amber"
                         >
-                          {caseData?.business_id_fk !== "AAROHAN_INFRA_001" && reqAmount > 0 && (
+                          {allowedActions.record_human_decision?.allowed_human_actions?.includes("APPROVE_AS_REQUESTED") && (
                             <option value="APPROVE_AS_REQUESTED">
                               Approve as Requested ({formatCurrency(reqAmount)})
                             </option>
                           )}
-                          {(() => {
+                          {allowedActions.record_human_decision?.allowed_human_actions?.includes("APPROVE_ALTERNATIVE_STRUCTURE") && (() => {
                             const computedSupportLimit = creditTwin?.binding_limit ?? evalResult?.decision?.binding_limit ?? caseData?.requested_amount ?? 0;
                             if (computedSupportLimit > 0) {
                               return (
@@ -800,17 +746,23 @@ export default function CaseEvaluationPage() {
                             }
                             return null;
                           })()}
-                          <option value="DEFER_FOR_EVIDENCE">
-                            Defer Case for Further Evidence
-                          </option>
-                          <option value="ESCALATE_FOR_DUE_DILIGENCE">
-                            Escalate for Due Diligence
-                          </option>
-                          <option value="DECLINE_AFTER_HUMAN_REVIEW">
-                            Decline Application
-                          </option>
+                          {allowedActions.record_human_decision?.allowed_human_actions?.includes("DEFER_FOR_EVIDENCE") && (
+                            <option value="DEFER_FOR_EVIDENCE">
+                              Defer Case for Further Evidence
+                            </option>
+                          )}
+                          {allowedActions.record_human_decision?.allowed_human_actions?.includes("ESCALATE_FOR_DUE_DILIGENCE") && (
+                            <option value="ESCALATE_FOR_DUE_DILIGENCE">
+                              Escalate for Due Diligence
+                            </option>
+                          )}
+                          {allowedActions.record_human_decision?.allowed_human_actions?.includes("DECLINE_AFTER_HUMAN_REVIEW") && (
+                            <option value="DECLINE_AFTER_HUMAN_REVIEW">
+                              Decline Application
+                            </option>
+                          )}
                         </select>
-                        {caseData && decisionAction !== getDefaultSADecision() && (
+                        {caseData && decisionAction !== allowedActions.record_human_decision?.suggested_human_action && (
                           <div className="text-xs font-bold text-red-600 flex items-center gap-1 mt-1">
                             <AlertTriangle className="w-3 h-3" /> Policy exception — human rationale required
                           </div>

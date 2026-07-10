@@ -37,33 +37,8 @@ import hashlib
 import json
 import datetime
 from fastapi.encoders import jsonable_encoder
+# Wrappers removed, using can_* directly
 
-
-def check_can_run_assessment(db: Session, case: Case, user: User) -> bool:
-    try:
-        can_run_assessment(db, case, user)
-        return True
-    except HTTPException:
-        return False
-
-
-def check_can_submit_analyst_recommendation(
-    db: Session, case: Case, user: User
-) -> bool:
-    try:
-        can_submit_analyst_recommendation(db, case, user)
-        return True
-    except HTTPException:
-        return False
-
-
-def check_can_record_human_decision(db: Session, case: Case, user: User) -> bool:
-    try:
-        # Default action check since this just determines if the section should render at all
-        can_record_human_decision(db, case, user)
-        return True
-    except HTTPException:
-        return False
 
 
 def check_can_view_audit(db: Session, case: Case, user: User) -> bool:
@@ -431,9 +406,9 @@ def get_case(
         "human_decision": case.human_decision.value if case.human_decision else None,
         "evaluation_result": evaluation_result,
         "allowed_actions": {
-            "run_assessment": check_can_run_assessment(db, case, user),
-            "submit_analyst_recommendation": check_can_submit_analyst_recommendation(db, case, user),
-            "record_human_decision": check_can_record_human_decision(db, case, user),
+            "run_assessment": can_run_assessment(db, case, user).model_dump(),
+            "submit_analyst_recommendation": can_submit_analyst_recommendation(db, case, user).model_dump(),
+            "record_human_decision": can_record_human_decision(db, case, user).model_dump(),
             "view_audit": check_can_view_audit(db, case, user),
         },
         "version": case.version,
@@ -456,7 +431,9 @@ def evaluate_case(
     user: User = Depends(get_current_user),
 ):
     case = can_view_case(db, user, case_id)
-    can_run_assessment(db, case, user)
+    ctx = can_run_assessment(db, case, user)
+    if not ctx.allowed:
+        raise HTTPException(status_code=403, detail={"code": ctx.blocked_reason_code, "message": ctx.message})
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -562,7 +539,9 @@ def record_analyst_recommendation(
     rec_enum = req.recommendation
 
     case = can_view_case(db, user, case_id)
-    can_submit_analyst_recommendation(db, case, user)
+    ctx = can_submit_analyst_recommendation(db, case, user)
+    if not ctx.allowed:
+        raise HTTPException(status_code=403, detail={"code": ctx.blocked_reason_code, "message": ctx.message})
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -654,9 +633,11 @@ def record_human_decision(
         )
 
     case = can_view_case(db, user, case_id)
-    can_record_human_decision(
+    ctx = can_record_human_decision(
         db, case, user, action=dec_enum, approved_amount=req.approved_amount
     )
+    if not ctx.allowed:
+        raise HTTPException(status_code=403, detail={"code": ctx.blocked_reason_code, "message": ctx.message})
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()

@@ -30,11 +30,32 @@ class CaseBusinessResponse(BaseModel):
     sector: str
 
 
+class AssessmentActionContext(BaseModel):
+    allowed: bool
+    blocked_reason_code: Optional[str] = None
+    message: Optional[str] = None
+
+
+class AnalystActionContext(BaseModel):
+    allowed: bool
+    suggested_analyst_action: Optional[str] = None
+    blocked_reason_code: Optional[str] = None
+    message: Optional[str] = None
+
+
+class HumanActionContext(BaseModel):
+    allowed: bool
+    suggested_human_action: Optional[str] = None
+    allowed_human_actions: Optional[List[str]] = None
+    blocked_reason_code: Optional[str] = None
+    message: Optional[str] = None
+
+
 class AllowedActionsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    run_assessment: bool
-    submit_analyst_recommendation: bool
-    record_human_decision: bool
+    run_assessment: AssessmentActionContext
+    submit_analyst_recommendation: AnalystActionContext
+    record_human_decision: HumanActionContext
     view_audit: bool
 
 

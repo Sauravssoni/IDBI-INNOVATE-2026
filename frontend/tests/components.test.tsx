@@ -117,7 +117,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
         business_name: "Test Borrower",
         requested_amount: 5000000,
         status: "SUBMITTED",
-        allowed_actions: { run_assessment: true },
+        allowed_actions: { run_assessment: { allowed: true } },
       },
     });
 
@@ -142,8 +142,8 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
         business_name: "SME Corp",
         requested_amount: 5000000,
         allowed_actions: {
-          run_assessment: true,
-          submit_analyst_recommendation: true,
+          run_assessment: { allowed: true },
+          submit_analyst_recommendation: { allowed: true },
         },
       },
     });
@@ -165,7 +165,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
         id: "CASE-001",
         business_name: "SME Corp",
         requested_amount: 5000000,
-        allowed_actions: {},
+        allowed_actions: { run_assessment: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, submit_analyst_recommendation: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" }, record_human_decision: { allowed: false, blocked_reason_code: "ACTION_NOT_ALLOWED", message: "Not allowed" } },
       },
     });
 
@@ -203,7 +203,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
           business_name: "SME Corp",
           requested_amount: 5000000,
           version: 1,
-          allowed_actions: { run_assessment: true },
+          allowed_actions: { run_assessment: { allowed: true } },
         },
       };
     });
@@ -251,7 +251,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
           business_name: "SME Corp",
           requested_amount: 5000000,
           version: 1,
-          allowed_actions: { run_assessment: true },
+          allowed_actions: { run_assessment: { allowed: true } },
         },
       };
     });
@@ -302,7 +302,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
           business_name: "SME Corp",
           requested_amount: 5000000,
           version: 1,
-          allowed_actions: { run_assessment: true },
+          allowed_actions: { run_assessment: { allowed: true } },
         },
       };
     });
