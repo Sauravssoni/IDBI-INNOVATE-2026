@@ -33,7 +33,12 @@ class Settings:
                 o.strip() for o in raw_origins.split(",") if o.strip()
             ]
         else:
-            self.ALLOWED_ORIGINS: List[str] = ["http://localhost:3005"]
+            self.ALLOWED_ORIGINS: List[str] = [
+                "http://localhost:3005",
+                "http://127.0.0.1:3005",
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+            ]
 
         if not self.ALLOWED_ORIGINS:
             raise RuntimeError("ALLOWED_ORIGINS cannot be empty")
