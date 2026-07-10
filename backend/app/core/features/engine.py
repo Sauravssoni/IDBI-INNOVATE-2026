@@ -1,9 +1,15 @@
 import math
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from sqlalchemy.orm import Session
 from app.db.orm.cases import Business
-from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, EmploymentPeriod
+from app.db.orm.evidence import (
+    GSTPeriod,
+    BankTransaction,
+    Invoice,
+    EmploymentPeriod,
+    InvoicePayment,
+)
 from app.services.credit_twin import calculate_dscr_sandbox_v1
 import datetime
 
@@ -15,9 +21,12 @@ class FeatureEngine:
     All monetary and ratio aggregations use exact Decimal math.
     """
 
-    def __init__(self, db: Session, business_id: str):
+    def __init__(
+        self, db: Session, business_id: str, as_of_date: Optional[datetime.date] = None
+    ):
         self.db = db
         self.business_id = business_id
+        self.as_of_date = as_of_date
 
     def derive_all_features(self) -> Dict[str, Any]:
         """Runs all feature derivations for the business."""
@@ -27,12 +36,14 @@ class FeatureEngine:
         if not business:
             raise ValueError(f"Business not found: {self.business_id}")
 
+        receivable_metrics = self._derive_receivable_metrics()
         return {
             "gst_metrics": self._derive_gst_metrics(),
             "bank_metrics": self._derive_bank_metrics(),
             "reconciliation_metrics": self._derive_reconciliation_metrics(),
             "employment_metrics": self._derive_employment_metrics(),
-            "invoice_metrics": self._derive_receivable_metrics(),
+            "receivable_metrics": receivable_metrics,
+            "invoice_metrics": receivable_metrics,
         }
 
     def _derive_gst_metrics(self) -> Dict[str, Any]:
@@ -103,12 +114,26 @@ class FeatureEngine:
             (t.amount for t in bank_txns if t.transaction_type == "DEBIT"), Decimal("0")
         )
 
-        # Assumes 18 months based on standard pulling
-        months = Decimal("18.0")
+        # Calculate observed month coverage from actual distinct reporting periods
+        distinct_months = set()
+        latest_date = None
+        for t in bank_txns:
+            if t.transaction_date:
+                distinct_months.add((t.transaction_date.year, t.transaction_date.month))
+                if latest_date is None or t.transaction_date > latest_date:
+                    latest_date = t.transaction_date
+        months = (
+            Decimal(str(len(distinct_months))) if distinct_months else Decimal("1.0")
+        )
 
-        # Calculate authoritative DSCR
-        today = datetime.date(2026, 7, 1)
-        dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, today)
+        # Calculate authoritative DSCR using explicit as_of_date or latest transaction date or fallback reference
+        raw_eval_date = self.as_of_date or latest_date or datetime.date(2026, 7, 1)
+        eval_date: datetime.date = (
+            datetime.date(raw_eval_date.year, raw_eval_date.month, raw_eval_date.day)
+            if hasattr(raw_eval_date, "year") and hasattr(raw_eval_date, "month")
+            else datetime.date(2026, 7, 1)
+        )
+        dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, eval_date)
 
         return {
             "total_credits": str(
@@ -161,6 +186,7 @@ class FeatureEngine:
         epfo_records = (
             self.db.query(EmploymentPeriod)
             .filter(EmploymentPeriod.business_id_fk == self.business_id)
+            .order_by(EmploymentPeriod.period_month.asc())
             .all()
         )
         if not epfo_records:
@@ -169,10 +195,22 @@ class FeatureEngine:
         counts = [r.employee_count for r in epfo_records]
         avg_employees = sum(counts) / len(counts)
 
+        trend = "STABLE"
+        if len(counts) >= 4:
+            mid = len(counts) // 2
+            earlier_avg = sum(counts[:mid]) / len(counts[:mid])
+            recent_avg = sum(counts[mid:]) / len(counts[mid:])
+            if earlier_avg > 0:
+                change = (recent_avg - earlier_avg) / earlier_avg
+                if change >= 0.05:
+                    trend = "GROWING"
+                elif change <= -0.05:
+                    trend = "DECLINING"
+
         return {
             "months_filed": len(epfo_records),
             "avg_employees": int(avg_employees),
-            "trend": "STABLE",
+            "trend": trend,
         }
 
     def _derive_receivable_metrics(self) -> Dict[str, Any]:
@@ -187,6 +225,7 @@ class FeatureEngine:
                 "overdue_ratio": "0.00",
                 "concentration_risk": "UNKNOWN",
                 "eligible_amount": "0.00",
+                "avg_payment_delay_days": "UNKNOWN",
             }
 
         total_amount = sum((i.amount for i in invoices), Decimal("0"))
@@ -209,9 +248,28 @@ class FeatureEngine:
             else ("MEDIUM" if top_buyer_share > Decimal("0.2") else "LOW")
         )
 
-        # Payment delays (need to query InvoicePayment to get settlement date, or just keep it simple)
-        # We will assume a delay if the status is PENDING and due date is past, but for prototype we just set a fixed delay
-        avg_delay = Decimal("45")
+        # Payment delays calculated from InvoicePayment settlement records
+        delays = []
+        for inv in invoices:
+            payments = (
+                self.db.query(InvoicePayment)
+                .filter(InvoicePayment.invoice_id_fk == inv.id)
+                .all()
+            )
+            for pay in payments:
+                if pay.settlement_date and inv.due_date:
+                    delay_days = (pay.settlement_date - inv.due_date).days
+                    if delay_days > 0:
+                        delays.append(delay_days)
+                    else:
+                        delays.append(0)
+
+        if delays:
+            avg_delay = sum(delays) / len(delays)
+            avg_delay_str = str(int(round(avg_delay)))
+        else:
+            # Where settlement data is unavailable or no payment records exist
+            avg_delay_str = "UNKNOWN"
 
         # Eligible amount for Receivables Finance (e.g. pending invoices not overdue > 90 days)
         eligible = sum(
@@ -224,7 +282,7 @@ class FeatureEngine:
                 top_buyer_share.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
             ),
             "concentration_risk": concentration,
-            "avg_payment_delay_days": str(avg_delay),
+            "avg_payment_delay_days": avg_delay_str,
             "eligible_amount": str(
                 eligible.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ),
