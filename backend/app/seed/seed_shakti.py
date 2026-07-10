@@ -93,12 +93,16 @@ def seed_shakti(db_session=None):
 
     malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
     if not malviya_nagar_branch:
-        raise RuntimeError("Branch BR-MN-JAI not found. Did you run seed_demo_principals?")
+        raise RuntimeError(
+            "Branch BR-MN-JAI not found. Did you run seed_demo_principals?"
+        )
 
     rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
     ca_user = db.query(User).filter(User.email == "credit@bank.example").first()
     if not rm_user or not ca_user:
-        raise RuntimeError("Demo principals not found. Did you run seed_demo_principals?")
+        raise RuntimeError(
+            "Demo principals not found. Did you run seed_demo_principals?"
+        )
 
     # Seed deterministic random for reproducibility
     random.seed(42)

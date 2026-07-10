@@ -151,7 +151,9 @@ def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
         headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4())},
     )
     assert resp.status_code == 403
-    assert "Only sanctioning authorities can record decisions" in str(resp.json()["detail"])
+    assert "Only sanctioning authorities can record decisions" in str(
+        resp.json()["detail"]
+    )
 
 
 def test_sql_injection_resistance_login():

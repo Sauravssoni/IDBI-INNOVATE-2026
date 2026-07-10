@@ -1,4 +1,9 @@
-from app.schemas.responses import CaseDetailResponse, DecisionPackageResponse, DecisionPackageReconciliation, DecisionPackageAuditItem
+from app.schemas.responses import (
+    CaseDetailResponse,
+    DecisionPackageResponse,
+    DecisionPackageReconciliation,
+    DecisionPackageAuditItem,
+)
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
@@ -38,7 +43,6 @@ import json
 import datetime
 from fastapi.encoders import jsonable_encoder
 # Wrappers removed, using can_* directly
-
 
 
 def check_can_view_audit(db: Session, case: Case, user: User) -> bool:
@@ -295,8 +299,12 @@ def get_cases_summary(
         # Pending Sanction: DECISION_PENDING and no human decision
         elif c.status == CaseStatus.DECISION_PENDING and not c.human_decision:
             awaiting_human += 1
-            
-        if c.status in [CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED]:
+
+        if c.status in [
+            CaseStatus.HUMAN_APPROVED,
+            CaseStatus.HUMAN_DECLINED,
+            CaseStatus.HUMAN_DEFERRED,
+        ]:
             completed_human_reviews += 1
             if c.status == CaseStatus.HUMAN_APPROVED:
                 approved_cases += 1
@@ -363,11 +371,19 @@ def list_cases(
                 "requested_amount": c.requested_amount,
                 "currency": c.currency,
                 "created_at": c.created_at,
-                "assigned_analyst": str(c.assigned_credit_analyst_id) if c.assigned_credit_analyst_id else "Unassigned",
-                "assigned_rm": str(c.assigned_relationship_manager_id) if c.assigned_relationship_manager_id else "Unassigned",
-                "requested_product": c.requested_product.value if c.requested_product else None,
+                "assigned_analyst": str(c.assigned_credit_analyst_id)
+                if c.assigned_credit_analyst_id
+                else "Unassigned",
+                "assigned_rm": str(c.assigned_relationship_manager_id)
+                if c.assigned_relationship_manager_id
+                else "Unassigned",
+                "requested_product": c.requested_product.value
+                if c.requested_product
+                else None,
                 "recommendation": c.recommendation.value if c.recommendation else None,
-                "analyst_recommendation": c.analyst_recommendation.value if c.analyst_recommendation else None,
+                "analyst_recommendation": c.analyst_recommendation.value
+                if c.analyst_recommendation
+                else None,
                 "human_decision": c.human_decision.value if c.human_decision else None,
             }
         )
@@ -398,17 +414,25 @@ def get_case(
             "sector": case.business.sector,
         },
         "requested_amount": case.requested_amount,
-        "requested_product": case.requested_product.value if case.requested_product else None,
+        "requested_product": case.requested_product.value
+        if case.requested_product
+        else None,
         "currency": case.currency,
         "status": case.status.value,
         "recommendation": case.recommendation.value if case.recommendation else None,
-        "analyst_recommendation": case.analyst_recommendation.value if case.analyst_recommendation else None,
+        "analyst_recommendation": case.analyst_recommendation.value
+        if case.analyst_recommendation
+        else None,
         "human_decision": case.human_decision.value if case.human_decision else None,
         "evaluation_result": evaluation_result,
         "allowed_actions": {
             "run_assessment": can_run_assessment(db, case, user).model_dump(),
-            "submit_analyst_recommendation": can_submit_analyst_recommendation(db, case, user).model_dump(),
-            "record_human_decision": can_record_human_decision(db, case, user).model_dump(),
+            "submit_analyst_recommendation": can_submit_analyst_recommendation(
+                db, case, user
+            ).model_dump(),
+            "record_human_decision": can_record_human_decision(
+                db, case, user
+            ).model_dump(),
             "view_audit": check_can_view_audit(db, case, user),
         },
         "version": case.version,
@@ -433,7 +457,10 @@ def evaluate_case(
     case = can_view_case(db, user, case_id)
     ctx = can_run_assessment(db, case, user)
     if not ctx.allowed:
-        raise HTTPException(status_code=403, detail={"code": ctx.blocked_reason_code, "message": ctx.message})
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
+        )
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -541,7 +568,10 @@ def record_analyst_recommendation(
     case = can_view_case(db, user, case_id)
     ctx = can_submit_analyst_recommendation(db, case, user)
     if not ctx.allowed:
-        raise HTTPException(status_code=403, detail={"code": ctx.blocked_reason_code, "message": ctx.message})
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
+        )
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -637,7 +667,10 @@ def record_human_decision(
         db, case, user, action=dec_enum, approved_amount=req.approved_amount
     )
     if not ctx.allowed:
-        raise HTTPException(status_code=403, detail={"code": ctx.blocked_reason_code, "message": ctx.message})
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ctx.blocked_reason_code, "message": ctx.message},
+        )
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -740,8 +773,9 @@ def get_decision_package(
             event_type=evt.event_type,
             actor=evt.actor,
             event_hash=evt.event_hash,
-            created_at=evt.created_at.isoformat()
-        ) for evt in audit_events
+            created_at=evt.created_at.isoformat(),
+        )
+        for evt in audit_events
     ]
 
     reconciliation = DecisionPackageReconciliation(
@@ -749,12 +783,14 @@ def get_decision_package(
         evidence_confidence=case.data_confidence_score,
         source_coverage=case.resilience_score,
     )
-    
+
     return DecisionPackageResponse(
         case_id=str(case.id),
         business_name=case.business.legal_name if case.business else "Unknown",
         requested_amount=case.requested_amount,
-        requested_product=case.requested_product.value if hasattr(case.requested_product, 'value') else case.requested_product,
+        requested_product=case.requested_product.value
+        if hasattr(case.requested_product, "value")
+        else case.requested_product,
         reconciliation=reconciliation,
         dscr=case.dscr,
         binding_limit=None,
@@ -766,5 +802,5 @@ def get_decision_package(
         analyst_action=case.analyst_recommendation,
         human_action=case.human_decision,
         case_version=case.version,
-        audit_chain=audit_chain
+        audit_chain=audit_chain,
     )
