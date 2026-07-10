@@ -37,7 +37,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Shakti guided flow reaches all stages and captures screenshots', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.waitForLoadState('networkidle');
     await page.click('button:has-text("Start 3-Minute Credit Journey")');
     await expect(page).toHaveURL(/\/demo/);
@@ -83,7 +83,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('NavPrerna evidence-request/defer path', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').filter({ hasText: 'Navprerna' }).first();
     await row.locator('a', { hasText: 'Open' }).click();
@@ -97,7 +97,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Aarohan decline/decline-after-review path', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').filter({ hasText: 'Aarohan' }).first();
     await row.locator('a', { hasText: 'Open' }).click();
@@ -111,7 +111,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Rangrez frozen expected path', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').filter({ hasText: 'Rangrez' }).first();
     await row.locator('a', { hasText: 'Open' }).click();
@@ -120,7 +120,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Assessment History does not crash', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').first();
     await row.locator('a', { hasText: 'Open' }).click();
@@ -129,7 +129,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Auditor trace renders timestamps and hashes', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Auditor")');
     await page.click('a[href="/audit"]');
     await expect(page.locator('text=Audit Log & CAS Trail')).toBeVisible();
@@ -139,7 +139,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Policy page renders only implemented rules', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Risk Admin")');
     await page.click('a[href="/policy"]');
     await expect(page.locator('text=Credit Policy & Risk Rules Engine')).toBeVisible();
@@ -148,14 +148,14 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('System Admin isolation', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("System Admin")');
     await expect(page.locator('text=Governance & Access Controls')).toBeVisible();
     await expect(page.locator('table')).not.toBeVisible();
   });
 
   test('Relationship Manager demo login', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Relationship Manager")');
     const row = page.locator('table tbody tr').first();
     await row.locator('a', { hasText: 'Open' }).click();
@@ -163,7 +163,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Data assertions (no ₹0 approval, no raw enum)', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const content = await page.textContent('body');
     expect(content).not.toContain('₹0');
@@ -171,7 +171,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('Capture missing screenshots', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.screenshot({ path: '../docs/assets/screenshots/01-demo-access.png' });
     await page.click('button:has-text("Credit Analyst")');
     await page.screenshot({ path: '../docs/assets/screenshots/08-dashboard.png' });
@@ -182,7 +182,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   });
 
   test('SA-only login test', async ({ page }) => {
-    await page.goto('/demo');
+    await page.goto('/login');
     await page.click('button:has-text("Sanctioning Authority")');
     await expect(page.locator('text=Case Inventory')).toBeVisible();
     await page.click('a[href="/cases"]');
