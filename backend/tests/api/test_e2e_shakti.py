@@ -82,7 +82,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     assert res.status_code == 200, res.text
     cases = res.json()
     assert len(cases) > 0
-    shakti_case = next((c for c in cases if "Shakti Precision" in c.get("business", {}).get("legal_name", "")), None)
+    shakti_case = next((c for c in cases if "Shakti Precision" in c.get("business_name", "")), None)
     if not shakti_case:
         # Fallback if business name isn't loaded or format is different
         shakti_case = cases[-1]
@@ -99,16 +99,20 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     case_data = res.json()
     current_version = case_data["version"]
 
+    import uuid
     evaluate_req = {"expected_version": current_version}
-    idempotency_key_eval = "shakti-eval-12345"
+    idempotency_key_eval = str(uuid.uuid4())
 
     eval_res = client.post(
         f"/api/cases/{case_id}/evaluate",
         json=evaluate_req,
         headers={**analyst_auth["headers"], "Idempotency-Key": idempotency_key_eval},
     )
+    if eval_res.status_code != 200:
+        print("EVALUATION FAILED:", eval_res.text)
     assert eval_res.status_code == 200
     eval_data = eval_res.json()
+    print("EVAL DATA:", eval_data)
     assert eval_data["decision"]["decision"] == "CONDITIONAL_OFFER"
 
     # Validate Shakti winning outcome
@@ -139,7 +143,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
         "reason": "Strong financials and good GST compliance, but request exceeds binding limit.",
         "expected_version": current_version,
     }
-    idempotency_key_rec = "shakti-rec-12345"
+    idempotency_key_rec = str(uuid.uuid4())
     rec_res = client.post(
         f"/api/cases/{case_id}/analyst-recommendation",
         json=rec_req,
@@ -162,7 +166,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
         "reason": "Approved alternative structure.",
         "expected_version": current_version,
     }
-    idempotency_key_dec = "shakti-dec-12345"
+    idempotency_key_dec = str(uuid.uuid4())
 
     dec_res = client.post(
         f"/api/cases/{case_id}/human-decision",
