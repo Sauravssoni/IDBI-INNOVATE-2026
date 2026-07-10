@@ -128,7 +128,7 @@ export default function CaseEvaluationPage() {
     if (foundCase) {
       setCaseData(foundCase);
 
-      const isAarohan = foundCase.business_id === "AAROHAN_INFRA_001";
+      const isNirmaan = foundCase.business_id === "NIRMAAN_INFRA_001";
       const reqAmt = foundCase.requested_amount || 0;
       let limit = reqAmt;
 
