@@ -1,6 +1,5 @@
 import os
 from decimal import Decimal
-from sqlalchemy.exc import IntegrityError
 from app.db.orm.users import User, UserRole
 from app.db.orm.org import (
     Region,
