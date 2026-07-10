@@ -134,7 +134,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Auditor")');
     await page.click('a[href="/audit"]');
-    await expect(page.locator('text=Audit Log & CAS Trail')).toBeVisible();
+    await expect(page.locator('text=Audit Log & CAS Trail').first()).toBeVisible();
     await expect(page.locator('table').first()).toBeVisible();
     await expect(page.locator('text=Tamper-Evident Audit Hash')).toBeVisible();
     await page.screenshot({ path: '../docs/assets/screenshots/09-auditor-trace.png' });
@@ -144,7 +144,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Risk Admin")');
     await page.click('a[href="/policy"]');
-    await expect(page.locator('text=Credit Policy & Risk Rules Engine')).toBeVisible();
+    await expect(page.locator('text=Credit Policy & Risk Rules Engine').first()).toBeVisible();
     await expect(page.locator('text=DSCR Thresholds').first()).toBeVisible();
     await page.screenshot({ path: '../docs/assets/screenshots/10-policy-matrix.png' });
   });
@@ -152,7 +152,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
   test('System Admin isolation', async ({ page }) => {
     await page.goto('/login');
     await page.click('button:has-text("System Admin")');
-    await expect(page.locator('text=Governance & Access Controls')).toBeVisible();
+    await expect(page.locator('text=Governance & Access Controls').first()).toBeVisible();
     await expect(page.locator('table')).not.toBeVisible();
   });
 
