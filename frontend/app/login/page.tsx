@@ -120,7 +120,7 @@ export default function LoginPage() {
               <span>Service Unavailable. Backend API may be down.</span>
             </div>
             <button
-              onClick={checkHealth}
+              onClick={() => checkHealth(15)}
               className="mt-2 py-2 px-4 bg-white hover:bg-gray-50 text-brand-red font-bold rounded border border-brand-red flex items-center justify-center gap-2 mx-auto transition-all shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
