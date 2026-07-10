@@ -40,6 +40,9 @@ def run():
     print("Running PROOF (End-to-End)...")
     print("===============================")
     db: Session = SessionLocal()
+    from app.seed.reset_service import execute_bounded_reset
+    print("Seeding deterministic demo state...")
+    execute_bounded_reset(db)
 
     ca_client, ca_headers = get_client("credit@bank.example")
     rm_client, rm_headers = get_client("rm@bank.example")
@@ -307,6 +310,41 @@ def run():
             "Analyst RBAC",
         )
 
+        resp_ca_rec = ca_client.post(
+            f"/api/cases/{shakti.id}/analyst-recommendation",
+            headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **ca_headers},
+            json={
+                "recommendation": "RECOMMEND_ALTERNATIVE_STRUCTURE",
+                "reason": "Credit analyst recommendation for alternative structure after due assessment.",
+                "expected_version": shakti_version,
+            },
+        )
+        assert_step(
+            resp_ca_rec.status_code == 200,
+            f"Analyst recommendation succeeded with 200, got {resp_ca_rec.status_code}: {resp_ca_rec.text}",
+            "CA Recommendation Check",
+        )
+        shakti_version = resp_ca_rec.json().get("version", shakti_version + 1)
+
+        resp_sa_fail = sa_client.post(
+            f"/api/cases/{shakti.id}/human-decision",
+            headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **sa_headers},
+            json={
+                "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
+                "reason": "Test reasoning",
+                "approved_amount": "999999999.00",
+                "expected_version": shakti_version,
+            },
+        )
+        detail_dict = resp_sa_fail.json().get("detail", {})
+        detail_msg = detail_dict.get("message", "") if isinstance(detail_dict, dict) else str(detail_dict)
+        assert_step(
+            resp_sa_fail.status_code == 403
+            and ("mandate" in detail_msg.lower() or (isinstance(detail_dict, dict) and detail_dict.get("code") == "OUTSIDE_SANCTION_MANDATE")),
+            f"SA above-mandate approval failed with 403, got {resp_sa_fail.status_code}: {resp_sa_fail.text}",
+            "SA Mandate Failure Check",
+        )
+
         resp_sa_success = sa_client.post(
             f"/api/cases/{shakti.id}/human-decision",
             headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **sa_headers},
@@ -319,26 +357,8 @@ def run():
         )
         assert_step(
             resp_sa_success.status_code == 200,
-            f"SA within-mandate approval succeeded with 200, got {resp_sa_success.status_code}",
+            f"SA within-mandate approval succeeded with 200, got {resp_sa_success.status_code}: {resp_sa_success.text}",
             "SA Mandate Success Check",
-        )
-
-        resp_sa_fail = sa_client.post(
-            f"/api/cases/{shakti.id}/human-decision",
-            headers={"Idempotency-Key": f"eval-test-{uuid.uuid4()}", **sa_headers},
-            json={
-                "decision": "APPROVE_ALTERNATIVE_STRUCTURE",
-                "reason": "Test reasoning",
-                "approved_amount": "999999999.00",
-                "expected_version": shakti_version + 1,
-            },
-        )
-        assert_step(
-            resp_sa_fail.status_code == 403
-            and "Case exceeds your sanctioning mandate"
-            in resp_sa_fail.json().get("detail", ""),
-            f"SA above-mandate approval failed with 403, got {resp_sa_fail.status_code}",
-            "SA Mandate Failure Check",
         )
 
         print("--- 6. LLM Not Called Check ---")
