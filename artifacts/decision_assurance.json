@@ -1,6 +1,6 @@
 {
-  "git_sha": "2b76e195b6d59b96d224e07b3230cfb12ed65473",
-  "timestamp": "2026-07-10T17:53:45.390741",
+  "git_sha": "51bd6ccf3c59433fd063843d7fd2484710e203d4",
+  "timestamp": "2026-07-10T19:16:14.618012",
   "policy_version": 1,
   "calculation_version": 1,
   "total_assertions": 18,
@@ -10,7 +10,7 @@
   "personas": {
     "SHAKTI_PRECISION_001": {
       "recommendation": "CONDITIONAL_OFFER",
-      "limit": 3569042.496
+      "limit": 3569042.5
     },
     "NAVPRERNA_TECH_001": {
       "recommendation": "ADDITIONAL_EVIDENCE_REQUIRED"
@@ -36,7 +36,7 @@
     {
       "step": "Shakti Limit",
       "status": "PASS",
-      "message": "Shakti Supportable Amount ~35.7 lakh. Got 3569042.496"
+      "message": "Shakti Supportable Amount ~35.7 lakh. Got 3569042.5"
     },
     {
       "step": "Navprerna Recommendation",
@@ -91,7 +91,7 @@
     {
       "step": "CA Recommendation Check",
       "status": "PASS",
-      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"edbfa9aaeede20dfc358ce4fdc601ea49cb62e4e4664b9afffec4d3becbaf8a8\"}"
+      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"63a30f01e735a6ef6764c8e7bc43780992d4a4b7793c7484f37ca49c7372c2b7\"}"
     },
     {
       "step": "SA Mandate Failure Check",
@@ -101,7 +101,7 @@
     {
       "step": "SA Mandate Success Check",
       "status": "PASS",
-      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"5456dd73843080da28b708b1de20b3d43716fd3973110c7640cb0b41d5b0b1c9\"}"
+      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"a0115878797b1315976ca248a9eddd3c7ee85fdf38ddf211427b67ca49796050\"}"
     },
     {
       "step": "LLM Isolation",

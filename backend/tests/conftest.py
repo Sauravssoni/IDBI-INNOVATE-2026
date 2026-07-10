@@ -6,11 +6,12 @@ def pytest_configure(config):
         "DATABASE_URL",
         "postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test",
     )
+    os.environ["DATABASE_URL"] = database_url
     if "test" not in database_url.lower():
         raise RuntimeError(
             "Test database must contain 'test' in database name for isolation."
         )
 
     os.environ["DEMO_USER_PASSWORD"] = os.environ.get(
-        "DEMO_USER_PASSWORD", "demo_secure_pass123"
+        "DEMO_USER_PASSWORD", "testpassword123"
     )
