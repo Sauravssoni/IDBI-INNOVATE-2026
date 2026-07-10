@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal
 from app.db.orm.users import User, UserRole, SessionStore
-from app.db.orm.cases import Case, CaseStatus, Business
+from app.db.orm.cases import Case, CaseStatus, Business, IdempotencyRecord, AuditEvent
 from app.db.orm.org import Region, Branch, ProductType
 from app.api.auth import get_password_hash
 import uuid
@@ -74,6 +74,10 @@ def test_users(db_session):
     yield {"users": user_dict, "case": c}
 
     # Cleanup
+    db_session.query(IdempotencyRecord).filter(
+        IdempotencyRecord.case_id == str(c.id)
+    ).delete()
+    db_session.query(AuditEvent).filter(AuditEvent.case_id == c.id).delete()
     db_session.delete(c)
     db_session.delete(b)
     db_session.commit()  # Commit deletions before users
