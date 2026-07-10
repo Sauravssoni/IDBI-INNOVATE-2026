@@ -17,7 +17,7 @@ from app.db.orm.consents import Consent, DataConnection
 from app.seed.seed_shakti import seed_shakti
 from app.seed.seed_navprerna import seed_navprerna
 from app.seed.seed_rangrez import seed_rangrez
-from app.seed.seed_aarohan import seed_aarohan
+from app.seed.seed_nirmaan import seed_nirmaan
 from app.seed.seed_demo_principals import seed_demo_principals
 from app.seed.run_evaluations import run_evaluations
 
@@ -27,7 +27,7 @@ TARGET_BUSINESS_IDS = [
     "SHAKTI_PRECISION_001",
     "NAVPRERNA_TECH_001",
     "RANGREZ_TEXTILES_001",
-    "AAROHAN_INFRA_001",
+    "NIRMAAN_INFRA_001",
 ]
 
 
@@ -126,7 +126,7 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
         seed_shakti(db)
         seed_navprerna(db)
         seed_rangrez(db)
-        seed_aarohan(db)
+        seed_nirmaan(db)
 
         run_evaluations(db)
 

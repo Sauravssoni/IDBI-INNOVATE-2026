@@ -175,28 +175,28 @@ def run():
         )
         results["personas"]["RANGREZ_TEXTILES_001"] = {"recommendation": ran_rec}
 
-        # Aarohan
-        aar = (
+        # Nirmaan
+        nir = (
             db.query(Case)
             .join(Business)
-            .filter(Business.business_id == "AAROHAN_INFRA_001")
+            .filter(Business.business_id == "NIRMAAN_INFRA_001")
             .first()
         )
-        if aar.status == CaseStatus.INITIATED:
+        if nir.status == CaseStatus.INITIATED:
             resp = ca_client.post(
-                f"/api/cases/{aar.id}/evaluate",
-                json={"expected_version": aar.version},
+                f"/api/cases/{nir.id}/evaluate",
+                json={"expected_version": nir.version},
                 headers={"Idempotency-Key": f"eval-{uuid.uuid4()}", **ca_headers},
             )
             assert resp.status_code == 200, f"Evaluation failed: {resp.text}"
-            db.refresh(aar)
-        aar_rec = aar.recommendation.value if aar.recommendation else None
+            db.refresh(nir)
+        nir_rec = nir.recommendation.value if nir.recommendation else None
         assert_step(
-            aar_rec == "DECLINE_RECOMMENDED",
-            f"Aarohan got {aar_rec}",
-            "Aarohan Recommendation",
+            nir_rec == "DECLINE_RECOMMENDED",
+            f"Nirmaan got {nir_rec}",
+            "Nirmaan Recommendation",
         )
-        results["personas"]["AAROHAN_INFRA_001"] = {"recommendation": aar_rec}
+        results["personas"]["NIRMAAN_INFRA_001"] = {"recommendation": nir_rec}
 
         print("--- 3. Testing Idempotency & CAS ---")
         idem_key = f"eval-test-{uuid.uuid4()}"
