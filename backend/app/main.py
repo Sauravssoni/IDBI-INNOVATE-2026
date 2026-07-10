@@ -1,19 +1,23 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 import hashlib
 import secrets
-from app.api.routers import cases, audit, evidence, demo
+from app.api.routers import cases, audit, evidence, demo, stress, bankability
 from app.api import auth
 from app.core.config import get_settings
+from app.db.session import SessionLocal
+from app.core.versions import API_SERVICE_NAME, API_VERSION, SCHEMA_VERSION
 
 
 app = FastAPI(
     title="VYAPAR PULSE AI API",
-    version="1.0.0",
+    version=API_VERSION,
     description="Evidence-First Financial Health Card and Credit-Twin for MSMEs.",
     redirect_slashes=False,
 )
+
 
 try:
     settings = get_settings()
@@ -85,8 +89,28 @@ app.include_router(cases.router)
 app.include_router(audit.router)
 app.include_router(evidence.router)
 app.include_router(demo.router)
+app.include_router(stress.router)
+app.include_router(bankability.router)
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": "vyapar-pulse-api", "version": "1.0.0"}
+    return {"status": "ok", "service": API_SERVICE_NAME, "version": API_VERSION}
+
+
+@app.get("/ready")
+def ready() -> dict:
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return {
+            "status": "ready",
+            "database": "connected",
+            "service": API_SERVICE_NAME,
+            "version": API_VERSION,
+            "schema_version": SCHEMA_VERSION,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Database not ready: {str(e)}")
+    finally:
+        db.close()

@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "main" ]
   pull_request:
-    branches: [ "main", "phase/*" ]
+    branches: [ "main", "phase/*", "feature/*" ]
 
 permissions:
   contents: read
@@ -93,6 +93,7 @@ jobs:
     - name: Run Tests with Coverage
       env:
         DATABASE_URL: postgresql+psycopg2://vyapar_local:change-this-local-development-password@localhost:5432/vyapar_test
+        DEMO_USER_PASSWORD: testpassword123
       run: |
         cd backend
         source .venv/bin/activate

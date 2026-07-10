@@ -1,0 +1,152 @@
+{
+  "harness_name": "Vyapar Pulse Competition Dominance RC3 - Quantitative Synthetic Validation Harness",
+  "git_sha": "51bd6ccf3c59433fd063843d7fd2484710e203d4",
+  "timestamp": "2026-07-10T19:19:42.541244+00:00",
+  "policy_version": "2.0-CANONICAL",
+  "calculation_version": "2.0-CANONICAL",
+  "total_scenarios_evaluated": 20,
+  "total_assertions_checked": 100,
+  "passed_assertions": 100,
+  "failed_assertions": 0,
+  "pass_rate_percentage": 100.0,
+  "overall_result": "PASS",
+  "segment_breakdown": {
+    "Precision Manufacturing (Tier 1)": {
+      "scenarios_evaluated": 4,
+      "passed_scenarios": 4,
+      "failed_scenarios": 0,
+      "total_supportable_exposure": 46000000.0
+    },
+    "Seasonal Agri-Processing & Textiles (Tier 2)": {
+      "scenarios_evaluated": 4,
+      "passed_scenarios": 4,
+      "failed_scenarios": 0,
+      "total_supportable_exposure": 24000000.0
+    },
+    "Emerging Tech Services (Tier 1)": {
+      "scenarios_evaluated": 4,
+      "passed_scenarios": 4,
+      "failed_scenarios": 0,
+      "total_supportable_exposure": 20400000.0
+    },
+    "Distressed Retail Trade (Tier 3)": {
+      "scenarios_evaluated": 4,
+      "passed_scenarios": 4,
+      "failed_scenarios": 0,
+      "total_supportable_exposure": 0.0
+    },
+    "Micro-Enterprise Vendor (Semi-urban)": {
+      "scenarios_evaluated": 4,
+      "passed_scenarios": 4,
+      "failed_scenarios": 0,
+      "total_supportable_exposure": 0.0
+    }
+  },
+  "assertions_sample": [
+    {
+      "scenario_id": "SEG1_MFG_T1_1",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision READY_FOR_REVIEW in ['READY_FOR_REVIEW', 'CONDITIONAL_OFFER']"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_1",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 10000000.0 >= 4000000.0"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_2",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision READY_FOR_REVIEW in ['READY_FOR_REVIEW', 'CONDITIONAL_OFFER']"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_2",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 11000000.0 >= 4000000.0"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_3",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision READY_FOR_REVIEW in ['READY_FOR_REVIEW', 'CONDITIONAL_OFFER']"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_3",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 12000000.0 >= 4000000.0"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_4",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision READY_FOR_REVIEW in ['READY_FOR_REVIEW', 'CONDITIONAL_OFFER']"
+    },
+    {
+      "scenario_id": "SEG1_MFG_T1_4",
+      "segment": "Precision Manufacturing (Tier 1)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 13000000.0 >= 4000000.0"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_1",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision CONDITIONAL_OFFER in ['CONDITIONAL_OFFER', 'READY_FOR_REVIEW']"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_1",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 5400000.0 >= 2000000.0"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_2",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision CONDITIONAL_OFFER in ['CONDITIONAL_OFFER', 'READY_FOR_REVIEW']"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_2",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 5800000.0 >= 2000000.0"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_3",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision CONDITIONAL_OFFER in ['CONDITIONAL_OFFER', 'READY_FOR_REVIEW']"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_3",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Supportable Limit Bounds Check",
+      "status": "PASS",
+      "detail": "Limit 6200000.0 >= 2000000.0"
+    },
+    {
+      "scenario_id": "SEG2_AGRI_T2_4",
+      "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+      "assertion": "Decision Bounds Check",
+      "status": "PASS",
+      "detail": "Decision CONDITIONAL_OFFER in ['CONDITIONAL_OFFER', 'READY_FOR_REVIEW']"
+    }
+  ]
+}
