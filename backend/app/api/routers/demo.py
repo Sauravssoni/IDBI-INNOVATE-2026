@@ -41,6 +41,7 @@ def reset_demo(
 
     return {"status": "success", "detail": "Demo reset complete."}
 
+
 @router.get("/validations")
 def get_validations(
     request: Request,
@@ -54,22 +55,10 @@ def get_validations(
             detail="Guided demo access is unavailable in this environment.",
         )
 
-    # These counts reflect the test assertions in the backend test suite 
+    # These counts reflect the test assertions in the backend test suite
     # to demonstrate persona separation, BOLA constraints, and idempotency guarantees.
     return {
-        "personaSeparation": {
-            "passed": 12,
-            "total": 12,
-            "status": "PASS"
-        },
-        "roleBoundaryMatrix": {
-            "passed": 24,
-            "total": 24,
-            "status": "PASS"
-        },
-        "idempotencyReplay": {
-            "passed": 8,
-            "total": 8,
-            "status": "PASS"
-        }
+        "personaSeparation": {"passed": 12, "total": 12, "status": "PASS"},
+        "roleBoundaryMatrix": {"passed": 24, "total": 24, "status": "PASS"},
+        "idempotencyReplay": {"passed": 8, "total": 8, "status": "PASS"},
     }

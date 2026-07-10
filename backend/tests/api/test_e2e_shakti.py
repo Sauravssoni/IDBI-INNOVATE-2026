@@ -82,7 +82,9 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     assert res.status_code == 200, res.text
     cases = res.json()
     assert len(cases) > 0
-    shakti_case = next((c for c in cases if "Shakti Precision" in c.get("business_name", "")), None)
+    shakti_case = next(
+        (c for c in cases if "Shakti Precision" in c.get("business_name", "")), None
+    )
     if not shakti_case:
         # Fallback if business name isn't loaded or format is different
         shakti_case = cases[-1]
@@ -100,6 +102,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     current_version = case_data["version"]
 
     import uuid
+
     evaluate_req = {"expected_version": current_version}
     idempotency_key_eval = str(uuid.uuid4())
 
@@ -218,12 +221,27 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
     cases_res = client.get("/api/cases", headers=ca_auth["headers"])
     cases = cases_res.json()
     assert len(cases) > 0
-    shakti_case = next((c for c in cases if "Navprerna Tech" in c.get("business_name", c.get("business", {}).get("legal_name", ""))), None)
+    shakti_case = next(
+        (
+            c
+            for c in cases
+            if "Navprerna Tech"
+            in c.get("business_name", c.get("business", {}).get("legal_name", ""))
+        ),
+        None,
+    )
     if not shakti_case:
         # If business name not directly in response, fetch from DB
         from app.db.orm.org import Business
-        shakti_business = db.query(Business).filter(Business.legal_name == "Navprerna Tech Solutions").first()
-        shakti_case = next(c for c in cases if c["id"] == str(shakti_business.cases[0].id))
+
+        shakti_business = (
+            db.query(Business)
+            .filter(Business.legal_name == "Navprerna Tech Solutions")
+            .first()
+        )
+        shakti_case = next(
+            c for c in cases if c["id"] == str(shakti_business.cases[0].id)
+        )
     case_id = shakti_case["id"]
 
     case_detail = client.get(f"/api/cases/{case_id}", headers=ca_auth["headers"]).json()

@@ -4,7 +4,11 @@ from sqlalchemy.sql.expression import false
 from app.db.orm.users import User, UserRole
 from app.db.orm.cases import Case, HumanDecisionAction, CaseStatus, SystemRecommendation
 from app.db.orm.org import UserBranchScope, SanctioningMandate, Branch
-from app.schemas.responses import AssessmentActionContext, AnalystActionContext, HumanActionContext
+from app.schemas.responses import (
+    AssessmentActionContext,
+    AnalystActionContext,
+    HumanActionContext,
+)
 from fastapi import HTTPException
 from uuid import UUID
 from datetime import datetime, timezone
@@ -134,43 +138,105 @@ def can_view_case(
 
 def can_run_assessment(db: Session, case: Case, user: User) -> AssessmentActionContext:
     if user.role != UserRole.CREDIT_ANALYST:
-        return AssessmentActionContext(allowed=False, blocked_reason_code="ROLE_NOT_AUTHORIZED", message="Only credit analysts can run assessments")
-    
+        return AssessmentActionContext(
+            allowed=False,
+            blocked_reason_code="ROLE_NOT_AUTHORIZED",
+            message="Only credit analysts can run assessments",
+        )
+
     if case.assigned_credit_analyst_id != user.id:
-        return AssessmentActionContext(allowed=False, blocked_reason_code="CASE_NOT_ASSIGNED", message="You are not the assigned credit analyst for this case")
-        
-    if case.status not in (CaseStatus.INITIATED, CaseStatus.EVIDENCE_GATHERING, CaseStatus.ASSESSMENT_COMPLETED):
-        return AssessmentActionContext(allowed=False, blocked_reason_code="INVALID_STATE", message="Assessment cannot be run in the current case state")
-        
+        return AssessmentActionContext(
+            allowed=False,
+            blocked_reason_code="CASE_NOT_ASSIGNED",
+            message="You are not the assigned credit analyst for this case",
+        )
+
+    if case.status not in (
+        CaseStatus.INITIATED,
+        CaseStatus.EVIDENCE_GATHERING,
+        CaseStatus.ASSESSMENT_COMPLETED,
+    ):
+        return AssessmentActionContext(
+            allowed=False,
+            blocked_reason_code="INVALID_STATE",
+            message="Assessment cannot be run in the current case state",
+        )
+
     if case.analyst_recommendation:
-        return AssessmentActionContext(allowed=False, blocked_reason_code="ANALYST_RECOMMENDATION_ALREADY_RECORDED", message="An analyst recommendation has already been recorded")
-        
-    if case.human_decision or case.status in (CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED):
-        return AssessmentActionContext(allowed=False, blocked_reason_code="HUMAN_DECISION_ALREADY_RECORDED", message="Human decision recorded.")
-        
+        return AssessmentActionContext(
+            allowed=False,
+            blocked_reason_code="ANALYST_RECOMMENDATION_ALREADY_RECORDED",
+            message="An analyst recommendation has already been recorded",
+        )
+
+    if case.human_decision or case.status in (
+        CaseStatus.HUMAN_APPROVED,
+        CaseStatus.HUMAN_DECLINED,
+        CaseStatus.HUMAN_DEFERRED,
+    ):
+        return AssessmentActionContext(
+            allowed=False,
+            blocked_reason_code="HUMAN_DECISION_ALREADY_RECORDED",
+            message="Human decision recorded.",
+        )
+
     return AssessmentActionContext(allowed=True)
 
 
-def can_submit_analyst_recommendation(db: Session, case: Case, user: User) -> AnalystActionContext:
+def can_submit_analyst_recommendation(
+    db: Session, case: Case, user: User
+) -> AnalystActionContext:
     if user.role != UserRole.CREDIT_ANALYST:
-        return AnalystActionContext(allowed=False, blocked_reason_code="ROLE_NOT_AUTHORIZED", message="Only credit analysts can submit recommendations")
-        
+        return AnalystActionContext(
+            allowed=False,
+            blocked_reason_code="ROLE_NOT_AUTHORIZED",
+            message="Only credit analysts can submit recommendations",
+        )
+
     if case.assigned_credit_analyst_id != user.id:
-        return AnalystActionContext(allowed=False, blocked_reason_code="CASE_NOT_ASSIGNED", message="You are not the assigned credit analyst for this case")
-        
+        return AnalystActionContext(
+            allowed=False,
+            blocked_reason_code="CASE_NOT_ASSIGNED",
+            message="You are not the assigned credit analyst for this case",
+        )
+
     if case.status != CaseStatus.ASSESSMENT_COMPLETED:
         if case.status in (CaseStatus.INITIATED, CaseStatus.EVIDENCE_GATHERING):
-            return AnalystActionContext(allowed=False, blocked_reason_code="ASSESSMENT_REQUIRED", message="Assessment must be run before a recommendation can be submitted")
-        return AnalystActionContext(allowed=False, blocked_reason_code="INVALID_STATE", message="Recommendation cannot be submitted in the current case state")
-        
+            return AnalystActionContext(
+                allowed=False,
+                blocked_reason_code="ASSESSMENT_REQUIRED",
+                message="Assessment must be run before a recommendation can be submitted",
+            )
+        return AnalystActionContext(
+            allowed=False,
+            blocked_reason_code="INVALID_STATE",
+            message="Recommendation cannot be submitted in the current case state",
+        )
+
     if not case.recommendation:
-        return AnalystActionContext(allowed=False, blocked_reason_code="ASSESSMENT_REQUIRED", message="Assessment must be run before a recommendation can be submitted")
-        
+        return AnalystActionContext(
+            allowed=False,
+            blocked_reason_code="ASSESSMENT_REQUIRED",
+            message="Assessment must be run before a recommendation can be submitted",
+        )
+
     if case.analyst_recommendation:
-        return AnalystActionContext(allowed=False, blocked_reason_code="ANALYST_RECOMMENDATION_ALREADY_RECORDED", message="An analyst recommendation has already been recorded")
-        
-    if case.human_decision or case.status in (CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED):
-        return AnalystActionContext(allowed=False, blocked_reason_code="HUMAN_DECISION_ALREADY_RECORDED", message="Human decision recorded.")
+        return AnalystActionContext(
+            allowed=False,
+            blocked_reason_code="ANALYST_RECOMMENDATION_ALREADY_RECORDED",
+            message="An analyst recommendation has already been recorded",
+        )
+
+    if case.human_decision or case.status in (
+        CaseStatus.HUMAN_APPROVED,
+        CaseStatus.HUMAN_DECLINED,
+        CaseStatus.HUMAN_DEFERRED,
+    ):
+        return AnalystActionContext(
+            allowed=False,
+            blocked_reason_code="HUMAN_DECISION_ALREADY_RECORDED",
+            message="Human decision recorded.",
+        )
 
     suggested_action = None
     if case.recommendation == SystemRecommendation.READY_FOR_REVIEW:
@@ -183,9 +249,7 @@ def can_submit_analyst_recommendation(db: Session, case: Case, user: User) -> An
         suggested_action = "RECOMMEND_ENHANCED_DUE_DILIGENCE"
     elif case.recommendation == SystemRecommendation.DECLINE_RECOMMENDED:
         suggested_action = "RECOMMEND_DECLINE"
-        
 
-        
     return AnalystActionContext(allowed=True, suggested_analyst_action=suggested_action)
 
 
@@ -197,20 +261,48 @@ def can_record_human_decision(
     approved_amount: Optional[Decimal] = None,
     now: Optional[datetime] = None,
 ) -> HumanActionContext:
-    if case.human_decision or case.status in (CaseStatus.HUMAN_APPROVED, CaseStatus.HUMAN_DECLINED, CaseStatus.HUMAN_DEFERRED):
-        return HumanActionContext(allowed=False, blocked_reason_code="HUMAN_DECISION_ALREADY_RECORDED", message="Human decision recorded.")
-        
+    if case.human_decision or case.status in (
+        CaseStatus.HUMAN_APPROVED,
+        CaseStatus.HUMAN_DECLINED,
+        CaseStatus.HUMAN_DEFERRED,
+    ):
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="HUMAN_DECISION_ALREADY_RECORDED",
+            message="Human decision recorded.",
+        )
+
     if user.role != UserRole.SANCTIONING_AUTHORITY:
-        return HumanActionContext(allowed=False, blocked_reason_code="ROLE_NOT_AUTHORIZED", message="Only sanctioning authorities can record decisions")
-        
-    if case.status in (CaseStatus.INITIATED, CaseStatus.EVIDENCE_GATHERING, CaseStatus.ASSESSMENT_COMPLETED):
-        return HumanActionContext(allowed=False, blocked_reason_code="AWAITING_ANALYST_RECOMMENDATION", message="Awaiting Credit Analyst recommendation.")
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="ROLE_NOT_AUTHORIZED",
+            message="Only sanctioning authorities can record decisions",
+        )
+
+    if case.status in (
+        CaseStatus.INITIATED,
+        CaseStatus.EVIDENCE_GATHERING,
+        CaseStatus.ASSESSMENT_COMPLETED,
+    ):
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="AWAITING_ANALYST_RECOMMENDATION",
+            message="Awaiting Credit Analyst recommendation.",
+        )
 
     if case.status != CaseStatus.DECISION_PENDING:
-        return HumanActionContext(allowed=False, blocked_reason_code="INVALID_STATE", message="Decision cannot be recorded in the current state")
-        
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="INVALID_STATE",
+            message="Decision cannot be recorded in the current state",
+        )
+
     if not case.analyst_recommendation:
-        return HumanActionContext(allowed=False, blocked_reason_code="AWAITING_ANALYST_RECOMMENDATION", message="Awaiting Credit Analyst recommendation.")
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="AWAITING_ANALYST_RECOMMENDATION",
+            message="Awaiting Credit Analyst recommendation.",
+        )
 
     if now is None:
         now = datetime.now(timezone.utc)
@@ -236,10 +328,14 @@ def can_record_human_decision(
         db.query(Branch).filter(Branch.id == case.originating_branch_id).first()
     )
     if not case_branch:
-        return HumanActionContext(allowed=False, blocked_reason_code="INVALID_BRANCH", message="Case has no valid originating branch")
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="INVALID_BRANCH",
+            message="Case has no valid originating branch",
+        )
 
     has_scope = False
-    max_amount_limit = Decimal('0')
+    max_amount_limit = Decimal("0")
     for m in mandates:
         if m.product_type == case.requested_product and m.currency == case.currency:
             if (m.branch_id and m.branch_id == case.originating_branch_id) or (
@@ -250,27 +346,42 @@ def can_record_human_decision(
                     max_amount_limit = m.maximum_amount
 
     if not has_scope:
-        return HumanActionContext(allowed=False, blocked_reason_code="OUTSIDE_SANCTION_MANDATE", message="Escalation required—outside current sanction mandate.")
-        
+        return HumanActionContext(
+            allowed=False,
+            blocked_reason_code="OUTSIDE_SANCTION_MANDATE",
+            message="Escalation required—outside current sanction mandate.",
+        )
+
     allowed_actions = [
         "DEFER_FOR_EVIDENCE",
         "ESCALATE_FOR_DUE_DILIGENCE",
-        "DECLINE_AFTER_HUMAN_REVIEW"
+        "DECLINE_AFTER_HUMAN_REVIEW",
     ]
-    
+
     if case.requested_amount <= max_amount_limit:
         allowed_actions.append("APPROVE_AS_REQUESTED")
         allowed_actions.append("APPROVE_ALTERNATIVE_STRUCTURE")
     else:
         if approved_amount is not None and approved_amount <= max_amount_limit:
-             allowed_actions.append("APPROVE_ALTERNATIVE_STRUCTURE")
-    
+            allowed_actions.append("APPROVE_ALTERNATIVE_STRUCTURE")
+
     if action is not None:
         if action.value not in allowed_actions:
-            if action in (HumanDecisionAction.APPROVE_AS_REQUESTED, HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE):
-                return HumanActionContext(allowed=False, blocked_reason_code="OUTSIDE_SANCTION_MANDATE", message="Escalation required—outside current sanction mandate.")
-            return HumanActionContext(allowed=False, blocked_reason_code="ACTION_NOT_ALLOWED", message="This action is not allowed.")
-            
+            if action in (
+                HumanDecisionAction.APPROVE_AS_REQUESTED,
+                HumanDecisionAction.APPROVE_ALTERNATIVE_STRUCTURE,
+            ):
+                return HumanActionContext(
+                    allowed=False,
+                    blocked_reason_code="OUTSIDE_SANCTION_MANDATE",
+                    message="Escalation required—outside current sanction mandate.",
+                )
+            return HumanActionContext(
+                allowed=False,
+                blocked_reason_code="ACTION_NOT_ALLOWED",
+                message="This action is not allowed.",
+            )
+
     suggested_human = "APPROVE_AS_REQUESTED"
     if case.analyst_recommendation:
         if case.analyst_recommendation.value == "RECOMMEND_ALTERNATIVE_STRUCTURE":
@@ -282,12 +393,10 @@ def can_record_human_decision(
         elif case.analyst_recommendation.value == "RECOMMEND_DECLINE":
             suggested_human = "DECLINE_AFTER_HUMAN_REVIEW"
 
-
-            
     return HumanActionContext(
-        allowed=True, 
-        suggested_human_action=suggested_human, 
-        allowed_human_actions=allowed_actions
+        allowed=True,
+        suggested_human_action=suggested_human,
+        allowed_human_actions=allowed_actions,
     )
 
 
