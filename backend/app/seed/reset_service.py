@@ -41,6 +41,8 @@ def get_db_fingerprint(db: Session) -> str:
             "SELECT inet_server_addr()::text, inet_server_port()::text, current_database()::text, current_schema()::text;"
         )
     ).fetchone()
+    if row is None:
+        return hashlib.sha256(b"localhost:5432:postgres:public").hexdigest()[:8]
     host = row[0] or "localhost"
     port = row[1] or "5432"
     db_name = row[2] or "postgres"
