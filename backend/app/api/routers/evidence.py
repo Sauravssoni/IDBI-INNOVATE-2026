@@ -218,3 +218,13 @@ def get_assessment_history(
             }
         )
     return res
+
+
+@router.get("/{case_id}/evidence-passport")
+def get_case_evidence_passport(
+    case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    can_view_case(db, user, case_id)
+    from app.domain.evidence.passport import generate_evidence_passport
+    return generate_evidence_passport(db, str(case_id))
+
