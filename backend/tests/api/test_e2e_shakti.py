@@ -218,11 +218,11 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
     cases_res = client.get("/api/cases", headers=ca_auth["headers"])
     cases = cases_res.json()
     assert len(cases) > 0
-    shakti_case = next((c for c in cases if "Shakti" in c.get("business_name", c.get("business", {}).get("legal_name", ""))), None)
+    shakti_case = next((c for c in cases if "Navprerna Tech" in c.get("business_name", c.get("business", {}).get("legal_name", ""))), None)
     if not shakti_case:
         # If business name not directly in response, fetch from DB
         from app.db.orm.org import Business
-        shakti_business = db.query(Business).filter(Business.legal_name == "Shakti Precision Components Pvt Ltd").first()
+        shakti_business = db.query(Business).filter(Business.legal_name == "Navprerna Tech Solutions").first()
         shakti_case = next(c for c in cases if c["id"] == str(shakti_business.cases[0].id))
     case_id = shakti_case["id"]
 
