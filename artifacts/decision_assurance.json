@@ -1,0 +1,117 @@
+{
+  "git_sha": "75c4bf6b90606f6e39174e040ecfd8fe9248bcf5",
+  "timestamp": "2026-07-10T09:30:43.030171",
+  "policy_version": 1,
+  "calculation_version": 1,
+  "total_assertions": 18,
+  "passed": 18,
+  "failed": 0,
+  "overall_result": "PASS",
+  "personas": {
+    "SHAKTI_PRECISION_001": {
+      "recommendation": "CONDITIONAL_OFFER",
+      "limit": 3569042.496
+    },
+    "NAVPRERNA_TECH_001": {
+      "recommendation": "ADDITIONAL_EVIDENCE_REQUIRED"
+    },
+    "RANGREZ_TEXTILES_001": {
+      "recommendation": "READY_FOR_REVIEW"
+    },
+    "AAROHAN_INFRA_001": {
+      "recommendation": "DECLINE_RECOMMENDED"
+    }
+  },
+  "details": [
+    {
+      "step": "Persona Count",
+      "status": "PASS",
+      "message": "Found 4 businesses"
+    },
+    {
+      "step": "Case Count",
+      "status": "PASS",
+      "message": "Found 4 cases"
+    },
+    {
+      "step": "Shakti Limit",
+      "status": "PASS",
+      "message": "Shakti Supportable Amount ~35.7 lakh. Got 3569042.496"
+    },
+    {
+      "step": "Navprerna Recommendation",
+      "status": "PASS",
+      "message": "Navprerna got ADDITIONAL_EVIDENCE_REQUIRED"
+    },
+    {
+      "step": "Rangrez Recommendation",
+      "status": "PASS",
+      "message": "Rangrez got READY_FOR_REVIEW"
+    },
+    {
+      "step": "Aarohan Recommendation",
+      "status": "PASS",
+      "message": "Aarohan got DECLINE_RECOMMENDED"
+    },
+    {
+      "step": "Idempotency Replay",
+      "status": "PASS",
+      "message": "Deterministic Idempotency replay"
+    },
+    {
+      "step": "CAS STALE_VERSION",
+      "status": "PASS",
+      "message": "CAS STALE_VERSION verified"
+    },
+    {
+      "step": "Cash-flow/limit Monotonicity",
+      "status": "PASS",
+      "message": "cash-flow/limit monotonicity verified"
+    },
+    {
+      "step": "Obligation/DSCR Monotonicity",
+      "status": "PASS",
+      "message": "obligation/DSCR monotonicity verified"
+    },
+    {
+      "step": "Evidence-confidence Monotonicity",
+      "status": "PASS",
+      "message": "evidence-confidence monotonicity verified"
+    },
+    {
+      "step": "RM RBAC",
+      "status": "PASS",
+      "message": "RM cannot evaluate verified"
+    },
+    {
+      "step": "Analyst RBAC",
+      "status": "PASS",
+      "message": "Analyst cannot sanction verified"
+    },
+    {
+      "step": "CA Recommendation Check",
+      "status": "PASS",
+      "message": "Analyst recommendation succeeded with 200, got 200: {\"status\":\"success\",\"recommendation\":\"RECOMMEND_ALTERNATIVE_STRUCTURE\",\"prior_version\":3,\"resulting_version\":4,\"audit_hash\":\"72865179c859d821105caba9d9be7b52cf3d22e7e056137b219f17d307eeef2a\"}"
+    },
+    {
+      "step": "SA Mandate Failure Check",
+      "status": "PASS",
+      "message": "SA above-mandate approval failed with 403, got 403: {\"detail\":{\"code\":\"OUTSIDE_SANCTION_MANDATE\",\"message\":\"Escalation required\u2014outside current sanction mandate.\"}}"
+    },
+    {
+      "step": "SA Mandate Success Check",
+      "status": "PASS",
+      "message": "SA within-mandate approval succeeded with 200, got 200: {\"status\":\"success\",\"decision\":\"APPROVE_ALTERNATIVE_STRUCTURE\",\"approved_amount\":300000.0,\"prior_version\":4,\"resulting_version\":5,\"audit_hash\":\"9abd9cb886f9478ccb9e070d6d3f3c2afc9cc2f5d0c5709dd658073a262a6317\"}"
+    },
+    {
+      "step": "LLM Isolation",
+      "status": "PASS",
+      "message": "LLM not called in scoring/policy verified"
+    },
+    {
+      "step": "Audit Hash Chain",
+      "status": "PASS",
+      "message": "Continuous audit hash chain verified"
+    }
+  ]
+}
