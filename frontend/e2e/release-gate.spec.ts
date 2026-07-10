@@ -75,8 +75,8 @@ test.describe('Vyapar Pulse Release Gate', () => {
 
     // SA transition verifies /api/auth/me and lands on stage 6
     await page.click('button:has-text("Continue as Sanctioning Authority")');
-    await expect(page.locator('text=Sanction Review')).toBeVisible(); // Stage 6
-    await expect(page.locator('text=Approve Application')).toBeVisible();
+    await expect(page.locator('text=Sanctioning Authority Gate')).toBeVisible(); // Stage 6
+    await expect(page.locator('text=Approve Alternative Structure')).toBeVisible();
     await page.screenshot({ path: '../docs/assets/screenshots/06-sanction-review.png' });
 
     // manual SA alternative-structure approval
@@ -118,7 +118,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     const row = page.locator('table tbody tr').filter({ hasText: 'Rangrez' }).first();
     await row.locator('a', { hasText: 'Open' }).click();
     
-    await expect(page.locator('text=Decision Pending').or(page.locator('text=FROZEN'))).toBeVisible();
+    await expect(page.locator('text=Decision Pending').or(page.locator('text=FROZEN')).first()).toBeVisible();
   });
 
   test('Assessment History does not crash', async ({ page }) => {
