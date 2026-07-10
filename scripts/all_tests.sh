@@ -20,6 +20,10 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
+echo "Seeding Test Database for Backend Tests..."
+cd "$REPO_ROOT/backend"
+PYTHONPATH=. python -m app.seed.run_demo_reset
+
 echo "Running Backend Tests..."
 cd "$REPO_ROOT/backend"
 pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
