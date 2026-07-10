@@ -10,7 +10,7 @@ export JWT_SECRET="${JWT_SECRET:?JWT_SECRET is required}"
 
 cleanup() {
   echo "Stopping any background services..."
-  lsof -ti:3005,8000 | xargs kill -9 2>/dev/null || true
+  lsof -ti:3005,8000 | xargs -I {} sh -c 'ps -p {} -o comm= | grep -qE "(node|python|uvicorn)" && kill -9 {}' 2>/dev/null || true
 }
 trap cleanup EXIT
 
