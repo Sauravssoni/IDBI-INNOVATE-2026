@@ -80,7 +80,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.screenshot({ path: '../docs/assets/screenshots/06-sanction-review.png' });
 
     // manual SA alternative-structure approval
-    await page.click('button:has-text("Approve Application")');
+    await page.click('button:has-text("Approve Alternative Structure")');
     await expect(page.locator('text=SANCTIONED').or(page.locator('text=Sanctioned'))).toBeVisible();
   });
 
