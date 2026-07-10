@@ -69,7 +69,6 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.click('button:has-text("Prepare Recommendation")');
     
     // Analyst alternative-structure recommendation
-    await page.fill('textarea[placeholder*="rationale"]', 'Recommend alternative structure of 35L');
     await page.click('button:has-text("Submit Recommendation")');
     await expect(page.locator('text=Sanction Review')).toBeVisible();
     await page.screenshot({ path: '../docs/assets/screenshots/05-analyst-recommendation.png' });
