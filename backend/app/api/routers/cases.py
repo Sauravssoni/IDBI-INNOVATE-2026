@@ -345,6 +345,7 @@ def get_cases_summary(
     }
 
 
+@router.get("")
 @router.get("/")
 def list_cases(
     db: Session = Depends(get_db),

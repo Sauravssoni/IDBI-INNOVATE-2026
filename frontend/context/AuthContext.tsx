@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
 
 export interface User {
@@ -24,10 +24,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const authActionSeqRef = useRef(0);
 
   const refreshUser = async () => {
+    const actionSeqAtStart = authActionSeqRef.current;
     setLoading(true);
     const { data, status } = await apiFetch<User>("/api/auth/me");
+    if (authActionSeqRef.current !== actionSeqAtStart) return;
     if (status === 200 && data && data.id) {
       setUser(data);
     } else {
@@ -41,34 +44,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    authActionSeqRef.current++;
     const { data, status, error } = await apiFetch<User>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
 
     if (status === 200 && data && data.id) {
+      authActionSeqRef.current++;
       setUser(data);
+      setLoading(false);
       return { success: true };
     }
     return { success: false, error: error || "Authentication failed" };
   };
 
   const demoLogin = async (role: string): Promise<{ success: boolean; error?: string }> => {
+    authActionSeqRef.current++;
     const { data, status, error } = await apiFetch<User>("/api/auth/demo/session", {
       method: "POST",
       body: JSON.stringify({ role }),
     });
 
     if (status === 200 && data && data.id) {
+      authActionSeqRef.current++;
       setUser(data);
+      setLoading(false);
       return { success: true };
     }
     return { success: false, error: error || "Guided demo access is unavailable in this environment." };
   };
 
   const logout = async () => {
+    authActionSeqRef.current++;
     await apiFetch("/api/auth/logout", { method: "POST" });
+    authActionSeqRef.current++;
     setUser(null);
+    setLoading(false);
   };
 
   return (

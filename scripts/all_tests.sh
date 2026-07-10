@@ -9,8 +9,8 @@ export DEMO_USER_PASSWORD="${DEMO_USER_PASSWORD:-testpassword123}"
 export JWT_SECRET="${JWT_SECRET:-replace_this_with_a_secure_random_string_for_production}"
 
 cleanup() {
-  echo "Stopping any background services..."
-  lsof -ti:3005,8000 | xargs -I {} sh -c 'ps -p {} -o comm= | grep -qE "(node|python|uvicorn)" && kill -9 {}' 2>/dev/null || true
+  echo "Stopping any background services on ports 3005 and 8000..."
+  lsof -ti:3005,8000 | xargs kill -9 2>/dev/null || true
 }
 trap cleanup EXIT
 cleanup || true
@@ -52,8 +52,10 @@ cd "$REPO_ROOT/backend"
 PYTHONPATH=. uv run python -m app.seed.run_demo_reset
 
 echo "Running Frontend E2E Tests..."
+cleanup || true
 cd "$REPO_ROOT/frontend"
 npx playwright test
+cleanup || true
 
 echo "Running Proofs..."
 cd "$REPO_ROOT/backend"
@@ -63,6 +65,7 @@ mkdir -p "$REPO_ROOT/artifacts/runtime"
 export RUNTIME_EVIDENCE_DIR="$REPO_ROOT/artifacts/runtime"
 PYTHONPATH=. uv run python scripts/run_decision_assurance.py > "$RUNTIME_EVIDENCE_DIR/decision_assurance.json"
 PYTHONPATH=. uv run python scripts/run_demo_walkthrough.py > "$RUNTIME_EVIDENCE_DIR/demo_walkthrough.json"
+cleanup || true
 echo "Starting background servers for smoke test..."
 cd "$REPO_ROOT/backend"
 APP_ENV="development" DATABASE_URL="$DATABASE_URL" JWT_SECRET="$JWT_SECRET" DEMO_USER_PASSWORD="$DEMO_USER_PASSWORD" DEMO_ACCESS_ENABLED="true" PYTHONPATH=. uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 > /dev/null 2>&1 &
