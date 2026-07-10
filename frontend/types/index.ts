@@ -19,10 +19,31 @@ export interface CaseBusinessResponse {
   sector: string;
 }
 
+export interface AssessmentActionContext {
+  allowed: boolean;
+  blocked_reason_code: string | null;
+  message: string | null;
+}
+
+export interface AnalystActionContext {
+  allowed: boolean;
+  suggested_analyst_action: string | null;
+  blocked_reason_code: string | null;
+  message: string | null;
+}
+
+export interface HumanActionContext {
+  allowed: boolean;
+  suggested_human_action: string | null;
+  allowed_human_actions: string[] | null;
+  blocked_reason_code: string | null;
+  message: string | null;
+}
+
 export interface AllowedActionsResponse {
-  run_assessment: boolean;
-  submit_analyst_recommendation: boolean;
-  record_human_decision: boolean;
+  run_assessment: AssessmentActionContext;
+  submit_analyst_recommendation: AnalystActionContext;
+  record_human_decision: HumanActionContext;
   view_audit: boolean;
 }
 

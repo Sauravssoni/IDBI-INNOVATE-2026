@@ -126,7 +126,7 @@ def test_vertical_escalation_system_admin_cannot_evaluate(test_users):
         headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4())},
     )
     assert resp.status_code == 404
-    assert "Case not found or access denied" in resp.json()["detail"]
+    assert "Case not found or access denied" in str(resp.json()["detail"])
 
 
 def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
@@ -151,7 +151,7 @@ def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
         headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4())},
     )
     assert resp.status_code == 403
-    assert "Only sanctioning authorities can record decisions" in resp.json()["detail"]
+    assert "Only sanctioning authorities can record decisions" in str(resp.json()["detail"])
 
 
 def test_sql_injection_resistance_login():
