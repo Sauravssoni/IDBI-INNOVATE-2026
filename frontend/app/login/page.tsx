@@ -69,16 +69,24 @@ export default function LoginPage() {
     }
   };
 
-  const checkHealth = async () => {
+  const checkHealth = async (retries = 15) => {
     setServiceStatus("checking");
     try {
       const { status } = await apiFetch("/health");
       if (status !== 200) {
+        if (retries > 0) {
+          setTimeout(() => checkHealth(retries - 1), 500);
+          return;
+        }
         setServiceStatus("unavailable");
       } else {
         setServiceStatus("available");
       }
     } catch (err) {
+      if (retries > 0) {
+        setTimeout(() => checkHealth(retries - 1), 500);
+        return;
+      }
       setServiceStatus("unavailable");
     }
   };
