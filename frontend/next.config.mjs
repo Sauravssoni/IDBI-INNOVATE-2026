@@ -1,3 +1,5 @@
+import process from 'node:process';
+
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
