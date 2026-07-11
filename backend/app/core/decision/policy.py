@@ -257,11 +257,13 @@ class DecisionPolicy:
         max_borrowing_val = cap_summary.get("max_borrowing_limit", Decimal("0.00"))
         max_borrowing_dec = Decimal(str(max_borrowing_val)) if max_borrowing_val is not None else Decimal("0.00")
 
-        # 1. WORKING_CAPITAL_LINE (mapped to CONSERVATIVE tier for structural compatibility)
+        # 1. WORKING_CAPITAL_LINE
         wc_info = product_limits.get("WORKING_CAPITAL_LINE", {})
         wc_limit = Decimal(str(wc_info.get("calculated_limit", "0.00"))) if isinstance(wc_info, dict) else Decimal("0.00")
-        if wc_limit <= 0:
-            wc_limit = (max_borrowing_dec * Decimal("0.6")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if wc_limit <= 0 or (isinstance(wc_info, dict) and wc_info.get("applicability") == "NOT_APPLICABLE"):
+            wc_limit = Decimal("0.00")
+        elif max_borrowing_dec > 0 and wc_limit > max_borrowing_dec:
+            wc_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         
         wc_tenure = wc_info.get("tenure_months", 12) if isinstance(wc_info, dict) else 12
         wc_rate = wc_info.get("interest_rate_pct", 12.0) if isinstance(wc_info, dict) else 12.0
@@ -303,11 +305,13 @@ class DecisionPolicy:
             }
         )
 
-        # 2. TERM_LOAN (mapped to BALANCED tier for structural compatibility)
+        # 2. TERM_LOAN
         tl_info = product_limits.get("TERM_LOAN", {})
         tl_limit = Decimal(str(tl_info.get("calculated_limit", "0.00"))) if isinstance(tl_info, dict) else Decimal("0.00")
-        if tl_limit <= 0:
-            tl_limit = (max_borrowing_dec * Decimal("0.8")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if tl_limit <= 0 or (isinstance(tl_info, dict) and tl_info.get("applicability") == "NOT_APPLICABLE"):
+            tl_limit = Decimal("0.00")
+        elif max_borrowing_dec > 0 and tl_limit > max_borrowing_dec:
+            tl_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         tl_tenure = tl_info.get("tenure_months", 36) if isinstance(tl_info, dict) else 36
         tl_rate = tl_info.get("interest_rate_pct", 13.5) if isinstance(tl_info, dict) else 13.5
@@ -353,10 +357,12 @@ class DecisionPolicy:
             }
         )
 
-        # 3. INVOICE_DISCOUNTING / RECEIVABLES_FINANCE (mapped to GROWTH tier for structural compatibility)
+        # 3. INVOICE_DISCOUNTING / RECEIVABLES_FINANCE
         rf_info = product_limits.get("RECEIVABLES_FINANCE", {})
         rf_limit = Decimal(str(rf_info.get("calculated_limit", "0.00"))) if isinstance(rf_info, dict) else Decimal("0.00")
-        if rf_limit <= 0:
+        if rf_limit <= 0 or (isinstance(rf_info, dict) and rf_info.get("applicability") == "NOT_APPLICABLE"):
+            rf_limit = Decimal("0.00")
+        elif max_borrowing_dec > 0 and rf_limit > max_borrowing_dec:
             rf_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         rf_tenure = rf_info.get("tenure_months", 12) if isinstance(rf_info, dict) else 12
