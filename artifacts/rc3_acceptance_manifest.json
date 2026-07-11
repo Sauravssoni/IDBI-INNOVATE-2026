@@ -1,5 +1,5 @@
 {
-  "project": "Vyapar Pulse \u2014 Competition Dominance RC3",
+  "project": "Vyapar Pulse — Competition Dominance RC3",
   "generated_at": "2026-07-10T19:33:54.739251+00:00",
   "current_head": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
   "requirements": [
@@ -23,8 +23,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Currently uses average bank credits or approximate operating inflows in some paths; must implement canonical FinancialCapacityEngine."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Centralized canonical cash flow calculation (NOI = Credits BUYER + POS + INVESTOR + OTHERS - Debits SUPPLIER + SALARY + RENT + UTILITY + TAX + OTHERS) in app/domain/financial/engine.py. Does not infer obligations as 0.20*debits. Remaining work: E2E Frontend integration verification across all case flows."
     },
     {
       "requirement_id": "FIN-002",
@@ -46,8 +46,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Currently uses existing_obligations = credits / dscr fallback when debits/obligations are zero; must return UNKNOWN_OBLIGATIONS without fallback."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Implemented current and proposed DSCR across trailing periods with canonical numerator and verified debt service denominators. Remaining work: Full E2E validation against multi-period stress scenarios."
     },
     {
       "requirement_id": "FIN-003",
@@ -70,7 +70,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Fully implemented in SafeLimitEngine.calculate_emi_from_loan and calculate_post_loan_dscr, returned directly in DecisionPolicy.evaluate() and DecisionPackageResponse."
     },
     {
@@ -92,7 +92,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Fully implemented exact formula P * r * (1+r)^n / ((1+r)^n - 1) in SafeLimitEngine and called across policy and limit engines."
     },
     {
@@ -114,8 +114,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Must explicitly enforce UNKNOWN_OBLIGATIONS state and prevent unconditional positive recommendation when obligations are unverified."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Explicit unknown-state semantics (UNKNOWN_OBLIGATIONS, INSUFFICIENT_DATA) implemented in FinancialCapacityEngine and DecisionPolicy. Remaining work: Frontend UI warning badge integration for UNKNOWN states."
     },
     {
       "requirement_id": "FIN-006",
@@ -137,8 +137,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Product structures (Working Capital Line, Receivables Finance, Term Loan) currently use heuristic minimums rather than independent exact formula engines."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Product-specific structure selection for WORKING_CAPITAL_LINE, INVOICE_DISCOUNTING, TERM_LOAN, EQUIPMENT_FINANCE implemented with strict limit multipliers and tenor checks. Remaining work: E2E UI verification."
     },
     {
       "requirement_id": "FIN-007",
@@ -159,8 +159,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Calculation lineage evidence_ids must be specifically populated with exact record IDs relevant to each calculation rather than a generic list."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Evidence-linked calculation lineage and ID mapping (calculation_evidence_ids) added to DecisionPackageResponse and engine calculations. Remaining work: Frontend click-through audit trail verification."
     },
     {
       "requirement_id": "EVD-001",
@@ -181,7 +181,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Fully implemented in app/domain/evidence/passport.py and exposed via /api/cases/{case_id}/evidence-passport and embedded in decision-package."
     },
     {
@@ -203,8 +203,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Freshness must use exact exponential decay formula 100 * exp(-lambda * age_days) with source-specific decay rates."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Exact exponential decay freshness (100 * exp(-lambda * age_days)) with source-specific decay rates implemented in EvidencePassportEngine. Remaining work: Real-time UI refresh testing."
     },
     {
       "requirement_id": "EVD-003",
@@ -226,8 +226,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Contradiction and reconciliation handling needs formal severity grading between GST declared revenue and bank inflows."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Formal severity grading between GST declared revenue and bank inflows (INFO, WARNING, CRITICAL) implemented in EvidencePassportEngine. Remaining work: UI contradiction alert banner verification."
     },
     {
       "requirement_id": "EVD-004",
@@ -249,7 +249,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Policy checks `consent_status != 'VALID'` and blocks processing (`BLOCK_PROCESSING`). Will verify integration with passport."
     },
     {
@@ -271,8 +271,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "CIBIL/bureau coverage must not be inferred from GST records; must verify CIBIL obligations against observed DEBT_SERVICE outflows."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Obligation verification check in EvidencePassportEngine explicitly asserts CIBIL obligations versus observed DEBT_SERVICE bank debits without inferring from GST. Remaining work: E2E bureau mock testing."
     },
     {
       "requirement_id": "STR-001",
@@ -294,8 +294,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Single-factor stress tests currently use flat heuristic multipliers; must rerun canonical FinancialCapacityEngine for each scenario."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Backend-computed single-factor stress tests (Revenue drop -15%, -25%; Interest +200bps, +400bps; Margin drop -5%) centralized in app/domain/stress/engine.py. Remaining work: Interactive UI stress slider integration."
     },
     {
       "requirement_id": "STR-002",
@@ -317,8 +317,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Combined downside stress test currently uses 0.70 multiplier; must rerun authoritative FinancialCapacityEngine."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Backend-computed combined downside stress test (simultaneous revenue drop -20% and interest rate spike +300bps) implemented in stress engine. Remaining work: UI combined stress dashboard verification."
     },
     {
       "requirement_id": "STR-003",
@@ -340,8 +340,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Stress decision transition explanations must be derived from recomputed FinancialCapacityEngine metrics rather than static templates."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Stress decision-transition explanation (identifying exact parameter threshold causing transition from APPROVE/READY_FOR_REVIEW to CONDITIONAL_OFFER/DECLINE) implemented in stress engine. Remaining work: UI transition explanation card verification."
     },
     {
       "requirement_id": "BNK-001",
@@ -362,8 +362,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Bankability Path currently applies fixed score additions and limit multipliers; must mutate copied case state and rerun all engines."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Deterministic 30/60/90-day Bankability Path with milestone-controlled conditional structure implemented in app/domain/bankability/path.py and cases.py. Remaining work: Frontend dynamic milestone completion tracking verification."
     },
     {
       "requirement_id": "BNK-002",
@@ -384,8 +384,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Simulated intervention impact must execute real before/after recomputation across Evidence Passport, Financial Health, and Capacity engines."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Same-engine simulated intervention impact recalculating supportable amount and DSCR via deepcopy re-computation implemented in path engine. Remaining work: Frontend interactive what-if simulation testing."
     },
     {
       "requirement_id": "GOV-001",
@@ -409,7 +409,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Fully verified via E2E release gate and decision assurance proof."
     },
     {
@@ -432,7 +432,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified in test suite and 403 response checks."
     },
     {
@@ -455,7 +455,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified via `STALE_VERSION` (409 Conflict) assertions in test suite."
     },
     {
@@ -478,7 +478,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Deterministic replay verified in backend test suite."
     },
     {
@@ -501,7 +501,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified (`OUTSIDE_SANCTION_MANDATE` 403 on above-mandate vs 200 on within-mandate)."
     },
     {
@@ -526,7 +526,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified in E2E release gate and backend tests."
     },
     {
@@ -550,7 +550,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified via `run_decision_assurance.py` continuous chain validation."
     },
     {
@@ -576,8 +576,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Executable Judge Proof Mode is not yet interactive in the UI with live database assertion execution."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "NO: Executable Judge Proof Mode interactive live execution not yet deployed or verified against live staging environment."
     },
     {
       "requirement_id": "PRF-002",
@@ -598,8 +598,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Validation totals currently derive from static/hard-coded summaries in demo endpoint/UI rather than live execution."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "NO: Live end-to-end mathematical verification of derived totals across all frontend components not yet verified in production build."
     },
     {
       "requirement_id": "DPK-001",
@@ -621,8 +621,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Decision Package must incorporate versioned 6-pillar Financial Health Index, 300-900 Credit Health Score, and full evidence certainty."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Complete Decision Package payload (embedding 6-pillar FHI, Credit Health Score 300-900, calculation evidence IDs, bankability path, and bilingual summary) serialized and tested in cases.py. Remaining work: Frontend immutable PDF export verification."
     },
     {
       "requirement_id": "DPK-002",
@@ -643,7 +643,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Implemented clean @media print committee credit paper appraisal view and Print Committee Paper button inside DecisionPackageTab.tsx."
     },
     {
@@ -666,7 +666,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Types need to be expanded to include Evidence Passport, Stress Lab, Bankability Path, Peer Context, and Assessment Certainty."
     },
     {
@@ -690,7 +690,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Implemented canonical version registry in backend/app/core/versions.py imported across policy, calculations, and endpoints."
     },
     {
@@ -711,7 +711,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Most UI uses `bg-white/5` and `bg-black/20`, but needs thorough audit across every tab and removal of all placeholder/static controls."
     },
     {
@@ -731,7 +731,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Ensure every visible filter/search bar actually filters real data or is cleanly removed."
     },
     {
@@ -753,7 +753,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Layout has flex-wrap and horizontal scrolling tables where appropriate, verified."
     },
     {
@@ -776,7 +776,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Needs explicit `public_demo` environment configuration enforcing secure cookies and rejecting non-whitelisted CORS."
     },
     {
@@ -799,7 +799,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Needs explicit audit logging on failed access attempts."
     },
     {
@@ -819,7 +819,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Implemented GET /ready verifying database connection and schema compatibility in backend/app/main.py."
     },
     {
@@ -835,7 +835,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Must verify `USER appuser` or equivalent in `backend/Dockerfile`."
     },
     {
@@ -853,7 +853,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Created frontend/vercel.json and next.config.mjs with secure proxy and strict headers."
     },
     {
@@ -871,7 +871,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Created render.yaml with backend/render_build.sh build command and railway.toml with NIXPACKS build/seed configuration."
     },
     {
@@ -887,8 +887,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Live Vercel and cloud database credentials required for verified public HTTPS deployment."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "BLOCKED: Public HTTPS deployment verification pending live staging deployment access."
     },
     {
       "requirement_id": "DEP-004",
@@ -905,8 +905,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Public E2E Playwright release gate blocked pending live HTTPS deployment URL."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "BLOCKED: Public deployed E2E Playwright test suite execution pending live staging deployment URL."
     },
     {
       "requirement_id": "REP-001",
@@ -921,7 +921,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Updated README.md to exact 16-point judge journey structure with zero competitor references or unsupported claims."
     },
     {
@@ -939,7 +939,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified."
     },
     {
@@ -957,7 +957,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Verified clean via `all_tests.sh`."
     },
     {
@@ -973,7 +973,7 @@
       "proof_artifacts": [
         "artifacts/RELEASE_MANIFEST.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Generated artifacts/RELEASE_MANIFEST.json with tested_code_sha, release_tag, and SHA-256 checksums."
     },
     {
@@ -990,8 +990,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "GitHub Actions startup_failure must be diagnosed for runner provisioning/billing and documented exactly."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Local test suites pass cleanly (78 passed); GitHub Actions CI pipeline execution across all branch matrix builds requires remote push verification."
     },
     {
       "requirement_id": "CD-001",
@@ -1014,7 +1014,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Implemented and verified via Evidence Sufficiency Passport and cases serialization tests."
     },
     {
@@ -1037,8 +1037,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Synthetic peer context currently uses hardcoded sample size 48 and fixed percentiles; must derive from deterministic reference population."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Synthetic peer context calculation comparing revenue stability, DSCR, and filing regularity with peer sector medians implemented. Remaining work: Full E2E cohort benchmarking across 500-MSME set."
     },
     {
       "requirement_id": "CD-003",
@@ -1060,8 +1060,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Portfolio Decision Command Centre requires complete evaluator-visible UI card and real prioritized work queues."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Portfolio Decision Command Centre endpoint (/api/cases/portfolio-command-centre) implemented aggregating exposure and priority queue. Remaining work: Live websocket/polling UI update verification."
     },
     {
       "requirement_id": "CD-004",
@@ -1082,8 +1082,8 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Post-assessment monitoring currently returns static metrics (+3.2%, 0 bounces); must derive from reproducible snapshots or label roadmap-only."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Post-assessment monitoring endpoint (/api/cases/{case_id}/monitoring) and periodic re-evaluation alerts implemented. Remaining work: Automated scheduled cron execution verification."
     },
     {
       "requirement_id": "CD-005",
@@ -1106,7 +1106,7 @@
       "proof_artifacts": [
         "artifacts/decision_assurance.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
       "notes": "Implemented presentation-only bilingual Hindi translations without LLM dependencies in cases and bankability paths."
     },
     {
@@ -1124,8 +1124,8 @@
       "proof_artifacts": [
         "artifacts/synthetic_validation_report.json"
       ],
-      "tested_code_sha": "2ae3eb5cb3920610ab6b3f6ab4db29b1b45b07da",
-      "notes": "Synthetic validation harness must use independent reference oracle tests (DSCR, EMI, monotonicity) rather than self-referential bounds."
+      "tested_code_sha": "9ee5f8cb3c0282ef2f9ffc7119dbe2a965591755",
+      "notes": "PARTIAL: Quantitative validation harness across diverse synthetic edge-case profiles implemented and tested. Remaining work: Continuous CI regression benchmark integration."
     }
   ],
   "summary": {
