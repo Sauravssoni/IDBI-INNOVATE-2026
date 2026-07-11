@@ -161,7 +161,7 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           <div>
             <span className="text-xs text-gray-500 block uppercase font-bold">Recommended Limit</span>
             <span className="text-lg font-bold text-emerald-800">
-              {data.limit_details?.supportable_limit ? formatCurrency(data.limit_details.supportable_limit) : formatCurrency(data.requested_amount)}
+              {data.binding_limit ? formatCurrency(data.binding_limit) : formatCurrency(data.requested_amount)}
             </span>
           </div>
         </div>
