@@ -72,11 +72,19 @@ class FinancialCapacityEngine:
         invoice_metrics = features.get("invoice_metrics", {})
 
         # 1. Operating inflows (canonical: conservative minimum of verified bank credits and GST revenue if both exist)
-        raw_bank_inflows = Decimal(str(bank_metrics.get("operating_inflows_monthly", bank_metrics.get("avg_monthly_credits", features.get("banking_inflow_inr", features.get("monthly_revenue_inr", "0"))))))
+        # Strictly no fallbacks to total_credits or avg_monthly_credits
+        summary = bank_metrics.get("transaction_categorization_summary", {})
+        has_material_unresolved = summary.get("has_material_unresolved_activity", False)
+
+        if "operating_inflows_monthly" in bank_metrics:
+            raw_bank_inflows = Decimal(str(bank_metrics.get("operating_inflows_monthly", "0")))
+        else:
+            raw_bank_inflows = Decimal(str(features.get("verified_operating_inflows_monthly", features.get("banking_inflow_inr", features.get("monthly_revenue_inr", "0")))))
+
         raw_gst_inflows = Decimal(str(gst_metrics.get("avg_monthly_revenue", gst_metrics.get("taxable_turnover", "0")))) if "gst_metrics" in features else Decimal("0")
         
-        # Check if bank operating cash flows exist
-        if raw_bank_inflows <= Decimal("0"):
+        # Check if bank operating cash flows exist or if material unresolved transactions prevent reliable derivation
+        if raw_bank_inflows <= Decimal("0") or has_material_unresolved:
             cash_flow_status = "INSUFFICIENT_CASH_FLOW_DATA"
             observed_operating_inflows = Decimal("0.00")
         else:
@@ -86,8 +94,12 @@ class FinancialCapacityEngine:
             else:
                 observed_operating_inflows = raw_bank_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 2. Operating outflows & Operating Cash Available
-        raw_outflows = Decimal(str(bank_metrics.get("operating_outflows_monthly", bank_metrics.get("avg_monthly_debits", features.get("banking_outflow_inr", features.get("monthly_expenses_inr", "0"))))))
+        # 2. Operating outflows & Operating Cash Available (no fallback to avg_monthly_debits)
+        if "operating_outflows_monthly" in bank_metrics:
+            raw_outflows = Decimal(str(bank_metrics.get("operating_outflows_monthly", "0")))
+        else:
+            raw_outflows = Decimal(str(features.get("verified_operating_outflows_monthly", features.get("banking_outflow_inr", features.get("monthly_expenses_inr", "0")))))
+
         observed_operating_outflows = raw_outflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA" else Decimal("0.00")
 
         financials = features.get("financials", {})
@@ -246,6 +258,12 @@ class FinancialCapacityEngine:
         total_operating_inflows = Decimal("0.00")
         total_operating_outflows = Decimal("0.00")
         total_ds_outflows = Decimal("0.00")
+        total_credits = Decimal("0.00")
+        total_debits = Decimal("0.00")
+        unresolved_credit_amount = Decimal("0.00")
+        unresolved_debit_amount = Decimal("0.00")
+        unresolved_inflow_items = []
+        unresolved_outflow_items = []
 
         months_seen = set()
         for t in txns:
@@ -256,20 +274,38 @@ class FinancialCapacityEngine:
             t_cat = str(t.category or "").upper() if t.category else ""
 
             if t_type == "CREDIT":
+                total_credits += amt
                 if t_cat in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_INFLOWS"]:
                     total_operating_inflows += amt
                     inflow_ids.append(str(t.id))
+                elif t_cat not in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["EXCLUDED_INFLOWS"]:
+                    unresolved_credit_amount += amt
+                    unresolved_inflow_items.append({"id": str(t.id), "amount": str(amt)})
             elif t_type == "DEBIT":
+                total_debits += amt
                 if t_cat == "DEBT_SERVICE":
                     total_ds_outflows += amt
                     obligation_ids.append(str(t.id))
                 elif t_cat in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_OUTFLOWS"]:
                     total_operating_outflows += amt
                     outflow_ids.append(str(t.id))
+                elif t_cat not in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["EXCLUDED_OUTFLOWS"]:
+                    unresolved_debit_amount += amt
+                    unresolved_outflow_items.append({"id": str(t.id), "amount": str(amt)})
 
         month_divisor = Decimal(str(max(1, len(months_seen))))
         observed_inflows = (total_operating_inflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         observed_outflows = (total_operating_outflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_credits = (total_credits / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_debits = (total_debits / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        unresolved_credit_ratio = (unresolved_credit_amount / total_credits).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if total_credits > 0 else Decimal("0.0000")
+        unresolved_debit_ratio = (unresolved_debit_amount / total_debits).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if total_debits > 0 else Decimal("0.0000")
+        has_material_unresolved = (
+            unresolved_credit_ratio > Decimal("0.05")
+            or unresolved_debit_ratio > Decimal("0.05")
+            or len(unresolved_inflow_items) + len(unresolved_outflow_items) > 0
+        )
 
         # Check explicit verified turnover from GST if available (no *0.75 outflow assumption!)
         gst_records = db.query(GSTPeriod).filter(GSTPeriod.business_id_fk == case.business_id_fk).all()
@@ -326,8 +362,17 @@ class FinancialCapacityEngine:
             "bank_metrics": {
                 "operating_inflows_monthly": str(observed_inflows),
                 "operating_outflows_monthly": str(observed_outflows),
-                "avg_monthly_credits": str(observed_inflows),
-                "avg_monthly_debits": str(observed_outflows),
+                "avg_monthly_credits": str(avg_credits),
+                "avg_monthly_debits": str(avg_debits),
+                "transaction_categorization_summary": {
+                    "version": "1.0.0",
+                    "included_inflow_ids": inflow_ids,
+                    "included_outflow_ids": outflow_ids,
+                    "debt_service_ids": obligation_ids,
+                    "has_material_unresolved_activity": has_material_unresolved,
+                    "unresolved_credit_ratio": float(unresolved_credit_ratio),
+                    "unresolved_debit_ratio": float(unresolved_debit_ratio),
+                },
             }
         })
 

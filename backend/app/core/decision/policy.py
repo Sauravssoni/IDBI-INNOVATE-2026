@@ -58,7 +58,7 @@ class DecisionPolicy:
                 "post_loan_dscr": None,
             }
 
-        # 1.5 Basic DSCR Check
+        # 1.5 Basic DSCR Check from computed features
         bank_metrics = self.features.get("bank_metrics", {})
         dscr_str = bank_metrics.get("dscr")
         if dscr_str is not None:
@@ -70,12 +70,92 @@ class DecisionPolicy:
                         f"Debt Service Coverage Ratio (DSCR) of {dscr:.2f} is below minimum requirement of 1.15"
                     ],
                     "offers": [],
-                    "binding_limit": Decimal("0"),
+                    "binding_limit": Decimal("0.00"),
                     "post_loan_dscr": None,
+                    "current_dscr": str(dscr),
                 }
 
-        # 2. Capacity & Limits Calculation
-        applicable_limits = SafeLimitEngine.calculate_all_limits(self.features)
+        # 2. Canonical Capacity & Limits Calculation strictly via FinancialCapacityEngine
+        from app.domain.financial.engine import FinancialCapacityEngine
+        cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
+            self.features, self.requested_amount, self.requested_product
+        )
+
+        # Check for material unresolved credit/debit activity first
+        summary = bank_metrics.get("transaction_categorization_summary", {})
+        if summary.get("has_material_unresolved_activity", False):
+            unresolved_inflow_ids = summary.get("unresolved_inflow_ids", [])
+            unresolved_outflow_ids = summary.get("unresolved_outflow_ids", [])
+            unresolved_inflow_items = summary.get("unresolved_inflow_items", [])
+            unresolved_outflow_items = summary.get("unresolved_outflow_items", [])
+            reasons = []
+            if len(unresolved_inflow_ids) > 0 or summary.get("unresolved_credit_ratio", 0) > 0.05:
+                reasons.append(f"UNRESOLVED_CREDIT_TRANSACTIONS: {len(unresolved_inflow_ids)} unrecognised credit items require manual categorization or evidence.")
+            if len(unresolved_outflow_ids) > 0 or summary.get("unresolved_debit_ratio", 0) > 0.05:
+                reasons.append(f"UNRESOLVED_DEBIT_TRANSACTIONS: {len(unresolved_outflow_ids)} unrecognised debit items require manual categorization or evidence.")
+            if not reasons:
+                reasons.append("UNRESOLVED_CREDIT_TRANSACTIONS: Unrecognised bank transactions exceed materiality threshold.")
+            return {
+                "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
+                "reasons": reasons,
+                "offers": [],
+                "binding_limit": Decimal("0.00"),
+                "post_loan_dscr": None,
+                "current_dscr": None,
+                "missing_verification_state": "UNRESOLVED_CREDIT_TRANSACTIONS" if len(unresolved_inflow_ids) > 0 else "UNRESOLVED_DEBIT_TRANSACTIONS",
+                "evidence_checklist": [
+                    "Manual categorization of unrecognised bank transactions via Account Aggregator feed",
+                    "Audited financial notes or ledger corroboration for unresolved cash movements"
+                ],
+                "unresolved_transaction_details": {
+                    "unresolved_inflow_items": unresolved_inflow_items,
+                    "unresolved_outflow_items": unresolved_outflow_items,
+                    "unresolved_inflow_count": len(unresolved_inflow_ids),
+                    "unresolved_outflow_count": len(unresolved_outflow_ids),
+                }
+            }
+
+        # Check for insufficient cash flow data
+        if cap_summary.get("cash_flow_status") == "INSUFFICIENT_CASH_FLOW_DATA":
+            return {
+                "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
+                "reasons": [
+                    "INSUFFICIENT_CASH_FLOW_DATA: No recognised whitelisted operating cash flows in bank statements or GST returns."
+                ],
+                "offers": [],
+                "binding_limit": Decimal("0.00"),
+                "post_loan_dscr": None,
+                "current_dscr": None,
+                "missing_verification_state": "INSUFFICIENT_CASH_FLOW_DATA",
+                "evidence_checklist": [
+                    "Verified 12-month Bank Statement Account Feed with whitelisted operating categories",
+                    "Authentic GST Returns (GSTR-1 / GSTR-3B) Corroboration Feed"
+                ]
+            }
+
+        # Check for unverified existing debt obligations (strict check: never CONDITIONAL_OFFER for unknown obligations)
+        obligation_state = cap_summary.get("obligation_verification_state")
+        if obligation_state not in ["VERIFIED", "ASSESSABLE_ZERO", None]:
+            return {
+                "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
+                "reasons": [
+                    f"UNVERIFIED_EXISTING_OBLIGATIONS: Existing debt service obligations ({obligation_state}) are unverified."
+                ],
+                "offers": [],
+                "binding_limit": Decimal("0.00"),
+                "post_loan_dscr": None,
+                "current_dscr": None,
+                "missing_verification_state": "UNVERIFIED_EXISTING_OBLIGATIONS",
+                "evidence_checklist": [
+                    "Authentic Commercial CIBIL / Bureau Report verifying exact existing monthly EMI burden",
+                    "Verified loan sanction letters or bank statement repayment track for all debt service deductions"
+                ]
+            }
+
+        product_limits_dict = cap_summary.get("product_limits", {})
+        applicable_limits = [
+            l for l in product_limits_dict.values() if isinstance(l, dict) and l.get("applicability") == "APPLICABLE"
+        ]
 
         if not applicable_limits:
             return {
@@ -84,30 +164,33 @@ class DecisionPolicy:
                     "Financial capacity inadequate and no currently viable alternative"
                 ],
                 "offers": [],
-                "binding_limit": Decimal("0"),
+                "binding_limit": Decimal("0.00"),
                 "post_loan_dscr": None,
+                "current_dscr": cap_summary.get("current_dscr"),
             }
 
-        from app.domain.financial.engine import FinancialCapacityEngine
-        cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
-            self.features, self.requested_amount, self.requested_product
-        )
-
-        # The binding product limit is specifically derived for the requested product structure
-        product_limit = cap_summary.get("binding_product_limit", Decimal("0.00"))
+        product_limit_val = cap_summary.get("binding_product_limit")
+        product_limit = Decimal(str(product_limit_val)) if product_limit_val is not None else Decimal("0.00")
         if product_limit <= 0 and applicable_limits:
-            product_limit = max(l["calculated_limit"] for l in applicable_limits)
+            product_limit = max(Decimal(str(l.get("calculated_limit", "0.00"))) for l in applicable_limits)
 
-        # 3. Offer Generation
-        offers = self._generate_offers(product_limit, self.requested_product)
+        if product_limit <= 0:
+            return {
+                "decision": SystemRecommendation.DECLINE_RECOMMENDED.value,
+                "reasons": [
+                    f"Financial capacity inadequate under target DSCR criteria (Current DSCR: {cap_summary.get('current_dscr', 'N/A')})"
+                ],
+                "offers": [],
+                "binding_limit": Decimal("0.00"),
+                "post_loan_dscr": None,
+                "current_dscr": cap_summary.get("current_dscr"),
+            }
+
+        # 3. Canonical Structural Offer Generation
+        offers = self._generate_offers(cap_summary)
 
         # 4. Final Recommendation Precedence
-        if cap_summary.get("obligation_verification_state") == "UNKNOWN_OBLIGATIONS":
-            decision = SystemRecommendation.CONDITIONAL_OFFER.value
-            reasons = [
-                "Obligations unverified (CIBIL/bank debt service not verified); conditional on verified obligation confirmation."
-            ]
-        elif self.requested_amount > product_limit:
+        if self.requested_amount > product_limit:
             decision = SystemRecommendation.CONDITIONAL_OFFER.value
             reasons = [
                 f"Requested amount ({self.requested_amount}) exceeds supportable limit ({product_limit}). Offering alternatives."
@@ -117,7 +200,7 @@ class DecisionPolicy:
             reasons = ["Requested structure supportable."]
 
         requested_emi = self._calculate_emi(self.requested_amount, 36)
-        _, _, post_loan_dscr_req = self._derive_offer_dscrs(requested_emi)
+        _, _, post_loan_dscr_req = self._derive_offer_dscrs(cap_summary, requested_emi)
 
         return {
             "decision": decision,
@@ -126,6 +209,7 @@ class DecisionPolicy:
             "binding_limit": product_limit,
             "limit_details": applicable_limits,
             "post_loan_dscr": post_loan_dscr_req,
+            "current_dscr": cap_summary.get("current_dscr"),
         }
 
     def _calculate_emi(
@@ -136,19 +220,17 @@ class DecisionPolicy:
     ) -> Decimal:
         return SafeLimitEngine.calculate_emi_from_loan(principal, annual_rate, tenure_months)
 
-    def _derive_offer_dscrs(self, emi: Decimal) -> Tuple[str, str, str]:
-        from app.domain.financial.engine import FinancialCapacityEngine
-        cap = FinancialCapacityEngine.compute_capacity_from_features(
-            self.features, self.requested_amount, self.requested_product
-        )
-        if cap.get("obligation_verification_state") != "VERIFIED":
+    def _derive_offer_dscrs(self, cap: Dict[str, Any], emi: Decimal) -> Tuple[str, str, str]:
+        if cap.get("obligation_verification_state") not in ["VERIFIED", "ASSESSABLE_ZERO"]:
             return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
 
         current_dscr = cap.get("current_dscr")
         pre_str = str(current_dscr) if current_dscr is not None else "UNKNOWN"
 
-        noi = cap.get("operating_cash_available_for_debt_service_monthly", Decimal("0.00"))
-        existing_ds = cap.get("verified_existing_debt_service_monthly", Decimal("0.00"))
+        noi_val = cap.get("operating_cash_available_for_debt_service_monthly", Decimal("0.00"))
+        noi = Decimal(str(noi_val)) if noi_val is not None else Decimal("0.00")
+        existing_ds_val = cap.get("verified_existing_debt_service_monthly", Decimal("0.00"))
+        existing_ds = Decimal(str(existing_ds_val)) if existing_ds_val is not None else Decimal("0.00")
         total_ds = existing_ds + emi
 
         if total_ds > 0 and noi > 0:
@@ -163,38 +245,57 @@ class DecisionPolicy:
         return (pre_str, stressed_str, post_str)
 
     def _generate_offers(
-        self, binding_limit: Decimal, product_type: str
+        self, cap_summary: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         offers = []
+        product_limits = cap_summary.get("product_limits", {})
         common_evidence_refs = [
             "Bank Statement Account Feed (Observed transaction history)",
             "GST Returns Corroboration Feed",
             "Credit Twin Cash-Flow Verification Engine",
         ]
-        rate_label = "Sandbox illustrative rate assumption: 13.5% p.a."
+        max_borrowing_val = cap_summary.get("max_borrowing_limit", Decimal("0.00"))
+        max_borrowing_dec = Decimal(str(max_borrowing_val)) if max_borrowing_val is not None else Decimal("0.00")
 
-        # CONSERVATIVE
-        conservative_amount = (binding_limit * Decimal("0.6")).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        conservative_emi = self._calculate_emi(conservative_amount, 12)
-        base_dscr_c, stressed_dscr_c, post_loan_dscr_c = self._derive_offer_dscrs(conservative_emi)
+        # 1. WORKING_CAPITAL_LINE (mapped to CONSERVATIVE tier for structural compatibility)
+        wc_info = product_limits.get("WORKING_CAPITAL_LINE", {})
+        wc_limit = Decimal(str(wc_info.get("calculated_limit", "0.00"))) if isinstance(wc_info, dict) else Decimal("0.00")
+        if wc_limit <= 0:
+            wc_limit = (max_borrowing_dec * Decimal("0.6")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
+        wc_tenure = wc_info.get("tenure_months", 12) if isinstance(wc_info, dict) else 12
+        wc_rate = wc_info.get("interest_rate_pct", 12.0) if isinstance(wc_info, dict) else 12.0
+        wc_emi = self._calculate_emi(wc_limit, wc_tenure, Decimal(str(wc_rate)) / Decimal("100"))
+        base_dscr_wc, stressed_dscr_wc, post_loan_dscr_wc = self._derive_offer_dscrs(cap_summary, wc_emi)
+
         offers.append(
             {
                 "tier": "CONSERVATIVE",
                 "currency": "INR",
-                "amount": str(conservative_amount),
-                "product_type": product_type,
-                "tenure_months": 12,
-                "repayment_frequency": "MONTHLY",
-                "estimated_repayment": str(conservative_emi),
-                "base_dscr": base_dscr_c,
-                "stressed_dscr": stressed_dscr_c,
-                "post_loan_dscr": post_loan_dscr_c,
+                "amount": str(wc_limit),
+                "product_type": "WORKING_CAPITAL_LINE",
+                "tenure_months": wc_tenure,
+                "interest_rate_pct": float(wc_rate),
+                "repayment_frequency": "MONTHLY_INTEREST_ONLY",
+                "estimated_repayment": str(wc_emi),
+                "base_dscr": base_dscr_wc,
+                "stressed_dscr": stressed_dscr_wc,
+                "post_loan_dscr": post_loan_dscr_wc,
+                "collateral_structure": "First charge on all current assets (Stocks & Book Debts)",
+                "covenants": [
+                    "Monthly Stock and Debtors Statement submission within 15 days",
+                    "Drawing power inspection quarterly",
+                    "Monthly GST returns (GSTR-1 & GSTR-3B) sync",
+                ],
+                "evidence_checklist": [
+                    "12-month Bank Statement Account Feed",
+                    "GSTR-1 & GSTR-3B filings for past 12 months",
+                    "Latest Stock & Book Debt Aging Report",
+                ],
                 "liquidity_impact": "LOW",
-                "applicable_capacity_ceilings": [str(binding_limit)],
-                "binding_ceiling": str(binding_limit),
-                "conditions": ["Quarterly GST submission", rate_label],
+                "applicable_capacity_ceilings": [str(wc_limit)],
+                "binding_ceiling": str(wc_limit),
+                "conditions": ["Quarterly GST submission", f"Product rate: {wc_rate}% p.a."],
                 "evidence_references": common_evidence_refs,
                 "policy_version": POLICY_VERSION,
                 "calculation_version": CALCULATION_VERSION,
@@ -202,31 +303,48 @@ class DecisionPolicy:
             }
         )
 
-        # BALANCED
-        balanced_amount = (binding_limit * Decimal("0.8")).quantize(
-            Decimal("0.01"), rounding=ROUND_HALF_UP
-        )
-        balanced_emi = self._calculate_emi(balanced_amount, 24)
-        base_dscr_b, stressed_dscr_b, post_loan_dscr_b = self._derive_offer_dscrs(balanced_emi)
+        # 2. TERM_LOAN (mapped to BALANCED tier for structural compatibility)
+        tl_info = product_limits.get("TERM_LOAN", {})
+        tl_limit = Decimal(str(tl_info.get("calculated_limit", "0.00"))) if isinstance(tl_info, dict) else Decimal("0.00")
+        if tl_limit <= 0:
+            tl_limit = (max_borrowing_dec * Decimal("0.8")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        tl_tenure = tl_info.get("tenure_months", 36) if isinstance(tl_info, dict) else 36
+        tl_rate = tl_info.get("interest_rate_pct", 13.5) if isinstance(tl_info, dict) else 13.5
+        tl_emi = self._calculate_emi(tl_limit, tl_tenure, Decimal(str(tl_rate)) / Decimal("100"))
+        base_dscr_tl, stressed_dscr_tl, post_loan_dscr_tl = self._derive_offer_dscrs(cap_summary, tl_emi)
+
         offers.append(
             {
                 "tier": "BALANCED",
                 "currency": "INR",
-                "amount": str(balanced_amount),
-                "product_type": product_type,
-                "tenure_months": 24,
+                "amount": str(tl_limit),
+                "product_type": "TERM_LOAN",
+                "tenure_months": tl_tenure,
+                "interest_rate_pct": float(tl_rate),
                 "repayment_frequency": "MONTHLY",
-                "estimated_repayment": str(balanced_emi),
-                "base_dscr": base_dscr_b,
-                "stressed_dscr": stressed_dscr_b,
-                "post_loan_dscr": post_loan_dscr_b,
+                "estimated_repayment": str(tl_emi),
+                "base_dscr": base_dscr_tl,
+                "stressed_dscr": stressed_dscr_tl,
+                "post_loan_dscr": post_loan_dscr_tl,
+                "collateral_structure": "Hypothecation of Plant & Machinery / CGTMSE Guarantee Coverage",
+                "covenants": [
+                    "Quarterly DSCR maintenance >= 1.25",
+                    "Monthly Account Aggregator sync",
+                    "No additional long-term indebtedness without prior bank consent",
+                ],
+                "evidence_checklist": [
+                    "12-month Bank Statement Account Feed",
+                    "Audited Financial Statements (3 years)",
+                    "Verified Commercial CIBIL Report",
+                ],
                 "liquidity_impact": "MEDIUM",
-                "applicable_capacity_ceilings": [str(binding_limit)],
-                "binding_ceiling": str(binding_limit),
+                "applicable_capacity_ceilings": [str(tl_limit)],
+                "binding_ceiling": str(tl_limit),
                 "conditions": [
                     "Monthly AA sync",
                     "Quarterly GST submission",
-                    rate_label,
+                    f"Product rate: {tl_rate}% p.a.",
                 ],
                 "evidence_references": common_evidence_refs,
                 "policy_version": POLICY_VERSION,
@@ -235,30 +353,49 @@ class DecisionPolicy:
             }
         )
 
-        # GROWTH
-        growth_amount = binding_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        growth_emi = self._calculate_emi(growth_amount, 36)
-        base_dscr_g, stressed_dscr_g, post_loan_dscr_g = self._derive_offer_dscrs(growth_emi)
+        # 3. INVOICE_DISCOUNTING / RECEIVABLES_FINANCE (mapped to GROWTH tier for structural compatibility)
+        rf_info = product_limits.get("RECEIVABLES_FINANCE", {})
+        rf_limit = Decimal(str(rf_info.get("calculated_limit", "0.00"))) if isinstance(rf_info, dict) else Decimal("0.00")
+        if rf_limit <= 0:
+            rf_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        rf_tenure = rf_info.get("tenure_months", 12) if isinstance(rf_info, dict) else 12
+        rf_rate = rf_info.get("interest_rate_pct", 11.0) if isinstance(rf_info, dict) else 11.0
+        rf_emi = self._calculate_emi(rf_limit, rf_tenure, Decimal(str(rf_rate)) / Decimal("100"))
+        base_dscr_rf, stressed_dscr_rf, post_loan_dscr_rf = self._derive_offer_dscrs(cap_summary, rf_emi)
+
         offers.append(
             {
                 "tier": "GROWTH",
                 "currency": "INR",
-                "amount": str(growth_amount),
-                "product_type": product_type,
-                "tenure_months": 36,
-                "repayment_frequency": "MONTHLY",
-                "estimated_repayment": str(growth_emi),
-                "base_dscr": base_dscr_g,
-                "stressed_dscr": stressed_dscr_g,
-                "post_loan_dscr": post_loan_dscr_g,
+                "amount": str(rf_limit),
+                "product_type": "INVOICE_DISCOUNTING",
+                "tenure_months": rf_tenure,
+                "interest_rate_pct": float(rf_rate),
+                "repayment_frequency": "ON_INVOICE_MATURITY",
+                "estimated_repayment": str(rf_emi),
+                "base_dscr": base_dscr_rf,
+                "stressed_dscr": stressed_dscr_rf,
+                "post_loan_dscr": post_loan_dscr_rf,
+                "collateral_structure": "Assignment of receivables / Tri-party agreement with corporate anchor buyer",
+                "covenants": [
+                    "Invoices must be verified on e-Invoicing/GST portal",
+                    "Max credit period 90 days",
+                    "Direct escrow routing of invoice settlement proceeds",
+                ],
+                "evidence_checklist": [
+                    "e-Invoice / GST Portal API integration feed",
+                    "Anchor corporate buyer master agreement & purchase orders",
+                    "12-month Bank Statement showing past invoice realization track",
+                ],
                 "liquidity_impact": "HIGH",
-                "applicable_capacity_ceilings": [str(binding_limit)],
-                "binding_ceiling": str(binding_limit),
+                "applicable_capacity_ceilings": [str(rf_limit)],
+                "binding_ceiling": str(rf_limit),
                 "conditions": [
                     "Monthly AA sync",
                     "Monthly GST submission",
                     "Escrow routing required",
-                    rate_label,
+                    f"Product rate: {rf_rate}% p.a.",
                 ],
                 "evidence_references": common_evidence_refs,
                 "policy_version": POLICY_VERSION,

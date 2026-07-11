@@ -12,6 +12,8 @@ def test_financial_capacity_reference_term_loan():
     features = {
         "gst_metrics": {"avg_monthly_revenue": 3333333.33},  # ~4.0 Cr / yr
         "bank_metrics": {
+            "operating_inflows_monthly": 3500000.0,
+            "operating_outflows_monthly": 2833333.33,
             "avg_monthly_credits": 3500000.0,  # 4.2 Cr / yr -> verified annual revenue = 4.0 Cr
             "avg_monthly_debits": 2833333.33,
             "existing_monthly_emi": 100000.0,  # 12.0 Lakh / yr existing debt service
@@ -60,6 +62,8 @@ def test_financial_capacity_reference_working_capital():
     features = {
         "gst_metrics": {"avg_monthly_revenue": 5000000.0},  # 6.0 Cr / yr
         "bank_metrics": {
+            "operating_inflows_monthly": 5500000.0,
+            "operating_outflows_monthly": 4200000.0,
             "avg_monthly_credits": 5500000.0,
             "avg_monthly_debits": 4200000.0,
             "existing_monthly_emi": 50000.0,  # 6.0 Lakh / yr
@@ -89,6 +93,8 @@ def test_financial_capacity_monotonicity_under_stress():
     base_features = {
         "gst_metrics": {"avg_monthly_revenue": 4000000.0},
         "bank_metrics": {
+            "operating_inflows_monthly": 4000000.0,
+            "operating_outflows_monthly": 3000000.0,
             "avg_monthly_credits": 4000000.0,
             "avg_monthly_debits": 3000000.0,
             "existing_monthly_emi": 80000.0,
@@ -104,6 +110,8 @@ def test_financial_capacity_monotonicity_under_stress():
     stressed_features = {
         "gst_metrics": {"avg_monthly_revenue": 3400000.0},
         "bank_metrics": {
+            "operating_inflows_monthly": 3400000.0,
+            "operating_outflows_monthly": 3000000.0,
             "avg_monthly_credits": 3400000.0,
             "avg_monthly_debits": 3000000.0,
             "existing_monthly_emi": 80000.0,
