@@ -258,3 +258,110 @@ def compute_bankability_path(
         "hindi_bilingual_presentation": hindi_presentation,
         "engine_version": "2.0-BANKABILITY-CANONICAL"
     }
+
+
+def simulate_bankability_variable(
+    features: Dict[str, Any],
+    scores: Dict[str, Any],
+    requested_amount: Decimal,
+    requested_product: str,
+    overrides: Dict[str, Any]
+) -> Dict[str, Any]:
+    """
+    Bankability Simulation Engine.
+    Replaces static/template uplift values with custom variable simulations across any feature/financial parameter.
+    Computes exact before vs after scores, limits, DSCR, and decision outcomes using the canonical engines.
+    """
+    base_policy = DecisionPolicy(features, scores, requested_amount, requested_product)
+    base_decision = base_policy.evaluate()
+    try:
+        base_cap = FinancialCapacityEngine.compute_capacity_from_features(features, requested_amount, requested_product)
+    except Exception:
+        base_cap = {"supportable_limit_inr": str(base_decision.get("binding_limit", 0)), "verified_dscr": str(features.get("bank_metrics", {}).get("dscr", "1.0"))}
+
+    sim_features = copy.deepcopy(features)
+    bank_sim = sim_features.setdefault("bank_metrics", {})
+    recon_sim = sim_features.setdefault("reconciliation_metrics", {})
+    wc_sim = sim_features.setdefault("working_capital_metrics", {})
+    gst_sim = sim_features.setdefault("gst_metrics", {})
+
+    if "dscr" in overrides and overrides["dscr"] is not None:
+        bank_sim["dscr"] = str(overrides["dscr"])
+    if "operating_inflows_monthly" in overrides and overrides["operating_inflows_monthly"] is not None:
+        bank_sim["operating_inflows_monthly"] = str(overrides["operating_inflows_monthly"])
+    if "operating_outflows_monthly" in overrides and overrides["operating_outflows_monthly"] is not None:
+        bank_sim["operating_outflows_monthly"] = str(overrides["operating_outflows_monthly"])
+    if "gst_bank_ratio" in overrides and overrides["gst_bank_ratio"] is not None:
+        recon_sim["gst_bank_ratio"] = str(overrides["gst_bank_ratio"])
+    if "operating_cycle_days" in overrides and overrides["operating_cycle_days"] is not None:
+        wc_sim["operating_cycle_days"] = str(overrides["operating_cycle_days"])
+        sim_features["operating_cycle_days"] = str(overrides["operating_cycle_days"])
+    if "verified_existing_debt_service_monthly" in overrides and overrides["verified_existing_debt_service_monthly"] is not None:
+        sim_features["verified_existing_debt_service_monthly"] = str(overrides["verified_existing_debt_service_monthly"])
+    if "consent_status" in overrides and overrides["consent_status"] is not None:
+        sim_features["consent_status"] = str(overrides["consent_status"])
+    if "obligation_verification_state" in overrides and overrides["obligation_verification_state"] is not None:
+        sim_features["obligation_verification_state"] = str(overrides["obligation_verification_state"])
+    if "months_filed" in overrides and overrides["months_filed"] is not None:
+        bank_sim["months_filed"] = int(overrides["months_filed"])
+        gst_sim["months_filed"] = int(overrides["months_filed"])
+
+    sim_scorer = ScoringEngine(sim_features)
+    sim_scores = sim_scorer.compute_all_scores()
+    sim_policy = DecisionPolicy(sim_features, sim_scores, requested_amount, requested_product)
+    sim_decision = sim_policy.evaluate()
+    try:
+        sim_cap = FinancialCapacityEngine.compute_capacity_from_features(sim_features, requested_amount, requested_product)
+    except Exception:
+        sim_cap = {"supportable_limit_inr": str(sim_decision.get("binding_limit", 0)), "verified_dscr": str(bank_sim.get("dscr", "1.0"))}
+
+    before_limit = float(Decimal(str(base_decision.get("binding_limit", 0))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+    after_limit = float(Decimal(str(sim_decision.get("binding_limit", 0))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+    before_health = float(Decimal(str(scores.get("financial_health_score", 0))))
+    after_health = float(Decimal(str(sim_scores.get("financial_health_score", 0))))
+
+    before_fhi = float(Decimal(str(scores.get("financial_health_index", 0))))
+    after_fhi = float(Decimal(str(sim_scores.get("financial_health_index", 0))))
+
+    before_credit = int(scores.get("vyapar_credit_health_score", 300))
+    after_credit = int(sim_scores.get("vyapar_credit_health_score", 300))
+
+    try:
+        before_dscr = float(Decimal(str(base_cap.get("verified_dscr", features.get("bank_metrics", {}).get("dscr", "1.0")))))
+    except Exception:
+        before_dscr = 1.0
+    try:
+        after_dscr = float(Decimal(str(sim_cap.get("verified_dscr", bank_sim.get("dscr", "1.0")))))
+    except Exception:
+        after_dscr = 1.0
+
+    return {
+        "before_simulation": {
+            "decision": base_decision.get("decision", "DECLINE"),
+            "binding_limit_inr": before_limit,
+            "financial_health_score": before_health,
+            "financial_health_index": before_fhi,
+            "vyapar_credit_health_score": before_credit,
+            "verified_dscr": before_dscr,
+            "offers": base_decision.get("offers", [])
+        },
+        "after_simulation": {
+            "decision": sim_decision.get("decision", "DECLINE"),
+            "binding_limit_inr": after_limit,
+            "financial_health_score": after_health,
+            "financial_health_index": after_fhi,
+            "vyapar_credit_health_score": after_credit,
+            "verified_dscr": after_dscr,
+            "offers": sim_decision.get("offers", [])
+        },
+        "uplift_summary": {
+            "limit_uplift_inr": max(0.0, after_limit - before_limit),
+            "health_score_uplift": after_health - before_health,
+            "fhi_uplift": after_fhi - before_fhi,
+            "credit_score_uplift": after_credit - before_credit,
+            "dscr_uplift": after_dscr - before_dscr
+        },
+        "simulated_overrides": overrides,
+        "engine_version": "2.0-BANKABILITY-SIMULATION"
+    }

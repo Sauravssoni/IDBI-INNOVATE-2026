@@ -26,6 +26,14 @@ def test_fhi_and_credit_score_perfect_verified_case():
     assert breakdown["working_capital_efficiency"]["score"] == 20.0
     assert breakdown["existing_debt_service_stress"]["score"] == 20.0
 
+    # Verify canonical 6 pillars (20 + 25 + 15 + 20 + 10 + 10 = 100)
+    assert breakdown["liquidity"]["score"] == 20.0
+    assert breakdown["cash_flow_capacity"]["score"] == 25.0
+    assert breakdown["revenue_growth"]["score"] == 15.0
+    assert breakdown["repayment_burden"]["score"] == 20.0
+    assert breakdown["compliance_governance"]["score"] == 10.0
+    assert breakdown["concentration_risk"]["score"] == 10.0
+
 
 def test_fhi_and_credit_score_missing_data_abstention():
     features = {
@@ -50,6 +58,11 @@ def test_fhi_and_credit_score_missing_data_abstention():
     assert breakdown["existing_debt_service_stress"]["score"] == 0.0
     assert breakdown["existing_debt_service_stress"]["status"] == "MISSING_DATA"
 
+    # Verify canonical 6 pillars abstention
+    for pillar in ["liquidity", "cash_flow_capacity", "revenue_growth", "repayment_burden", "compliance_governance", "concentration_risk"]:
+        assert breakdown[pillar]["score"] == 0.0
+        assert breakdown[pillar]["status"] == "MISSING_DATA"
+
 
 def test_fhi_and_credit_score_intermediate_values():
     features = {
@@ -62,11 +75,14 @@ def test_fhi_and_credit_score_intermediate_values():
     engine = ScoringEngine(features)
     fhi_data = engine.compute_fhi_and_credit_score()
 
-    # DSCR 1.30 -> 21.0
-    # Ratio 0.92 -> 20.0
-    # Cycle 65 -> 12.0
-    # Debt stress 25000/100000 = 0.25 -> 12.0
-    # Total FHI = 65.0
+    # Canonical 6 pillars:
+    # Liquidity (20%): DSCR 1.30 -> 12.0
+    # Cash-flow capacity (25%): DSCR 1.30 -> 15.0
+    # Revenue/growth (15%): verified bank + verified dscr -> 12.0
+    # Repayment burden (20%): 25000/100000 = 0.25 -> 12.0
+    # Compliance (10%): ratio 0.92 -> 8.0
+    # Concentration (10%): cycle 65 -> 6.0
+    # Total FHI = 12 + 15 + 12 + 12 + 8 + 6 = 65.0
     # Credit Score = 300 + 6 * 65 = 690
     assert fhi_data["financial_health_index"] == 65.0
     assert fhi_data["vyapar_credit_health_score"] == 690
@@ -76,3 +92,11 @@ def test_fhi_and_credit_score_intermediate_values():
     assert breakdown["gst_banking_variance"]["score"] == 20.0
     assert breakdown["working_capital_efficiency"]["score"] == 12.0
     assert breakdown["existing_debt_service_stress"]["score"] == 12.0
+
+    # Check canonical 6 pillars intermediate
+    assert breakdown["liquidity"]["score"] == 12.0
+    assert breakdown["cash_flow_capacity"]["score"] == 15.0
+    assert breakdown["revenue_growth"]["score"] == 12.0
+    assert breakdown["repayment_burden"]["score"] == 12.0
+    assert breakdown["compliance_governance"]["score"] == 8.0
+    assert breakdown["concentration_risk"]["score"] == 6.0
