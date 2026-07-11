@@ -216,7 +216,7 @@ def test_decision_package_cd_fields(setup_data):
     assert 0 <= data["vyapar_credit_health_score"] <= 900
     assert "fhi_breakdown" in data
     assert isinstance(data["fhi_breakdown"], dict)
-    for pillar in ["liquidity", "cash_flow_capacity", "revenue_growth", "repayment_burden", "compliance_governance", "concentration_risk"]:
+    for pillar in ["operating_resilience", "cash_flow_health", "margin_stability", "working_capital_velocity", "gst_compliance", "obligation_discipline"]:
         assert pillar in data["fhi_breakdown"]
     assert data.get("scoring_version") == "2.0-CANONICAL"
     assert "calculation_evidence_ids" in data
