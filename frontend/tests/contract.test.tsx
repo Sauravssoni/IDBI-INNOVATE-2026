@@ -258,7 +258,6 @@ describe('Frontend Contract Tests', () => {
     render(<CaseEvaluationPage />);
 
     await waitFor(() => {
-      expect(screen.queryByText(/total_score/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Band/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/\/ 900/)).not.toBeInTheDocument();
       expect(screen.queryByText(/out of 900/)).not.toBeInTheDocument();
