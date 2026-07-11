@@ -190,11 +190,11 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-500">Multi-Rail Coverage Score:</span>{" "}
-                <strong className="text-black">{data.evidence_passport.rail_coverage || 0}%</strong>
+                <strong className="text-black">{data.evidence_passport.multi_rail_coverage || 0}%</strong>
               </div>
               <div>
                 <span className="text-gray-500">Freshness Decay Score:</span>{" "}
-                <strong className="text-black">{data.evidence_passport.freshness_depth || 0}%</strong>
+                <strong className="text-black">{data.evidence_passport.composite_freshness_index || 0}%</strong>
               </div>
             </div>
           </div>
