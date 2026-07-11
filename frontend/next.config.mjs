@@ -3,7 +3,7 @@ import process from 'node:process';
 const securityHeaders = [
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http://localhost:8000 http://127.0.0.1:8000;"
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self';"
   },
   {
     key: 'X-Frame-Options',
@@ -27,6 +27,16 @@ const securityHeaders = [
 const nextConfig = {
   turbopack: {
     root: '.'
+  },
+
+
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: process.env.API_URL ? `${process.env.API_URL}/api/:path*` : 'http://backend:8000/api/:path*',
+      },
+    ];
   },
 
   async headers() {
