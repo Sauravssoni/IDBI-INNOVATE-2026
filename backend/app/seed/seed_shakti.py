@@ -33,7 +33,7 @@ def seed_shakti(db_session=None):
         from app.db.session import SessionLocal
     else:
         db = db_session
-    if os.environ.get("APP_ENV") == "production":
+    if os.environ.get("APP_ENV") == "production" and os.environ.get("DEMO_ACCESS_ENABLED", "false").lower() != "true":
         print("Demo seeding is refused in production.")
         sys.exit(1)
 
