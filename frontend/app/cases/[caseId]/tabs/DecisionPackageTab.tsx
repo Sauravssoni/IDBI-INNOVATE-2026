@@ -13,6 +13,7 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [verificationResult, setVerificationResult] = useState<AuditVerification | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   // Idempotency replay state
   const [simulatingReplay, setSimulatingReplay] = useState(false);
@@ -117,14 +118,18 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
 
   const handleVerifyAudit = async () => {
     setVerifying(true);
+    setAuditError(null);
     try {
       const res = await apiFetch<AuditVerification>(`/api/cases/${caseId}/verify-audit`, {
         method: "POST"
       });
       if (res.status === 200 && res.data) {
         setVerificationResult(res.data);
+      } else {
+        setAuditError(res.error || "Verification failed");
       }
-    } catch (err) {
+    } catch (err: any) {
+      setAuditError(err.message || "An unexpected error occurred");
       console.error(err);
     } finally {
       setVerifying(false);
@@ -189,11 +194,11 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-500">Multi-Rail Coverage Score:</span>{" "}
-                <strong className="text-black">{data.evidence_passport.multi_rail_coverage || 0}%</strong>
+                <strong className="text-black">{Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length / 5 * 100}%</strong>
               </div>
               <div>
                 <span className="text-gray-500">Freshness Decay Score:</span>{" "}
-                <strong className="text-black">{data.evidence_passport.composite_freshness_index || 0}%</strong>
+                <strong className="text-black">{data.evidence_passport.freshness_depth.composite_freshness_index}%</strong>
               </div>
             </div>
           </div>
@@ -209,7 +214,7 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
             </div>
             <div>
               <span className="text-gray-500">Financial Health Index (FHI):</span>{" "}
-              <strong className="text-black">{data.financial_health_index !== undefined && data.financial_health_index !== null ? Number(data.financial_health_index).toFixed(2) : "N/A"} / 100</strong>
+              <strong className="text-black">{data.financial_health_index !== undefined && data.financial_health_index !== null ? typeof data.financial_health_index === 'number' ? data.financial_health_index.toFixed(2) : data.financial_health_index : "N/A"} / 100</strong>
             </div>
             <div>
               <span className="text-gray-500">Scoring Version:</span>{" "}
@@ -302,7 +307,7 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               <div className="text-right">
                 <p className="text-sm text-gray-400 mb-1">Financial Health Index (FHI)</p>
                 <p className="text-2xl font-bold text-white">
-                  {data.financial_health_index !== undefined && data.financial_health_index !== null ? Number(data.financial_health_index).toFixed(2) : "N/A"}
+                  {data.financial_health_index !== undefined && data.financial_health_index !== null ? typeof data.financial_health_index === 'number' ? data.financial_health_index.toFixed(2) : data.financial_health_index : "N/A"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Range: 0 - 100</p>
               </div>
@@ -423,26 +428,26 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Multi-Rail Coverage</p>
                 <p className="text-2xl font-bold text-teal-400 font-mono">
-                  {data.evidence_passport.multi_rail_coverage !== undefined && data.evidence_passport.multi_rail_coverage !== null ? `${data.evidence_passport.multi_rail_coverage}%` : "NOT AVAILABLE"}
+                  {`${Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length / 5 * 100}%`}
                 </p>
               </div>
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Composite Freshness Index</p>
                 <p className="text-2xl font-bold text-white font-mono">
-                  {data.evidence_passport.composite_freshness_index !== undefined && data.evidence_passport.composite_freshness_index !== null ? `${data.evidence_passport.composite_freshness_index}%` : "NOT AVAILABLE"}
+                  {`${data.evidence_passport.freshness_depth.composite_freshness_index}%`}
                 </p>
               </div>
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Obligation Verification</p>
                 <p className="text-lg font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
                   <CheckCircle2 className="w-4 h-4" />
-                  {data.evidence_passport.obligation_verification === true ? "VERIFIED" : "NOT VERIFIED"}
+                  {data.evidence_passport.obligation_verification.state.startsWith("VERIFIED") ? "VERIFIED" : "NOT VERIFIED"}
                 </p>
               </div>
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Contradiction Analysis</p>
-                <p className={`text-lg font-bold font-mono ${data.evidence_passport.contradiction_severity === 'HIGH' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {data.evidence_passport.contradiction_severity || "UNKNOWN"}
+                <p className={`text-lg font-bold font-mono ${data.evidence_passport.contradiction_analysis.severity === 'HIGH' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {data.evidence_passport.contradiction_analysis.severity || "UNKNOWN"}
                 </p>
               </div>
             </div>
@@ -502,6 +507,11 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
                   <span>Version: {verificationResult.verification_version} | Verified At: {new Date(verificationResult.verified_at).toLocaleString()}</span>
                 </div>
               </div>
+            </div>
+          ) : auditError ? (
+            <div className="bg-red-500/10 rounded-xl p-4 border border-red-500/20 text-sm text-red-400 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <span>{auditError}</span>
             </div>
           ) : (
             <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-sm text-gray-400 text-center">
