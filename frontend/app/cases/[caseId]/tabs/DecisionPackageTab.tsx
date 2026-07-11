@@ -4,12 +4,15 @@ import {
   FileText, Activity, ShieldCheck, AlertTriangle, Play, CheckCircle2, Printer, Briefcase, Award, Database, Lock
 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import type { DecisionPackageResponse, StressResult, AuditVerification } from "@/lib/types";
 
 export default function DecisionPackageTab({ caseId }: { caseId: string }) {
-  const [data, setData] = useState<any>(null);
-  const [stressData, setStressData] = useState<any>(null);
+  const [data, setData] = useState<DecisionPackageResponse | null>(null);
+  const [stressData, setStressData] = useState<StressResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [verificationResult, setVerificationResult] = useState<AuditVerification | null>(null);
+  const [verifying, setVerifying] = useState(false);
 
   // Idempotency replay state
   const [simulatingReplay, setSimulatingReplay] = useState(false);
@@ -112,7 +115,23 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
     );
   }
 
-  const singleFactors = stressData?.single_factor_results || {};
+  const handleVerifyAudit = async () => {
+    setVerifying(true);
+    try {
+      const res = await apiFetch<AuditVerification>(`/api/cases/${caseId}/verify-audit`, {
+        method: "POST"
+      });
+      if (res.status === 200 && res.data) {
+        setVerificationResult(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const singleFactors = (stressData as any)?.single_factor_results || {};
 
   return (
     <div className="space-y-6">
@@ -325,38 +344,41 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           </div>
           {data.offers && data.offers.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {data.offers.map((offer: any, idx: number) => {
-                const isApplicable = Number(offer.limit) > 0;
+              {data.offers.map((offer, idx: number) => {
+                if (!offer.amount && !offer.product_type) {
+                  return <div key={idx} className="bg-red-500/10 text-red-400 p-2 text-xs">Invalid Offer Contract</div>;
+                }
+                const isApplicable = Number(offer.amount) > 0;
                 return (
                   <div key={idx} className={`rounded-xl p-5 border flex flex-col justify-between ${isApplicable ? "bg-black/30 border-blue-500/30" : "bg-black/10 border-white/5 opacity-60"}`}>
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-bold text-blue-400 tracking-wider font-mono">
-                          {offer.product?.replace(/_/g, " ") || "PRODUCT"}
+                          {offer.product_type?.replace(/_/g, " ") || "PRODUCT"}
                         </span>
                         <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${isApplicable ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-amber-500/20 text-amber-400 border border-amber-500/30"}`}>
                           {isApplicable ? "CAPACITY VIABLE" : "CAPACITY EXCEEDED"}
                         </span>
                       </div>
                       <p className="text-2xl font-bold text-white mb-2 font-mono">
-                        {isApplicable ? formatCurrency(offer.limit) : "₹0 (Not Applicable)"}
+                        {isApplicable ? formatCurrency(offer.amount) : "Not Applicable"}
                       </p>
                       {isApplicable ? (
                         <div className="space-y-2 text-xs text-gray-300 mb-4 font-mono">
                           <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-gray-400">Rate / Tenure:</span>
-                            <span>{offer.interest_rate}% p.a. / {offer.tenure_months}M</span>
+                            <span>{offer.interest_rate_pct !== undefined ? offer.interest_rate_pct : "UNKNOWN"}% p.a. / {offer.tenure_months !== undefined ? offer.tenure_months : "UNKNOWN"}M</span>
                           </div>
                           <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-gray-400">Repayment:</span>
-                            <span className="text-right truncate max-w-[140px]" title={offer.estimated_repayment}>{offer.estimated_repayment}</span>
+                            <span className="text-right truncate max-w-[140px]" title={offer.estimated_repayment?.toString() || "UNKNOWN"}>{offer.estimated_repayment !== undefined ? offer.estimated_repayment : "UNKNOWN"}</span>
                           </div>
                           <div className="flex justify-between border-b border-white/5 pb-1">
                             <span className="text-gray-400">Post-Loan DSCR:</span>
-                            <span className="font-semibold text-emerald-400">{offer.post_loan_dscr ? Number(offer.post_loan_dscr).toFixed(2) : "N/A"}</span>
+                            <span className="font-semibold text-emerald-400">{offer.post_loan_dscr !== undefined && offer.post_loan_dscr !== null ? Number(offer.post_loan_dscr).toFixed(2) : "UNKNOWN"}</span>
                           </div>
                           <div className="pt-1 text-[11px] text-gray-400 italic">
-                            {offer.collateral_structure}
+                            {offer.collateral_structure || "UNKNOWN"}
                           </div>
                         </div>
                       ) : (
@@ -386,103 +408,107 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           )}
         </div>
 
-        {/* Evidence Sufficiency Passport (`EVD-001`) Interactive Card */}
+        {/* Evidence Sufficiency Passport Interactive Card */}
         {data.evidence_passport && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Database className="w-6 h-6 text-teal-400" />
-                <h2 className="text-xl font-bold text-white">Evidence Sufficiency Passport (`EVD-001`)</h2>
+                <h2 className="text-xl font-bold text-white">Evidence Sufficiency Passport</h2>
               </div>
               <span className="bg-teal-500/20 text-teal-300 text-xs px-2 py-1 rounded border border-teal-500/30 font-mono">
-                {data.evidence_passport.assessment_certainty || "DEFINITIVE_DATA_BACKED"}
+                {data.assessment_certainty || "UNKNOWN"}
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Multi-Rail Coverage</p>
                 <p className="text-2xl font-bold text-teal-400 font-mono">
-                  {typeof data.evidence_passport.rail_coverage === 'object' 
-                    ? `${Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length}/${Object.keys(data.evidence_passport.rail_coverage).length} Rails`
-                    : `${data.evidence_passport.rail_coverage || 0}%`}
+                  {data.evidence_passport.multi_rail_coverage !== undefined && data.evidence_passport.multi_rail_coverage !== null ? `${data.evidence_passport.multi_rail_coverage}%` : "NOT AVAILABLE"}
                 </p>
-                <p className="text-[10px] text-gray-500 mt-1">GST, Bank, Invoice, Emp</p>
               </div>
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Composite Freshness Index</p>
                 <p className="text-2xl font-bold text-white font-mono">
-                  {data.evidence_passport.freshness_depth?.composite_freshness_index ?? 0}%
-                </p>
-                <p className="text-[10px] text-gray-500 mt-1">
-                  Depth: {data.evidence_passport.freshness_depth?.months_of_history || 12} Months
+                  {data.evidence_passport.composite_freshness_index !== undefined && data.evidence_passport.composite_freshness_index !== null ? `${data.evidence_passport.composite_freshness_index}%` : "NOT AVAILABLE"}
                 </p>
               </div>
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Obligation Verification</p>
                 <p className="text-lg font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
                   <CheckCircle2 className="w-4 h-4" />
-                  {data.evidence_passport.obligation_verification?.state || "VERIFIED"}
-                </p>
-                <p className="text-[10px] text-gray-500 mt-1 font-mono">
-                  EMI: {formatCurrency(data.evidence_passport.obligation_verification?.observed_monthly_debt_service || 0)}
+                  {data.evidence_passport.obligation_verification === true ? "VERIFIED" : "NOT VERIFIED"}
                 </p>
               </div>
               <div className="bg-black/20 rounded-xl p-4 border border-white/5">
                 <p className="text-xs text-gray-400 mb-1">Contradiction Analysis</p>
-                <p className={`text-lg font-bold font-mono ${data.evidence_passport.contradiction_analysis?.severity === 'HIGH' ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {data.evidence_passport.contradiction_analysis?.severity || "LOW"} SEVERITY
-                </p>
-                <p className="text-[10px] text-gray-500 mt-1 font-mono">
-                  Recon Ratio: {Number(data.evidence_passport.contradiction_analysis?.reconciliation_ratio ?? 1.0).toFixed(2)}
+                <p className={`text-lg font-bold font-mono ${data.evidence_passport.contradiction_severity === 'HIGH' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {data.evidence_passport.contradiction_severity || "UNKNOWN"}
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Audit Verification & Shakti Enforced Sign-off Card */}
+        {/* Audit Verification */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Lock className="w-6 h-6 text-purple-400" />
               <h2 className="text-xl font-bold text-white">Shakti Cryptographic Audit & Sanction Sign-off</h2>
             </div>
-            <span className="bg-purple-500/20 text-purple-300 text-xs px-2 py-1 rounded border border-purple-500/30 font-mono">
-              CAS VERSION #{data.case_version || 1}
-            </span>
+            <button 
+              onClick={handleVerifyAudit}
+              disabled={verifying}
+              className="bg-purple-500/20 text-purple-300 text-xs px-4 py-1.5 rounded border border-purple-500/30 font-mono hover:bg-purple-500/30 transition disabled:opacity-50"
+            >
+              {verifying ? "Verifying..." : "Verify Audit Chain"}
+            </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            <div className="bg-black/20 rounded-xl p-4 border border-white/5 space-y-3">
-              <div className="flex justify-between items-center text-xs">
-                <span className="text-gray-400">BOLA Verification Status</span>
-                <span className="text-emerald-400 font-mono font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> ENFORCED (CREDIT_ANALYST)
-                </span>
+          {verificationResult ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              <div className="bg-black/20 rounded-xl p-4 border border-white/5 space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-gray-400">BOLA Verification Status</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.bola_verification_status === 'VERIFIED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.bola_verification_status}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                  <span className="text-gray-400">CAS Authority Sign-off</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.cas_verification_status === 'VERIFIED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.cas_verification_status}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                  <span className="text-gray-400">Cryptographic Evidence Hash</span>
+                  <span className="text-gray-300 font-mono text-[11px] truncate max-w-[180px]">
+                    {verificationResult.package_hash}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                  <span className="text-gray-400">Audit Chain Valid</span>
+                  <span className={`font-mono font-semibold ${verificationResult.audit_chain_valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {verificationResult.audit_chain_valid ? "VALID" : "INVALID"}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                <span className="text-gray-400">CAS Authority Sign-off</span>
-                <span className="text-emerald-400 font-mono font-semibold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> ENFORCED (SANCTIONING_AUTHORITY)
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                <span className="text-gray-400">Cryptographic Evidence Hash</span>
-                <span className="text-gray-300 font-mono text-[11px] truncate max-w-[180px]">
-                  {data.evidence_passport?.case_id || caseId}
-                </span>
+              <div className="bg-black/20 rounded-xl p-4 border border-white/5 flex flex-col justify-center">
+                <h3 className="text-sm font-semibold text-white mb-1">Deterministic Assessment Chain</h3>
+                <p className="text-xs text-gray-400 mb-3">
+                  All credit decisions and policy stress tests are logged to the tamper-evident audit chain with exact calculation and policy version tags.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-purple-300 font-mono">
+                  <Award className="w-4 h-4 shrink-0 text-purple-400" />
+                  <span>Version: {verificationResult.verification_version} | Verified At: {new Date(verificationResult.verified_at).toLocaleString()}</span>
+                </div>
               </div>
             </div>
-            <div className="bg-black/20 rounded-xl p-4 border border-white/5 flex flex-col justify-center">
-              <h3 className="text-sm font-semibold text-white mb-1">Deterministic Assessment Chain</h3>
-              <p className="text-xs text-gray-400 mb-3">
-                All credit decisions and policy stress tests are immutably logged to the Shakti audit chain with exact calculation and policy version tags.
-              </p>
-              <div className="flex items-center gap-2 text-xs text-purple-300 font-mono">
-                <Award className="w-4 h-4 shrink-0 text-purple-400" />
-                <span>Policy Version: 1.1 | Scoring Engine: {data.scoring_version || "2.0-CANONICAL"}</span>
-              </div>
+          ) : (
+            <div className="bg-black/20 rounded-xl p-4 border border-white/5 text-sm text-gray-400 text-center">
+              Audit chain is verified independently. Click 'Verify Audit Chain' to evaluate real-time cryptographic integrity.
             </div>
-          </div>
+          )}
         </div>
 
         {/* Sensitivity Lab */}
