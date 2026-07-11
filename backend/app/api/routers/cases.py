@@ -297,7 +297,7 @@ def get_portfolio_command_centre(
 
     # Calculate supportable exposure approximation from cases
     total_supportable_exposure = Decimal("0")
-    status_counts = {}
+    status_counts: dict[str, int] = {}
     work_queue = []
 
     for c in cases:
@@ -1240,7 +1240,6 @@ def get_decision_package(
         financial_health_index=fhi_dec,
         vyapar_credit_health_score=credit_score_val,
         fhi_breakdown=fhi_breakdown_val,
-        score_range=scores_meta.get("score_range"),
         credit_score_disclaimer=disclaimer_val,
         calculation_evidence_ids=calc_evidence_ids,
         analyst_action=case.analyst_recommendation,
@@ -1248,10 +1247,6 @@ def get_decision_package(
         case_version=case.version,
         audit_chain=audit_chain,
         bankability_path=bankability_path,
-        integrity_state=features_dict.get("integrity_state", "UNKNOWN"),
-        current_dscr=cap_summary.get("current_dscr"),
-        proposed_emi=cap_summary.get("proposed_emi"),
-        stressed_dscr=cap_summary.get("stressed_dscr"),
     )
 
     # Calculate package hash deterministically

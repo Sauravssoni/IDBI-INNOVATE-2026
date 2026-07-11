@@ -166,7 +166,9 @@ class ScoringEngine:
             ):
                 dscr_for_score = Decimal("2.00")
             cashflow_score = (
-                Decimal("100")
+                Decimal("0")
+                if dscr_for_score is None
+                else Decimal("100")
                 if dscr_for_score >= Decimal("1.75")
                 else Decimal("80")
                 if dscr_for_score >= Decimal("1.40")
@@ -399,9 +401,12 @@ class ScoringEngine:
         if assessable:
             fhi_dec = q2(
                 sum(
-                    Decimal(str(item["contribution"]))
-                    for item in pillar_items.values()
-                    if item["contribution"] is not None
+                    (
+                        Decimal(str(item["contribution"]))
+                        for item in pillar_items.values()
+                        if item["contribution"] is not None
+                    ),
+                    start=Decimal("0")
                 )
             )
             vyapar_credit_health_score = int(
