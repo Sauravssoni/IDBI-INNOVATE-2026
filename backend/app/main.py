@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Any
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 import hashlib
@@ -113,7 +114,7 @@ def health() -> dict:
 
 
 @app.get("/ready")
-def ready() -> dict:
+def ready() -> Any:
     db = SessionLocal()
     try:
         db.execute(text("SELECT 1"))

@@ -108,7 +108,7 @@ def calculate_independent_reamortization_dscr(
     if stressed_monthly_emi == Decimal("0.0"):
         return None
 
-    return operating_inflows_monthly / stressed_monthly_emi
+    return Decimal(str(operating_inflows_monthly / stressed_monthly_emi))
 
 
 def get_credit_twin(db: Session, case_id: str) -> dict:
