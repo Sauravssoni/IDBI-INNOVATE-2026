@@ -97,7 +97,9 @@ def seed_shakti(db_session=None):
         from app.seed.seed_demo_principals import seed_demo_principals
 
         seed_demo_principals(db)
-        malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
+        malviya_nagar_branch = (
+            db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
+        )
 
     rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
     ca_user = db.query(User).filter(User.email == "credit@bank.example").first()

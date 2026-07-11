@@ -226,5 +226,5 @@ def get_case_evidence_passport(
 ):
     can_view_case(db, user, case_id)
     from app.domain.evidence.passport import generate_evidence_passport
-    return generate_evidence_passport(db, str(case_id))
 
+    return generate_evidence_passport(db, str(case_id))

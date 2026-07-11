@@ -78,6 +78,7 @@ class DecisionPolicy:
 
         # 2. Canonical Capacity & Limits Calculation strictly via FinancialCapacityEngine
         from app.domain.financial.engine import FinancialCapacityEngine
+
         cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
             self.features, self.requested_amount, self.requested_product
         )
@@ -90,12 +91,24 @@ class DecisionPolicy:
             unresolved_inflow_items = summary.get("unresolved_inflow_items", [])
             unresolved_outflow_items = summary.get("unresolved_outflow_items", [])
             reasons = []
-            if len(unresolved_inflow_ids) > 0 or summary.get("unresolved_credit_ratio", 0) > 0.05:
-                reasons.append(f"UNRESOLVED_CREDIT_TRANSACTIONS: {len(unresolved_inflow_ids)} unrecognised credit items require manual categorization or evidence.")
-            if len(unresolved_outflow_ids) > 0 or summary.get("unresolved_debit_ratio", 0) > 0.05:
-                reasons.append(f"UNRESOLVED_DEBIT_TRANSACTIONS: {len(unresolved_outflow_ids)} unrecognised debit items require manual categorization or evidence.")
+            if (
+                len(unresolved_inflow_ids) > 0
+                or summary.get("unresolved_credit_ratio", 0) > 0.05
+            ):
+                reasons.append(
+                    f"UNRESOLVED_CREDIT_TRANSACTIONS: {len(unresolved_inflow_ids)} unrecognised credit items require manual categorization or evidence."
+                )
+            if (
+                len(unresolved_outflow_ids) > 0
+                or summary.get("unresolved_debit_ratio", 0) > 0.05
+            ):
+                reasons.append(
+                    f"UNRESOLVED_DEBIT_TRANSACTIONS: {len(unresolved_outflow_ids)} unrecognised debit items require manual categorization or evidence."
+                )
             if not reasons:
-                reasons.append("UNRESOLVED_CREDIT_TRANSACTIONS: Unrecognised bank transactions exceed materiality threshold.")
+                reasons.append(
+                    "UNRESOLVED_CREDIT_TRANSACTIONS: Unrecognised bank transactions exceed materiality threshold."
+                )
             return {
                 "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
                 "reasons": reasons,
@@ -103,17 +116,19 @@ class DecisionPolicy:
                 "binding_limit": Decimal("0.00"),
                 "post_loan_dscr": None,
                 "current_dscr": None,
-                "missing_verification_state": "UNRESOLVED_CREDIT_TRANSACTIONS" if len(unresolved_inflow_ids) > 0 else "UNRESOLVED_DEBIT_TRANSACTIONS",
+                "missing_verification_state": "UNRESOLVED_CREDIT_TRANSACTIONS"
+                if len(unresolved_inflow_ids) > 0
+                else "UNRESOLVED_DEBIT_TRANSACTIONS",
                 "evidence_checklist": [
                     "Manual categorization of unrecognised bank transactions via Account Aggregator feed",
-                    "Audited financial notes or ledger corroboration for unresolved cash movements"
+                    "Audited financial notes or ledger corroboration for unresolved cash movements",
                 ],
                 "unresolved_transaction_details": {
                     "unresolved_inflow_items": unresolved_inflow_items,
                     "unresolved_outflow_items": unresolved_outflow_items,
                     "unresolved_inflow_count": len(unresolved_inflow_ids),
                     "unresolved_outflow_count": len(unresolved_outflow_ids),
-                }
+                },
             }
 
         # Check for insufficient cash flow data
@@ -130,8 +145,8 @@ class DecisionPolicy:
                 "missing_verification_state": "INSUFFICIENT_CASH_FLOW_DATA",
                 "evidence_checklist": [
                     "Verified 12-month Bank Statement Account Feed with whitelisted operating categories",
-                    "Authentic GST Returns (GSTR-1 / GSTR-3B) Corroboration Feed"
-                ]
+                    "Authentic GST Returns (GSTR-1 / GSTR-3B) Corroboration Feed",
+                ],
             }
 
         # Check for unverified existing debt obligations (strict check: never CONDITIONAL_OFFER for unknown obligations)
@@ -149,13 +164,15 @@ class DecisionPolicy:
                 "missing_verification_state": "UNVERIFIED_EXISTING_OBLIGATIONS",
                 "evidence_checklist": [
                     "Authentic Commercial CIBIL / Bureau Report verifying exact existing monthly EMI burden",
-                    "Verified loan sanction letters or bank statement repayment track for all debt service deductions"
-                ]
+                    "Verified loan sanction letters or bank statement repayment track for all debt service deductions",
+                ],
             }
 
         product_limits_dict = cap_summary.get("product_limits", {})
         applicable_limits = [
-            limit for limit in product_limits_dict.values() if isinstance(limit, dict) and limit.get("applicability") == "APPLICABLE"
+            limit
+            for limit in product_limits_dict.values()
+            if isinstance(limit, dict) and limit.get("applicability") == "APPLICABLE"
         ]
 
         if not applicable_limits:
@@ -171,9 +188,16 @@ class DecisionPolicy:
             }
 
         product_limit_val = cap_summary.get("binding_product_limit")
-        product_limit = Decimal(str(product_limit_val)) if product_limit_val is not None else Decimal("0.00")
+        product_limit = (
+            Decimal(str(product_limit_val))
+            if product_limit_val is not None
+            else Decimal("0.00")
+        )
         if product_limit <= 0 and applicable_limits:
-            product_limit = max(Decimal(str(limit.get("calculated_limit", "0.00"))) for limit in applicable_limits)
+            product_limit = max(
+                Decimal(str(limit.get("calculated_limit", "0.00")))
+                for limit in applicable_limits
+            )
 
         if product_limit <= 0:
             return {
@@ -219,23 +243,37 @@ class DecisionPolicy:
         tenure_months: int,
         annual_rate: Decimal = Decimal("0.135"),
     ) -> Decimal:
-        return SafeLimitEngine.calculate_emi_from_loan(principal, annual_rate, tenure_months)
+        return SafeLimitEngine.calculate_emi_from_loan(
+            principal, annual_rate, tenure_months
+        )
 
-    def _derive_offer_dscrs(self, cap: Dict[str, Any], emi: Decimal) -> Tuple[str, str, str]:
+    def _derive_offer_dscrs(
+        self, cap: Dict[str, Any], emi: Decimal
+    ) -> Tuple[str, str, str]:
         if cap.get("obligation_verification_state") not in ASSESSABLE_OBLIGATION_STATES:
             return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
 
         current_dscr = cap.get("current_dscr")
         pre_str = str(current_dscr) if current_dscr is not None else "UNKNOWN"
 
-        noi_val = cap.get("operating_cash_available_for_debt_service_monthly", Decimal("0.00"))
+        noi_val = cap.get(
+            "operating_cash_available_for_debt_service_monthly", Decimal("0.00")
+        )
         noi = Decimal(str(noi_val)) if noi_val is not None else Decimal("0.00")
-        existing_ds_val = cap.get("verified_existing_debt_service_monthly", Decimal("0.00"))
-        existing_ds = Decimal(str(existing_ds_val)) if existing_ds_val is not None else Decimal("0.00")
+        existing_ds_val = cap.get(
+            "verified_existing_debt_service_monthly", Decimal("0.00")
+        )
+        existing_ds = (
+            Decimal(str(existing_ds_val))
+            if existing_ds_val is not None
+            else Decimal("0.00")
+        )
         total_ds = existing_ds + emi
 
         if total_ds > 0 and noi > 0:
-            post_dscr = (noi / total_ds).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            post_dscr = (noi / total_ds).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
             post_str = str(post_dscr)
         else:
             post_str = "UNKNOWN"
@@ -245,9 +283,7 @@ class DecisionPolicy:
 
         return (pre_str, stressed_str, post_str)
 
-    def _generate_offers(
-        self, cap_summary: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+    def _generate_offers(self, cap_summary: Dict[str, Any]) -> List[Dict[str, Any]]:
         offers = []
         product_limits = cap_summary.get("product_limits", {})
         common_evidence_refs = [
@@ -256,20 +292,43 @@ class DecisionPolicy:
             "Credit Twin Cash-Flow Verification Engine",
         ]
         max_borrowing_val = cap_summary.get("max_borrowing_limit", Decimal("0.00"))
-        max_borrowing_dec = Decimal(str(max_borrowing_val)) if max_borrowing_val is not None else Decimal("0.00")
+        max_borrowing_dec = (
+            Decimal(str(max_borrowing_val))
+            if max_borrowing_val is not None
+            else Decimal("0.00")
+        )
 
         # 1. WORKING_CAPITAL_LINE
         wc_info = product_limits.get("WORKING_CAPITAL_LINE", {})
-        wc_limit = Decimal(str(wc_info.get("calculated_limit", "0.00"))) if isinstance(wc_info, dict) else Decimal("0.00")
-        if wc_limit <= 0 or (isinstance(wc_info, dict) and wc_info.get("applicability") == "NOT_APPLICABLE"):
+        wc_limit = (
+            Decimal(str(wc_info.get("calculated_limit", "0.00")))
+            if isinstance(wc_info, dict)
+            else Decimal("0.00")
+        )
+        if wc_limit <= 0 or (
+            isinstance(wc_info, dict)
+            and wc_info.get("applicability") == "NOT_APPLICABLE"
+        ):
             wc_limit = Decimal("0.00")
         elif max_borrowing_dec > 0 and wc_limit > max_borrowing_dec:
-            wc_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        
-        wc_tenure = wc_info.get("tenure_months", 12) if isinstance(wc_info, dict) else 12
-        wc_rate = wc_info.get("interest_rate_pct", 12.0) if isinstance(wc_info, dict) else 12.0
-        wc_emi = self._calculate_emi(wc_limit, wc_tenure, Decimal(str(wc_rate)) / Decimal("100"))
-        base_dscr_wc, stressed_dscr_wc, post_loan_dscr_wc = self._derive_offer_dscrs(cap_summary, wc_emi)
+            wc_limit = max_borrowing_dec.quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+
+        wc_tenure = (
+            wc_info.get("tenure_months", 12) if isinstance(wc_info, dict) else 12
+        )
+        wc_rate = (
+            wc_info.get("interest_rate_pct", 12.0)
+            if isinstance(wc_info, dict)
+            else 12.0
+        )
+        wc_emi = self._calculate_emi(
+            wc_limit, wc_tenure, Decimal(str(wc_rate)) / Decimal("100")
+        )
+        base_dscr_wc, stressed_dscr_wc, post_loan_dscr_wc = self._derive_offer_dscrs(
+            cap_summary, wc_emi
+        )
 
         offers.append(
             {
@@ -298,7 +357,10 @@ class DecisionPolicy:
                 "liquidity_impact": "LOW",
                 "applicable_capacity_ceilings": [str(wc_limit)],
                 "binding_ceiling": str(wc_limit),
-                "conditions": ["Quarterly GST submission", f"Product rate: {wc_rate}% p.a."],
+                "conditions": [
+                    "Quarterly GST submission",
+                    f"Product rate: {wc_rate}% p.a.",
+                ],
                 "evidence_references": common_evidence_refs,
                 "policy_version": POLICY_VERSION,
                 "calculation_version": CALCULATION_VERSION,
@@ -308,16 +370,35 @@ class DecisionPolicy:
 
         # 2. TERM_LOAN
         tl_info = product_limits.get("TERM_LOAN", {})
-        tl_limit = Decimal(str(tl_info.get("calculated_limit", "0.00"))) if isinstance(tl_info, dict) else Decimal("0.00")
-        if tl_limit <= 0 or (isinstance(tl_info, dict) and tl_info.get("applicability") == "NOT_APPLICABLE"):
+        tl_limit = (
+            Decimal(str(tl_info.get("calculated_limit", "0.00")))
+            if isinstance(tl_info, dict)
+            else Decimal("0.00")
+        )
+        if tl_limit <= 0 or (
+            isinstance(tl_info, dict)
+            and tl_info.get("applicability") == "NOT_APPLICABLE"
+        ):
             tl_limit = Decimal("0.00")
         elif max_borrowing_dec > 0 and tl_limit > max_borrowing_dec:
-            tl_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            tl_limit = max_borrowing_dec.quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
 
-        tl_tenure = tl_info.get("tenure_months", 36) if isinstance(tl_info, dict) else 36
-        tl_rate = tl_info.get("interest_rate_pct", 13.5) if isinstance(tl_info, dict) else 13.5
-        tl_emi = self._calculate_emi(tl_limit, tl_tenure, Decimal(str(tl_rate)) / Decimal("100"))
-        base_dscr_tl, stressed_dscr_tl, post_loan_dscr_tl = self._derive_offer_dscrs(cap_summary, tl_emi)
+        tl_tenure = (
+            tl_info.get("tenure_months", 36) if isinstance(tl_info, dict) else 36
+        )
+        tl_rate = (
+            tl_info.get("interest_rate_pct", 13.5)
+            if isinstance(tl_info, dict)
+            else 13.5
+        )
+        tl_emi = self._calculate_emi(
+            tl_limit, tl_tenure, Decimal(str(tl_rate)) / Decimal("100")
+        )
+        base_dscr_tl, stressed_dscr_tl, post_loan_dscr_tl = self._derive_offer_dscrs(
+            cap_summary, tl_emi
+        )
 
         offers.append(
             {
@@ -360,16 +441,35 @@ class DecisionPolicy:
 
         # 3. INVOICE_DISCOUNTING / RECEIVABLES_FINANCE
         rf_info = product_limits.get("RECEIVABLES_FINANCE", {})
-        rf_limit = Decimal(str(rf_info.get("calculated_limit", "0.00"))) if isinstance(rf_info, dict) else Decimal("0.00")
-        if rf_limit <= 0 or (isinstance(rf_info, dict) and rf_info.get("applicability") == "NOT_APPLICABLE"):
+        rf_limit = (
+            Decimal(str(rf_info.get("calculated_limit", "0.00")))
+            if isinstance(rf_info, dict)
+            else Decimal("0.00")
+        )
+        if rf_limit <= 0 or (
+            isinstance(rf_info, dict)
+            and rf_info.get("applicability") == "NOT_APPLICABLE"
+        ):
             rf_limit = Decimal("0.00")
         elif max_borrowing_dec > 0 and rf_limit > max_borrowing_dec:
-            rf_limit = max_borrowing_dec.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            rf_limit = max_borrowing_dec.quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
 
-        rf_tenure = rf_info.get("tenure_months", 12) if isinstance(rf_info, dict) else 12
-        rf_rate = rf_info.get("interest_rate_pct", 11.0) if isinstance(rf_info, dict) else 11.0
-        rf_emi = self._calculate_emi(rf_limit, rf_tenure, Decimal(str(rf_rate)) / Decimal("100"))
-        base_dscr_rf, stressed_dscr_rf, post_loan_dscr_rf = self._derive_offer_dscrs(cap_summary, rf_emi)
+        rf_tenure = (
+            rf_info.get("tenure_months", 12) if isinstance(rf_info, dict) else 12
+        )
+        rf_rate = (
+            rf_info.get("interest_rate_pct", 11.0)
+            if isinstance(rf_info, dict)
+            else 11.0
+        )
+        rf_emi = self._calculate_emi(
+            rf_limit, rf_tenure, Decimal(str(rf_rate)) / Decimal("100")
+        )
+        base_dscr_rf, stressed_dscr_rf, post_loan_dscr_rf = self._derive_offer_dscrs(
+            cap_summary, rf_emi
+        )
 
         offers.append(
             {

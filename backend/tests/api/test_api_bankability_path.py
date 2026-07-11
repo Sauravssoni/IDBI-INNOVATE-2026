@@ -127,4 +127,3 @@ def test_bankability_simulate_api(client: TestClient, db):
     assert "after_simulation" in data
     assert "uplift_summary" in data
     assert data["engine_version"] == "2.0-BANKABILITY-SIMULATION"
-
