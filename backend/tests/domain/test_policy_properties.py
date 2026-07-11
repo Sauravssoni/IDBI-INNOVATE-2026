@@ -128,7 +128,7 @@ def test_conditional_offer_when_requested_exceeds_limit(requested_amount: Decima
         assert decision["decision"] == SystemRecommendation.CONDITIONAL_OFFER.value
 
 
-def test_scoring_engine_returns_only_three_scores():
+def test_scoring_engine_returns_replayable_score_metadata():
     from app.core.scoring.scorer import ScoringEngine
 
     engine = ScoringEngine(
@@ -146,8 +146,14 @@ def test_scoring_engine_returns_only_three_scores():
         "fhi_breakdown",
         "vyapar_credit_health_score",
         "credit_health_disclaimer",
+        "credit_score_disclaimer",
+        "assessment_certainty",
+        "score_range",
+        "missing_material_evidence",
+        "scoring_version",
     }
     assert "band" not in scores
+    assert scores["scoring_version"] == "3.0-EVIDENCE-CONDITIONED-FHI"
 
 
 def test_generate_offers_no_percentage_fallbacks():
@@ -157,7 +163,7 @@ def test_generate_offers_no_percentage_fallbacks():
         "monthly_revenue_inr": "5000000.00",
         "monthly_expenses_inr": "3000000.00",
         "verified_existing_debt_service_monthly": "100000.00",
-        "obligation_verification_state": "VERIFIED",
+        "obligation_verification_state": "VERIFIED_OBLIGATIONS",
         "bank_metrics": {
             "operating_inflows_monthly": "5000000.00",
             "operating_outflows_monthly": "3000000.00",
@@ -186,4 +192,3 @@ def test_generate_offers_no_percentage_fallbacks():
         amt = Decimal(offer["amount"])
         assert amt >= Decimal("0.00")
         assert amt <= decision["binding_limit"]
-

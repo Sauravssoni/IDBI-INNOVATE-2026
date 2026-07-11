@@ -37,7 +37,10 @@ class Branch(Base):
     )
 
     region = relationship("Region", back_populates="branches")
-    cases = relationship("Case", back_populates="originating_branch")
+    cases = relationship(
+        lambda: __import__("app.db.orm.cases", fromlist=["Case"]).Case,
+        back_populates="originating_branch",
+    )
 
 
 class UserBranchScope(Base):

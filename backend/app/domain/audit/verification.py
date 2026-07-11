@@ -1,9 +1,11 @@
 from typing import Dict, Any
 from datetime import datetime, timezone
+from uuid import UUID
 from sqlalchemy.orm import Session
 from app.core.audit import calculate_audit_hash
 from app.db.orm.cases import AuditEvent
-from app.db.orm.users import User, UserRole
+from app.db.orm.users import User
+from app.services.authz import can_view_case
 
 def reconstruct_payload(event: AuditEvent) -> Dict[str, Any]:
     return {
@@ -23,8 +25,7 @@ def reconstruct_payload(event: AuditEvent) -> Dict[str, Any]:
     }
 
 def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
-    if current_user.role not in (UserRole.AUDITOR, UserRole.SYSTEM_ADMIN, UserRole.SANCTIONING_AUTHORITY, UserRole.CREDIT_ANALYST):
-        raise PermissionError("BOLA_VIOLATION: Unauthorized to verify audit chain")
+    can_view_case(db, current_user, UUID(str(case_id)))
 
     events = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.event_sequence.asc()).all()
     

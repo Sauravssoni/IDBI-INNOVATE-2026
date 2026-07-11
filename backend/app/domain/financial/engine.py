@@ -10,6 +10,13 @@ from typing import Dict, Any, List
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.versions import CALCULATION_VERSION
 from app.core.decision.limits import SafeLimitEngine
+from app.domain.financial.obligations import (
+    ASSESSABLE_OBLIGATION_STATES,
+    UNKNOWN_OBLIGATIONS,
+    VERIFIED_OBLIGATIONS,
+    VERIFIED_ZERO_DEBT,
+    normalize_obligation_state,
+)
 
 
 class FinancialCapacityEngine:
@@ -17,7 +24,7 @@ class FinancialCapacityEngine:
     Canonical financial engine responsible for:
     1. Authoritative cash-flow derivation (operating inflows vs outflows).
     2. Exact reducing-balance EMI amortization.
-    3. Institutional obligation verification state handling (`VERIFIED` vs `UNKNOWN_OBLIGATIONS`).
+    3. Institutional obligation verification state handling.
     4. Product-specific capacity structures (`WORKING_CAPITAL_LINE`, `RECEIVABLES_FINANCE`, `TERM_LOAN`).
     5. Exact evidence record ID lineage per calculation.
     """
@@ -112,39 +119,22 @@ class FinancialCapacityEngine:
         explicit_verification_state = features.get("obligation_verification_state")
         explicit_existing_ds = features.get("verified_existing_debt_service_monthly")
 
-        if explicit_verification_state == "VERIFIED":
-            obligation_verification_state = "VERIFIED"
-            if explicit_existing_ds is not None:
-                verified_existing_ds = Decimal(str(explicit_existing_ds)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            elif "verified_obligations_emi" in features:
-                verified_existing_ds = Decimal(str(features.get("verified_obligations_emi", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            else:
-                verified_existing_ds = Decimal("0.00")
-            unknown_reasons = []
-        elif explicit_verification_state == "UNKNOWN_OBLIGATIONS":
-            obligation_verification_state = "UNKNOWN_OBLIGATIONS"
-            verified_existing_ds = Decimal("0.00")
-            unknown_reasons = ["CIBIL obligations not verified and bank transaction feed lacks authoritative DEBT_SERVICE categorization."]
-        else:
-            obligations_list = features.get("obligations", features.get("authoritative_obligations", []))
-            existing_emi = bank_metrics.get("existing_monthly_emi")
-            has_explicit_cibil = bool(features.get("cibil_pulled") or len(obligations_list) > 0 or bank_metrics.get("debt_service_verified") or existing_emi is not None)
-            if has_explicit_cibil:
-                obligation_verification_state = "VERIFIED"
-                if len(obligations_list) > 0:
-                    verified_existing_ds = sum((Decimal(str(o.get("monthly_emi", "0.00"))) for o in obligations_list), Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                elif existing_emi is not None:
-                    verified_existing_ds = Decimal(str(existing_emi)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                else:
-                    verified_existing_ds = Decimal(str(bank_metrics.get("verified_debt_service_monthly", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                unknown_reasons = []
-            else:
-                obligation_verification_state = "UNKNOWN_OBLIGATIONS"
-                verified_existing_ds = Decimal("0.00")
-                unknown_reasons = ["CIBIL obligations not verified and bank transaction feed lacks authoritative DEBT_SERVICE categorization."]
+        obligations_list = features.get("obligations", features.get("authoritative_obligations", []))
+        existing_emi = bank_metrics.get("existing_monthly_emi")
+        if explicit_existing_ds is None:
+            explicit_existing_ds = features.get("verified_obligations_emi", bank_metrics.get("verified_debt_service_monthly"))
+        obligation_verification_state, verified_existing_ds, unknown_reasons = normalize_obligation_state(
+            explicit_state=explicit_verification_state,
+            explicit_existing_ds=explicit_existing_ds,
+            obligations=obligations_list,
+            existing_emi=existing_emi,
+            debt_service_verified=bool(bank_metrics.get("debt_service_verified")),
+            verified_zero_debt=bool(features.get("zero_debt_verified")),
+        )
+        verified_existing_ds = verified_existing_ds.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 4. Base DSCR calculation
-        if obligation_verification_state == "VERIFIED" and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
+        if obligation_verification_state in ASSESSABLE_OBLIGATION_STATES and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             if verified_existing_ds > Decimal("0.00"):
                 current_dscr = (operating_cash_available / verified_existing_ds).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             else:
@@ -155,7 +145,7 @@ class FinancialCapacityEngine:
         # 5. Proposed facility servicing
         proposed_emi = cls.calculate_emi(requested_amount_dec, custom_annual_rate_dec, custom_tenure_months) if requested_amount_dec > 0 else Decimal("0.00")
         
-        if obligation_verification_state == "VERIFIED" and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
+        if obligation_verification_state in ASSESSABLE_OBLIGATION_STATES and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             total_post_ds = verified_existing_ds + proposed_emi
             if total_post_ds > Decimal("0.00"):
                 post_loan_dscr = (operating_cash_available / total_post_ds).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -164,11 +154,11 @@ class FinancialCapacityEngine:
         else:
             post_loan_dscr = None
 
-        # 6. Standard Downside Stress (-15% revenue / cash inflows, +15% debt service due to rate shock)
-        if obligation_verification_state == "VERIFIED" and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
+        # 6. Standard downside cash-flow stress. Rate shocks are handled by Stress Lab.
+        if obligation_verification_state in ASSESSABLE_OBLIGATION_STATES and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             stressed_inflows = (observed_operating_inflows * Decimal("0.85")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             stressed_operating_cash_available = (stressed_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            stressed_debt_service = (verified_existing_ds * Decimal("1.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            stressed_debt_service = verified_existing_ds
             if stressed_debt_service > Decimal("0.00"):
                 stressed_dscr = (stressed_operating_cash_available / stressed_debt_service).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             else:
@@ -183,7 +173,7 @@ class FinancialCapacityEngine:
         inflow_ids = features.get("inflow_evidence_ids", authoritative_ids)
         outflow_ids = features.get("outflow_evidence_ids", authoritative_ids)
         obligation_ids = features.get("obligation_evidence_ids", [o.get("id") for o in features.get("obligations", []) if isinstance(o, dict) and "id" in o])
-        if not obligation_ids and obligation_verification_state == "VERIFIED":
+        if not obligation_ids and obligation_verification_state in ASSESSABLE_OBLIGATION_STATES:
             obligation_ids = authoritative_ids
 
         calculation_evidence_ids = {
@@ -336,17 +326,17 @@ class FinancialCapacityEngine:
         obligations = db.query(Obligation).filter(Obligation.business_id_fk == case.business_id_fk).all()
 
         if obligations:
-            obligation_verification_state = "VERIFIED"
+            obligation_verification_state = VERIFIED_OBLIGATIONS
             verified_ds = sum((Decimal(str(o.monthly_emi or "0.00")) for o in obligations), Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             obligation_ids = [str(o.id) for o in obligations]
         elif total_ds_outflows > Decimal("0.00"):
-            obligation_verification_state = "VERIFIED"
+            obligation_verification_state = VERIFIED_OBLIGATIONS
             verified_ds = (total_ds_outflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         elif case.cibil_pulled or getattr(case, "zero_debt_verified", False):
-            obligation_verification_state = "VERIFIED"
+            obligation_verification_state = VERIFIED_ZERO_DEBT
             verified_ds = Decimal("0.00")
         else:
-            obligation_verification_state = "UNKNOWN_OBLIGATIONS"
+            obligation_verification_state = UNKNOWN_OBLIGATIONS
             verified_ds = Decimal("0.00")
 
         features_dict = {}
@@ -424,7 +414,7 @@ class FinancialCapacityEngine:
             custom_annual_rate = Decimal("0.135")
 
         unverified_or_insufficient = (
-            obligation_verification_state == "UNKNOWN_OBLIGATIONS"
+            obligation_verification_state == UNKNOWN_OBLIGATIONS
             or cash_flow_status == "INSUFFICIENT_CASH_FLOW_DATA"
         )
 

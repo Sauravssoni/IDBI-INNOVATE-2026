@@ -222,7 +222,7 @@ def test_decision_package_cd_fields(setup_data):
     assert isinstance(data["fhi_breakdown"], dict)
     for pillar in ["liquidity", "cash_flow_capacity", "revenue_stability_momentum", "repayment_burden_discipline", "compliance_formalisation", "concentration_resilience"]:
         assert pillar in data["fhi_breakdown"]
-    assert data.get("scoring_version") == "2.0-CANONICAL"
+    assert data.get("scoring_version") == "3.0-EVIDENCE-CONDITIONED-FHI"
     assert "calculation_evidence_ids" in data
     assert isinstance(data["calculation_evidence_ids"], dict)
 

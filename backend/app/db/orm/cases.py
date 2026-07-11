@@ -69,7 +69,7 @@ class Business(Base):
     legal_name = mapped_column(String, nullable=False)
     sector = mapped_column(String, nullable=False)
 
-    cases = relationship("Case", back_populates="business")
+    cases = relationship(lambda: Case, back_populates="business")
 
 
 class Case(Base):
@@ -158,11 +158,28 @@ class AuditEvent(Base):
 
     created_at = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
 
-    case = relationship("Case", back_populates="audit_events")
+    case = relationship(lambda: Case, back_populates="audit_events")
 
     __table_args__ = (
         UniqueConstraint("case_id", "event_sequence", name="uq_audit_case_sequence"),
     )
+
+
+class DecisionPackage(Base):
+    __tablename__ = "decision_packages"
+
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    package_id = mapped_column(String, unique=True, index=True, nullable=False)
+    assessment_id = mapped_column(String, nullable=False)
+    case_id = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
+    case_version = mapped_column(Integer, nullable=False)
+    canonical_json = mapped_column(JSON, nullable=False)
+    package_hash = mapped_column(String, nullable=False)
+    evidence_snapshot = mapped_column(JSON, nullable=False, default=dict)
+    feature_snapshot = mapped_column(JSON, nullable=False, default=dict)
+    engine_versions = mapped_column(JSON, nullable=False, default=dict)
+    human_actions = mapped_column(JSON, nullable=False, default=dict)
+    audit_tip_hash = mapped_column(String, nullable=True)
 
 
 class IdempotencyRecord(Base):

@@ -22,6 +22,7 @@ from app.db.orm.cases import (
     HumanDecisionAction,
     AnalystRecommendationAction,
     AuditEvent,
+    DecisionPackage,
     IdempotencyRecord,
     IdempotencyStatus,
     utc_now,
@@ -29,6 +30,7 @@ from app.db.orm.cases import (
 from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
+from app.domain.financial.engine import FinancialCapacityEngine
 from app.api.dependencies import get_current_user
 from app.core.audit import calculate_audit_hash
 from app.domain.audit.verification import verify_audit_chain
@@ -971,7 +973,11 @@ def get_decision_package(
         except Exception:
             features_dict = {}
 
-    if not scores_meta or "vyapar_credit_health_score" not in scores_meta or scores_meta.get("financial_health_index") is None:
+    if (
+        not scores_meta
+        or "vyapar_credit_health_score" not in scores_meta
+        or "scoring_version" not in scores_meta
+    ):
         try:
             from app.core.scoring.scorer import ScoringEngine
             scorer = ScoringEngine(features_dict)
@@ -986,7 +992,7 @@ def get_decision_package(
     credit_score_val = scores_meta.get("vyapar_credit_health_score")
     fhi_breakdown_val = scores_meta.get("fhi_breakdown")
     disclaimer_val = scores_meta.get("credit_score_disclaimer")
-    scoring_ver_val = scores_meta.get("scoring_version", "2.0-CANONICAL")
+    scoring_ver_val = scores_meta.get("scoring_version", "3.0-EVIDENCE-CONDITIONED-FHI")
 
     try:
         from app.domain.financial.engine import FinancialCapacityEngine
@@ -1007,15 +1013,24 @@ def get_decision_package(
     )
 
     # CD-001: Assessment certainty derivation
-    assessment_certainty = "HIGH_CERTAINTY"
+    assessment_certainty = scores_meta.get("assessment_certainty")
     certainty_reasons = []
-    if coverage_score < 50:
+    if assessment_certainty:
+        missing_material = scores_meta.get("missing_material_evidence") or []
+        if missing_material:
+            certainty_reasons.append(
+                "Material evidence gaps remain: " + ", ".join(str(item) for item in missing_material)
+            )
+        else:
+            certainty_reasons.append("Scoring engine found complete material evidence for this assessment.")
+    elif coverage_score < 50:
         assessment_certainty = "INSUFFICIENT_TO_ASSESS"
         certainty_reasons.append("Multi-rail evidence coverage below minimum threshold (<50%).")
     elif coverage_score < 80:
         assessment_certainty = "MODERATE_CERTAINTY"
         certainty_reasons.append("Partial rail coverage across banking or tax returns.")
     else:
+        assessment_certainty = "HIGH_CERTAINTY"
         certainty_reasons.append("Comprehensive multi-rail coverage across Banking, GST, Bureau, and Financials.")
 
     # CD-002: Synthetic peer context
@@ -1127,24 +1142,212 @@ def get_decision_package(
     
     return dp
 
+
+def _canonical_package_json(package_data: dict[str, Any]) -> str:
+    clean = dict(package_data)
+    clean.pop("package_hash", None)
+    return json.dumps(clean, default=str, sort_keys=True, separators=(",", ":"))
+
+
+def _hash_package_data(package_data: dict[str, Any]) -> str:
+    return hashlib.sha256(_canonical_package_json(package_data).encode("utf-8")).hexdigest()
+
+
+def _semantically_equal_for_replay(original: Any, replayed: Any) -> bool:
+    try:
+        return Decimal(str(original)) == Decimal(str(replayed))
+    except Exception:
+        return original == replayed
+
+
+@router.post("/{case_id}/decision-package")
+def seal_decision_package(
+    case_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        cid = UUID(case_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid case ID")
+    case = can_view_case(db, user, cid)
+
+    dp = get_decision_package(case_id, db, user)
+    latest_eval = (
+        db.query(AuditEvent)
+        .filter(AuditEvent.case_id == cid, AuditEvent.event_type == "evaluate")
+        .order_by(AuditEvent.created_at.desc())
+        .first()
+    )
+    audit_tip = (
+        db.query(AuditEvent)
+        .filter(AuditEvent.case_id == cid)
+        .order_by(AuditEvent.event_sequence.desc())
+        .first()
+    )
+
+    package_id = f"pkg_{uuid.uuid4()}"
+    package_data = dp.model_dump(exclude={"package_hash"})
+    package_data.update({
+        "package_id": package_id,
+        "assessment_id": str(latest_eval.id) if latest_eval else f"case-{case.id}-v{case.version}",
+        "audit_tip_hash": audit_tip.event_hash if audit_tip else None,
+    })
+    package_hash = _hash_package_data(package_data)
+    package_data["package_hash"] = package_hash
+    stored_package_data = json.loads(json.dumps(package_data, default=str))
+
+    metadata = latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
+    feature_snapshot = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
+    evidence_snapshot = package_data.get("evidence_passport") or {}
+    engine_versions = {
+        "calculation_version": package_data.get("calculation_version"),
+        "policy_version": package_data.get("policy_version"),
+        "scoring_version": package_data.get("scoring_version"),
+    }
+    human_actions = {
+        "analyst_action": package_data.get("analyst_action"),
+        "human_action": package_data.get("human_action"),
+    }
+
+    record = DecisionPackage(
+        package_id=package_id,
+        assessment_id=package_data["assessment_id"],
+        case_id=case.id,
+        case_version=case.version,
+        canonical_json=stored_package_data,
+        package_hash=package_hash,
+        evidence_snapshot=evidence_snapshot,
+        feature_snapshot=feature_snapshot,
+        engine_versions=engine_versions,
+        human_actions=human_actions,
+        audit_tip_hash=package_data.get("audit_tip_hash"),
+    )
+    db.add(record)
+    db.commit()
+
+    return {
+        "package_id": package_id,
+        "assessment_id": record.assessment_id,
+        "case_id": str(case.id),
+        "case_version": case.version,
+        "package_hash": package_hash,
+        "audit_tip_hash": record.audit_tip_hash,
+        "stored": True,
+    }
+
+
+@router.post("/{case_id}/decision-package/{package_id}/verify")
+def verify_decision_package_hash(
+    case_id: str,
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    case = can_view_case(db, user, UUID(case_id))
+    record = (
+        db.query(DecisionPackage)
+        .filter(DecisionPackage.case_id == case.id, DecisionPackage.package_id == package_id)
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Decision package not found")
+    expected_hash = record.package_hash
+    actual_hash = _hash_package_data(record.canonical_json)
+    return {
+        "package_id": package_id,
+        "expected_hash": expected_hash,
+        "actual_hash": actual_hash,
+        "valid": expected_hash == actual_hash,
+    }
+
+
+@router.post("/{case_id}/decision-package/{package_id}/replay")
+def replay_decision_package(
+    case_id: str,
+    package_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    case = can_view_case(db, user, UUID(case_id))
+    record = (
+        db.query(DecisionPackage)
+        .filter(DecisionPackage.case_id == case.id, DecisionPackage.package_id == package_id)
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Decision package not found")
+    if record.engine_versions.get("scoring_version") not in (None, "3.0-EVIDENCE-CONDITIONED-FHI"):
+        return {"status": "VERSION_UNAVAILABLE", "package_id": package_id, "differences": []}
+
+    features = record.feature_snapshot or {}
+    scores = ScoringEngine(features).compute_all_scores()
+    cap = FinancialCapacityEngine.compute_capacity_from_features(
+        features,
+        Decimal(str(record.canonical_json.get("requested_amount", "0"))),
+        record.canonical_json.get("requested_product") or "WORKING_CAPITAL_LINE",
+    )
+    policy = DecisionPolicy(
+        features,
+        scores,
+        Decimal(str(record.canonical_json.get("requested_amount", "0"))),
+        record.canonical_json.get("requested_product") or "WORKING_CAPITAL_LINE",
+    ).evaluate()
+
+    comparisons = {
+        "financial_health_index": scores.get("financial_health_index"),
+        "vyapar_credit_health_score": scores.get("vyapar_credit_health_score"),
+        "certainty": scores.get("assessment_certainty"),
+        "integrity_state": features.get("integrity_state", "NO_MATERIAL_CONTRADICTION"),
+        "dscr": cap.get("post_loan_dscr"),
+        "supportable_amount": float(Decimal(str(policy.get("binding_limit", 0) or 0))),
+        "product": record.canonical_json.get("requested_product"),
+        "policy_decision": policy.get("decision"),
+        "conditions": record.canonical_json.get("conditions", []),
+    }
+    original = {
+        "financial_health_index": record.canonical_json.get("financial_health_index"),
+        "vyapar_credit_health_score": record.canonical_json.get("vyapar_credit_health_score"),
+        "certainty": record.canonical_json.get("assessment_certainty"),
+        "integrity_state": record.canonical_json.get("integrity_state", "NO_MATERIAL_CONTRADICTION"),
+        "dscr": record.canonical_json.get("post_loan_dscr"),
+        "supportable_amount": record.canonical_json.get("binding_limit"),
+        "product": record.canonical_json.get("requested_product"),
+        "policy_decision": record.canonical_json.get("recommendation"),
+        "conditions": record.canonical_json.get("conditions", []),
+    }
+    differences = [
+        {"field": key, "original": original.get(key), "replayed": value}
+        for key, value in comparisons.items()
+        if not _semantically_equal_for_replay(original.get(key), value)
+    ]
+    return {
+        "status": "INDEPENDENTLY_REPRODUCED" if not differences else "REPLAY_MISMATCH",
+        "package_id": package_id,
+        "differences": differences,
+        "replayed": comparisons,
+    }
+
 @router.post("/{case_id}/verify-audit", response_model=AuditVerificationResponse)
 def verify_audit_chain_endpoint(
     case_id: str,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user)
 ):
-    case = db.query(Case).filter(Case.id == case_id).first()
-    if not case:
-        raise HTTPException(status_code=404, detail="Case not found")
+    case = can_view_case(db, user, UUID(case_id))
         
     result = verify_audit_chain(db, str(case.id), user)
     
-    try:
-        # Generate the package to compute its hash
-        dp = get_decision_package(case_id, db, user)
-        package_hash = dp.package_hash if dp.package_hash else ""
-        package_hash_valid = True
-    except Exception:
+    latest_package = (
+        db.query(DecisionPackage)
+        .filter(DecisionPackage.case_id == case.id)
+        .order_by(DecisionPackage.created_at.desc())
+        .first()
+    )
+    if latest_package:
+        package_hash = latest_package.package_hash
+        package_hash_valid = package_hash == _hash_package_data(latest_package.canonical_json)
+    else:
         package_hash = ""
         package_hash_valid = False
     
@@ -1162,4 +1365,3 @@ def verify_audit_chain_endpoint(
         verification_version=result["verification_version"],
         reason=result.get("reason")
     )
-
