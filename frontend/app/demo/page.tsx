@@ -8,9 +8,10 @@ import { apiFetch } from "@/lib/api";
 import EvidenceTab from "../cases/[caseId]/tabs/EvidenceTab";
 import ReconciliationTab from "../cases/[caseId]/tabs/ReconciliationTab";
 import AssessmentHistoryTab from "../cases/[caseId]/tabs/AssessmentHistoryTab";
+import DecisionPackageTab from "../cases/[caseId]/tabs/DecisionPackageTab";
 import {
   Sparkles, Building2, CheckCircle2, AlertTriangle, ArrowRight, Play, RefreshCw,
-  Send, UserCheck, Check, ShieldCheck, Database, Scale, Activity, User, Clock, ArrowLeft
+  Send, UserCheck, Check, ShieldCheck, Database, Scale, Activity, User, Clock, ArrowLeft, Lock
 } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, humanise } from "@/lib/formatters";
@@ -30,6 +31,7 @@ type DemoStatus =
   | "STEP_6_SA_REVIEW"
   | "SUBMITTING_DECISION"
   | "FINALIZED"
+  | "STEP_7_AUDIT_PACKAGE"
   | "RESTARTING";
 
 export default function GuidedDemoPage() {
@@ -56,6 +58,7 @@ export default function GuidedDemoPage() {
       case "STEP_6_SA_REVIEW": return 6;
       case "SUBMITTING_DECISION": return 6;
       case "FINALIZED": return 6;
+      case "STEP_7_AUDIT_PACKAGE": return 7;
       default: return 1;
     }
   };
@@ -241,6 +244,7 @@ export default function GuidedDemoPage() {
     { id: 4, label: "Credit Twin" },
     { id: 5, label: "Analyst recommendation" },
     { id: 6, label: "Human sanction & audit" },
+    { id: 7, label: "Decision Package" },
   ];
 
   return (
@@ -480,8 +484,10 @@ export default function GuidedDemoPage() {
                       <AssessmentHistoryTab caseId={caseData.id} />
                     </div>
                   </div>
-                  <div className="text-center pt-4">
-                    <Link href="/login" className="text-brand-teal font-bold hover:underline">Return to Login</Link>
+                  <div className="flex justify-center items-center pt-8 border-t border-light-border mt-6">
+                    <button onClick={() => setStatus("STEP_7_AUDIT_PACKAGE")} className="px-6 py-3 bg-brand-teal hover:bg-brand-tealHover text-white rounded-lg font-bold flex items-center gap-2 transition-all">
+                      View Final Decision Package & Audit <ArrowRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -516,6 +522,28 @@ export default function GuidedDemoPage() {
                   </button>
                 </div>
               )}
+            </div>
+          )}
+
+          {currentStep === 7 && (
+            <div>
+              <div className="p-6 border-b border-light-border bg-light-bg">
+                <h2 className="text-xl font-bold text-light-text flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-brand-teal" /> Final Decision Package & Cryptographic Audit
+                </h2>
+                <p className="text-sm text-light-secondary">Verify the full tamper-evident package, idempotency replay capabilities, and export the committee paper.</p>
+              </div>
+              <div className="p-6">
+                <div className="mb-6">
+                  <DecisionPackageTab caseId={caseData.id} />
+                </div>
+                <div className="flex justify-between items-center border-t border-light-border pt-6">
+                  <button onClick={() => setStatus("FINALIZED")} className="px-4 py-2 text-light-secondary font-bold hover:text-light-text transition-colors">Back</button>
+                  <Link href="/login" className="px-6 py-3 bg-light-elevated text-light-text border border-light-border rounded-lg font-bold flex items-center gap-2 hover:bg-gray-100 transition-colors">
+                    End Walkthrough
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
 
