@@ -234,6 +234,7 @@ class DecisionPackageResponse(BaseModel):
     scoring_version: Optional[str] = "2.0-CANONICAL"
     financial_health_index: Optional[Decimal] = None
     vyapar_credit_health_score: Optional[int] = None
+
     fhi_breakdown: Optional[Dict[str, Any]] = None
     credit_score_disclaimer: Optional[str] = None
     calculation_evidence_ids: Optional[Dict[str, List[str]]] = None
@@ -242,12 +243,18 @@ class DecisionPackageResponse(BaseModel):
     case_version: int
     audit_chain: List[DecisionPackageAuditItem]
     bankability_path: Optional[Dict[str, Any]] = None
+    package_hash: Optional[str] = None
 
 class AuditVerificationResponse(BaseModel):
     bola_verification_status: str
     cas_verification_status: str
     audit_chain_valid: bool
+    analyst_event_status: str
+    human_decision_event_status: str
+    package_hash_valid: bool
+    authorization_scope_valid: bool
     package_hash: str
     audit_tip_hash: str
     verified_at: str
     verification_version: str
+    reason: Optional[str] = None
