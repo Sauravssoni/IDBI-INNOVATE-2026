@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def _clean_database_url(raw_url: str | None) -> str:
     if raw_url is None:
         return ""
@@ -29,12 +30,16 @@ if APP_ENV == "production":
     parsed = urllib.parse.urlparse(DATABASE_URL)
     hostname = (parsed.hostname or "").lower()
     if hostname in {"localhost", "127.0.0.1", "::1", "0.0.0.0", "db"}:
-        raise RuntimeError("Production DATABASE_URL must point to managed PostgreSQL, not localhost or compose")
+        raise RuntimeError(
+            "Production DATABASE_URL must point to managed PostgreSQL, not localhost or compose"
+        )
     if parsed.scheme != "postgresql":
         raise RuntimeError("Production DATABASE_URL must use postgresql://")
     query = urllib.parse.parse_qs(parsed.query)
     if query.get("sslmode", [""])[0] not in {"require", "verify-ca", "verify-full"}:
-        raise RuntimeError("Production DATABASE_URL must require TLS with sslmode=require or stronger")
+        raise RuntimeError(
+            "Production DATABASE_URL must require TLS with sslmode=require or stronger"
+        )
 
 # When connecting from localhost to docker-compose postgres port 5432 we might need localhost instead of 'db' depending on execution context.
 # We will check if we are in docker by a simple environment variable, or just use the connection string as provided.

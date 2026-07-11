@@ -197,11 +197,19 @@ def test_decision_package_cd_fields(setup_data):
     assert res.status_code == 200
     data = res.json()
     assert "assessment_certainty" in data
-    assert data["assessment_certainty"] in ["HIGH_CERTAINTY", "MODERATE_CERTAINTY", "LIMITED_CERTAINTY", "INSUFFICIENT_TO_ASSESS"]
+    assert data["assessment_certainty"] in [
+        "HIGH_CERTAINTY",
+        "MODERATE_CERTAINTY",
+        "LIMITED_CERTAINTY",
+        "INSUFFICIENT_TO_ASSESS",
+    ]
     assert "certainty_reasons" in data
     assert isinstance(data["certainty_reasons"], list)
     assert "peer_context" in data
-    assert data["peer_context"]["sample_status"] in ["VALID_PEER_SAMPLE", "INSUFFICIENT_PEER_SAMPLE"]
+    assert data["peer_context"]["sample_status"] in [
+        "VALID_PEER_SAMPLE",
+        "INSUFFICIENT_PEER_SAMPLE",
+    ]
     assert "hindi_summary" in data
     assert "decision_label" in data["hindi_summary"]
     assert "reason_explanation" in data["hindi_summary"]
@@ -221,7 +229,14 @@ def test_decision_package_cd_fields(setup_data):
         assert 300 <= data["vyapar_credit_health_score"] <= 900
     assert "fhi_breakdown" in data
     assert isinstance(data["fhi_breakdown"], dict)
-    for pillar in ["liquidity", "cash_flow_capacity", "revenue_stability_momentum", "repayment_burden_discipline", "compliance_formalisation", "concentration_resilience"]:
+    for pillar in [
+        "liquidity",
+        "cash_flow_capacity",
+        "revenue_stability_momentum",
+        "repayment_burden_discipline",
+        "compliance_formalisation",
+        "concentration_resilience",
+    ]:
         assert pillar in data["fhi_breakdown"]
     assert data.get("scoring_version") == "3.0-EVIDENCE-CONDITIONED-FHI"
     assert "calculation_evidence_ids" in data
@@ -284,7 +299,7 @@ def test_command_centre_and_monitoring(setup_data):
     res = login(user.email, "securepass123")
     cookie = get_cookie(res)
     client.cookies.set("vyapar_session", cookie)
-    
+
     # Test Portfolio Command Centre (CD-003)
     p_res = client.get("/api/cases/portfolio-command-centre")
     assert p_res.status_code == 200

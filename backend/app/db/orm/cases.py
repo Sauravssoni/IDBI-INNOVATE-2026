@@ -171,7 +171,9 @@ class DecisionPackage(Base):
     id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     package_id = mapped_column(String, unique=True, index=True, nullable=False)
     assessment_id = mapped_column(String, nullable=False)
-    case_id = mapped_column(UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False)
+    case_id = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False
+    )
     case_version = mapped_column(Integer, nullable=False)
     canonical_json = mapped_column(JSON, nullable=False)
     package_hash = mapped_column(String, nullable=False)
