@@ -3,6 +3,57 @@ import { test, expect } from '@playwright/test';
 test.describe('Vyapar Pulse Release Gate', () => {
   let hasErrors = false;
 
+  test.beforeAll(async ({ request, baseURL }) => {
+    // Only attempt reset if we're running against remote E2E and have a token
+    const resetToken = process.env.DEMO_RESET_TOKEN;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    if (resetToken && process.env.USE_LOCAL_SERVER === 'false') {
+      console.log('Attempting remote demo reset...');
+      
+      const loginRes = await request.post(`${apiUrl}/api/auth/demo/session`, {
+        data: {
+          role: 'CREDIT_ANALYST'
+        }
+      });
+      
+      if (!loginRes.ok()) {
+        console.error('Login for demo reset failed:', await loginRes.text());
+        throw new Error('Failed to login for demo reset');
+      }
+      // Extract the session and csrf cookies
+      const cookies = loginRes.headersArray().filter(h => h.name.toLowerCase() === 'set-cookie');
+      let sessionCookie = '';
+      let csrfToken = '';
+      let allCookies = [];
+      for (const cookie of cookies) {
+        allCookies.push(cookie.value.split(';')[0]);
+        if (cookie.value.includes('vyapar_session_token=')) {
+          sessionCookie = cookie.value.split(';')[0];
+        }
+        if (cookie.value.includes('vyapar_csrf_token=')) {
+          csrfToken = cookie.value.split(';')[0].replace('vyapar_csrf_token=', '');
+        }
+      }
+
+      // Execute reset
+      const resetRes = await request.post(`${apiUrl}/api/demo/reset`, {
+        headers: {
+          'X-CSRF-Token': csrfToken,
+          'X-Demo-Reset-Token': resetToken,
+          'Cookie': allCookies.join('; ')
+        }
+      });
+      
+      if (!resetRes.ok()) {
+        console.error('Demo reset failed: ', await resetRes.text());
+        throw new Error('Failed to reset demo environment for E2E tests');
+      }
+      console.log('Demo reset successful.');
+      // Wait a moment for reset to settle
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  });
+
   test.beforeEach(async ({ page }) => {
     page.on('pageerror', exception => {
       console.error(`Uncaught exception: "${exception}"`);
