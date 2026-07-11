@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -156,7 +156,7 @@ def ready() -> dict:
             "version": API_VERSION,
             "schema_version": SCHEMA_VERSION,
         }
-    except Exception as e:
+    except Exception:
         return JSONResponse(
             status_code=503,
             content={"status": "unavailable", "reason": "Database connection or schema failed"},
