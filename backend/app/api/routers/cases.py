@@ -1028,20 +1028,6 @@ def get_decision_package(
         }
     }
 
-    # CD-005: Hindi accessibility governed bilingual presentation
-    hindi_rec_map = {
-        "CONDITIONAL_OFFER": "सशर्त प्रस्ताव (Conditional Offer)",
-        "DECLINE_RECOMMENDED": "अस्वीकृति अनुशंसित (Decline Recommended)",
-        "APPROVE": "स्वीकृत (Approved)",
-        "ADDITIONAL_EVIDENCE_REQUIRED": "अतिरिक्त साक्ष्य की आवश्यकता (Additional Evidence Required)",
-    }
-    hindi_summary = {
-        "decision_label": hindi_rec_map.get(str(case.recommendation), "समीक्षा के लिए तैयार (Ready for Review)"),
-        "reason_explanation": "आवेदक का ऋण सेवा अनुपात (DSCR) और वित्तीय साक्ष्य अनुशंसित कार्यशील पूंजी सीमा की पुष्टि करते हैं।"
-        if str(case.recommendation) in ["CONDITIONAL_OFFER", "APPROVE"]
-        else "वित्तीय साक्ष्य और नकदी प्रवाह वर्तमान ऋण आवेदन का समर्थन करने में असमर्थ हैं।",
-    }
-
     try:
         from app.domain.bankability.path import compute_bankability_path
         req_product_str = str(getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE")
@@ -1066,6 +1052,31 @@ def get_decision_package(
     except Exception:
         bankability_path = {}
         conditions = []
+
+    # CD-005: Hindi accessibility governed bilingual presentation
+    hindi_rec_map = {
+        "CONDITIONAL_OFFER": "सशर्त प्रस्ताव (Conditional Offer)",
+        "DECLINE_RECOMMENDED": "अस्वीकृति अनुशंसित (Decline Recommended)",
+        "APPROVE": "स्वीकृत (Approved)",
+        "ADDITIONAL_EVIDENCE_REQUIRED": "अतिरिक्त साक्ष्य की आवश्यकता (Additional Evidence Required)",
+    }
+    missing_checklist_hindi = [
+        f"{src}: {src} साक्ष्य सत्यापित या ताज़ा नहीं है (Evidence unverified/missing)"
+        for src in (passport.get("missing_sources", []) + passport.get("unverified_sources", []))
+    ] if passport else []
+    path_actions_hindi = [
+        f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> {m['target_state']} के लिए प्रयास करें"
+        for m in bankability_path.get("milestones", [])
+    ] if bankability_path else []
+
+    hindi_summary = {
+        "decision_label": hindi_rec_map.get(str(case.recommendation), "समीक्षा के लिए तैयार (Ready for Review)"),
+        "reason_explanation": "आवेदक का ऋण सेवा अनुपात (DSCR) और वित्तीय साक्ष्य अनुशंसित कार्यशील पूंजी सीमा की पुष्टि करते हैं।"
+        if str(case.recommendation) in ["CONDITIONAL_OFFER", "APPROVE"]
+        else "वित्तीय साक्ष्य और नकदी प्रवाह वर्तमान ऋण आवेदन का समर्थन करने में असमर्थ हैं।",
+        "missing_evidence_checklist": missing_checklist_hindi,
+        "bankability_path_actions": path_actions_hindi,
+    }
 
     return DecisionPackageResponse(
         case_id=str(case.id),

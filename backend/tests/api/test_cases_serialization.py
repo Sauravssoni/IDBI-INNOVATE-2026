@@ -204,6 +204,10 @@ def test_decision_package_cd_fields(setup_data):
     assert "hindi_summary" in data
     assert "decision_label" in data["hindi_summary"]
     assert "reason_explanation" in data["hindi_summary"]
+    assert "missing_evidence_checklist" in data["hindi_summary"]
+    assert isinstance(data["hindi_summary"]["missing_evidence_checklist"], list)
+    assert "bankability_path_actions" in data["hindi_summary"]
+    assert isinstance(data["hindi_summary"]["bankability_path_actions"], list)
 
     # Verify DPK-001: 6-pillar FHI, 300-900 Credit Health Score, and calculation evidence IDs
     assert "financial_health_index" in data
