@@ -11,9 +11,10 @@ from app.db.orm.evidence import BankTransaction, GSTPeriod
 def calculate_dscr_sandbox_v1(db: Session, business_id: str, as_of_date: date):
     """
     Trailing 12-month (TTM) DSCR = NOI / Debt Service
-    NOI = Credits (BUYER_RECEIPT) - Debits (SUPPLIER_PAYMENT + SALARY)
+    NOI = Operating Inflows - Operating Outflows (governed by category whitelists)
     Debt Service = Debits (DEBT_SERVICE)
     """
+    from app.core.features.engine import FeatureEngine
     start_date = as_of_date - relativedelta(months=12)
     txns = (
         db.query(BankTransaction)
@@ -25,20 +26,35 @@ def calculate_dscr_sandbox_v1(db: Session, business_id: str, as_of_date: date):
         .all()
     )
 
-    buyer_receipts = sum(
-        (t.amount for t in txns if t.category == "BUYER_RECEIPT"), Decimal("0.0")
+    operating_inflows = sum(
+        (
+            t.amount
+            for t in txns
+            if t.transaction_type == "CREDIT"
+            and (t.category or "").upper() in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_INFLOWS"]
+        ),
+        Decimal("0.0"),
     )
-    supplier_payments = sum(
-        (t.amount for t in txns if t.category == "SUPPLIER_PAYMENT"), Decimal("0.0")
-    )
-    salary_payments = sum(
-        (t.amount for t in txns if t.category == "SALARY"), Decimal("0.0")
+    operating_outflows = sum(
+        (
+            t.amount
+            for t in txns
+            if t.transaction_type == "DEBIT"
+            and (t.category or "").upper() in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_OUTFLOWS"]
+        ),
+        Decimal("0.0"),
     )
     debt_service = sum(
-        (t.amount for t in txns if t.category == "DEBT_SERVICE"), Decimal("0.0")
+        (
+            t.amount
+            for t in txns
+            if t.transaction_type == "DEBIT"
+            and (t.category or "").upper() == "DEBT_SERVICE"
+        ),
+        Decimal("0.0"),
     )
 
-    noi = buyer_receipts - supplier_payments - salary_payments
+    noi = operating_inflows - operating_outflows
 
     if debt_service == Decimal("0.0"):
         return None
