@@ -216,7 +216,7 @@ def test_decision_package_cd_fields(setup_data):
     assert 0 <= data["vyapar_credit_health_score"] <= 900
     assert "fhi_breakdown" in data
     assert isinstance(data["fhi_breakdown"], dict)
-    for pillar in ["operating_resilience", "cash_flow_health", "margin_stability", "working_capital_velocity", "gst_compliance", "obligation_discipline"]:
+    for pillar in ["liquidity", "cash_flow_capacity", "revenue_growth", "repayment_burden", "compliance_governance", "concentration_risk"]:
         assert pillar in data["fhi_breakdown"]
     assert data.get("scoring_version") == "2.0-CANONICAL"
     assert "calculation_evidence_ids" in data
@@ -233,6 +233,12 @@ def test_decision_package_cd_fields(setup_data):
             assert "simulation_evidence" in m
             assert "impact_on_score" in m
             assert "target_state" in m
+
+    # Verify SHA-256 package hash is present and well-formed
+    assert "package_hash" in data
+    assert data["package_hash"] is not None
+    assert len(data["package_hash"]) == 64  # SHA-256 hex digest
+    assert all(c in "0123456789abcdef" for c in data["package_hash"])
 
 
 def test_command_centre_and_monitoring(setup_data):

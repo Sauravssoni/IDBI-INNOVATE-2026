@@ -18,11 +18,6 @@ class ScoringEngine:
         resilience_score = self._compute_resilience()
         fhi_data = self.compute_fhi_and_credit_score()
 
-        # Purely deterministic weighted average of sub-scores (FHI, Risk/Evidence, Volatility/Resilience)
-        # Using 40% FHI, 30% Evidence Confidence, 30% Resilience
-        total_score_raw = (Decimal(str(fhi_data["financial_health_index"])) * Decimal("0.4")) + (evidence_score * Decimal("0.3")) + (resilience_score * Decimal("0.3"))
-        total_score = total_score_raw.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
         return {
             "financial_health_score": health_score.quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -33,7 +28,6 @@ class ScoringEngine:
             "resilience_score": resilience_score.quantize(
                 Decimal("0.01"), rounding=ROUND_HALF_UP
             ),
-            "total_score": float(total_score),
             "financial_health_index": fhi_data["financial_health_index"],
             "fhi_breakdown": fhi_data["fhi_breakdown"],
             "vyapar_credit_health_score": fhi_data["vyapar_credit_health_score"],
