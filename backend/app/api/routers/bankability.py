@@ -39,8 +39,10 @@ def get_case_bankability_path(
     features = FeatureEngine(db, str(case.business_id_fk)).derive_all_features()
     scores = ScoringEngine(features).compute_all_scores()
     
-    requested_amount = Decimal(str(getattr(case, "requested_amount_inr", "2500000")))
-    requested_product = getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE"
+    requested_amount = Decimal(str(getattr(case, "requested_amount", getattr(case, "requested_amount_inr", "2500000"))))
+    requested_product = str(getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE")
+    if hasattr(requested_product, "value"):
+        requested_product = requested_product.value
     
     return compute_bankability_path(features, scores, requested_amount, requested_product, target_amount=target_amount)
 
@@ -56,8 +58,10 @@ def post_case_bankability_path(
     features = FeatureEngine(db, str(case.business_id_fk)).derive_all_features()
     scores = ScoringEngine(features).compute_all_scores()
     
-    requested_amount = Decimal(str(getattr(case, "requested_amount_inr", "2500000")))
-    requested_product = getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE"
+    requested_amount = Decimal(str(getattr(case, "requested_amount", getattr(case, "requested_amount_inr", "2500000"))))
+    requested_product = str(getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE")
+    if hasattr(requested_product, "value"):
+        requested_product = requested_product.value
     
     tgt = None
     if payload and payload.target_amount is not None:

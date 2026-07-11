@@ -1042,6 +1042,31 @@ def get_decision_package(
         else "वित्तीय साक्ष्य और नकदी प्रवाह वर्तमान ऋण आवेदन का समर्थन करने में असमर्थ हैं।",
     }
 
+    try:
+        from app.domain.bankability.path import compute_bankability_path
+        req_product_str = str(getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE")
+        if hasattr(req_product_str, "value"):
+            req_product_str = req_product_str.value
+        bankability_path = compute_bankability_path(
+            features_dict,
+            scores_meta,
+            Decimal(str(getattr(case, "requested_amount", getattr(case, "requested_amount_inr", "2500000")))),
+            req_product_str,
+        )
+        if case.recommendation in ("CONDITIONAL_OFFER", "DECLINE_RECOMMENDED", "ADDITIONAL_EVIDENCE_REQUIRED"):
+            conditions = [
+                f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> Transitions decision to {m['target_state']} ({m['impact_on_score']})"
+                for m in bankability_path.get("milestones", [])
+            ]
+        else:
+            conditions = [
+                f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']}"
+                for m in bankability_path.get("milestones", [])
+            ]
+    except Exception:
+        bankability_path = {}
+        conditions = []
+
     return DecisionPackageResponse(
         case_id=str(case.id),
         business_name=case.business.legal_name if case.business else "Unknown",
@@ -1055,7 +1080,7 @@ def get_decision_package(
         binding_limit=Decimal(str(binding_limit)) if binding_limit is not None else None,
         recommendation=case.recommendation,
         reason_codes=reason_codes,
-        conditions=[],
+        conditions=conditions,
         offers=offers,
         limit_details=limit_details,
         evidence_passport=passport,
@@ -1075,4 +1100,5 @@ def get_decision_package(
         human_action=case.human_decision,
         case_version=case.version,
         audit_chain=audit_chain,
+        bankability_path=bankability_path,
     )

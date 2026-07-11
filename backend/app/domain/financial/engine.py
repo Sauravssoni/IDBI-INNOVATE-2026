@@ -98,13 +98,14 @@ class FinancialCapacityEngine:
         explicit_verification_state = features.get("obligation_verification_state")
         explicit_existing_ds = features.get("verified_existing_debt_service_monthly")
 
-        if explicit_verification_state == "VERIFIED" and explicit_existing_ds is not None:
+        if explicit_verification_state == "VERIFIED":
             obligation_verification_state = "VERIFIED"
-            verified_existing_ds = Decimal(str(explicit_existing_ds)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            unknown_reasons = []
-        elif explicit_verification_state == "VERIFIED" and "verified_obligations_emi" in features:
-            obligation_verification_state = "VERIFIED"
-            verified_existing_ds = Decimal(str(features.get("verified_obligations_emi", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if explicit_existing_ds is not None:
+                verified_existing_ds = Decimal(str(explicit_existing_ds)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            elif "verified_obligations_emi" in features:
+                verified_existing_ds = Decimal(str(features.get("verified_obligations_emi", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                verified_existing_ds = Decimal("0.00")
             unknown_reasons = []
         else:
             # Check if bank_metrics specifically confirms obligations pulled/verified or existing_monthly_emi > 0
