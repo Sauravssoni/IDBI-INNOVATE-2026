@@ -5,7 +5,15 @@ from app.schemas.responses import (
     DecisionPackageAuditItem,
     AuditVerificationResponse,
 )
-from app.core.versions import POLICY_VERSION, CALCULATION_VERSION
+from app.core.versions import (
+    POLICY_VERSION,
+    CALCULATION_VERSION,
+    SCORING_VERSION,
+    PASSPORT_ENGINE_VERSION,
+    FEATURE_SCHEMA_VERSION,
+    PACKAGE_SCHEMA_VERSION,
+    AUDIT_HASH_VERSION,
+)
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
@@ -13,6 +21,9 @@ from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 from uuid import UUID
 import uuid
+import math
+import enum
+import re
 from typing import Optional, Any
 from app.db.session import SessionLocal
 from pydantic import BaseModel
@@ -992,13 +1003,20 @@ def get_decision_package(
     credit_score_val = scores_meta.get("vyapar_credit_health_score")
     fhi_breakdown_val = scores_meta.get("fhi_breakdown")
     disclaimer_val = scores_meta.get("credit_score_disclaimer")
-    scoring_ver_val = scores_meta.get("scoring_version", "3.0-EVIDENCE-CONDITIONED-FHI")
+    scoring_ver_val = scores_meta.get("scoring_version", SCORING_VERSION)
 
     try:
         from app.domain.financial.engine import FinancialCapacityEngine
-        cap_summary = FinancialCapacityEngine.compute_capacity_from_features(features_dict)
+        cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
+            features_dict,
+            Decimal(str(case.requested_amount)),
+            case.requested_product.value
+            if hasattr(case.requested_product, "value")
+            else str(case.requested_product),
+        )
         calc_evidence_ids = cap_summary.get("calculation_evidence_ids", {})
     except Exception:
+        cap_summary = {}
         calc_evidence_ids = {}
 
     coverage_score = case.resilience_score
@@ -1123,6 +1141,7 @@ def get_decision_package(
         vyapar_credit_health_score=credit_score_val,
 
         fhi_breakdown=fhi_breakdown_val,
+        score_range=scores_meta.get("score_range"),
         credit_score_disclaimer=disclaimer_val,
         calculation_evidence_ids=calc_evidence_ids,
         analyst_action=case.analyst_recommendation,
@@ -1130,34 +1149,172 @@ def get_decision_package(
         case_version=case.version,
         audit_chain=audit_chain,
         bankability_path=bankability_path,
+        integrity_state=features_dict.get("integrity_state", "UNKNOWN"),
+        current_dscr=cap_summary.get("current_dscr"),
+        proposed_emi=cap_summary.get("proposed_emi"),
+        stressed_dscr=cap_summary.get("stressed_dscr"),
     )
     
     # Calculate package hash deterministically
-    import hashlib
-    import json
-    # use model_dump but convert all special types to strings for hashing
     package_data = dp.model_dump(exclude={"package_hash"})
-    json_str = json.dumps(package_data, default=str, sort_keys=True)
-    dp.package_hash = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
+    dp.package_hash = _hash_package_data(package_data)
     
     return dp
 
 
 def _canonical_package_json(package_data: dict[str, Any]) -> str:
-    clean = dict(package_data)
-    clean.pop("package_hash", None)
-    return json.dumps(clean, default=str, sort_keys=True, separators=(",", ":"))
+    return json.dumps(
+        _canonical_package_value(package_data, exclude_package_hash=True),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    )
+
+
+def _canonical_package_value(value: Any, *, exclude_package_hash: bool = False) -> Any:
+    if isinstance(value, dict):
+        return {
+            str(key): _canonical_package_value(val)
+            for key, val in sorted(value.items(), key=lambda item: str(item[0]))
+            if not (exclude_package_hash and str(key) == "package_hash")
+        }
+    if isinstance(value, (list, tuple)):
+        return [_canonical_package_value(item) for item in value]
+    if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise ValueError("Non-finite Decimal values are not canonicalizable")
+        return format(value, "f")
+    if isinstance(value, UUID):
+        return str(value)
+    if isinstance(value, enum.Enum):
+        return value.value
+    if isinstance(value, datetime.datetime):
+        dt = value
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        return dt.astimezone(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
+    if isinstance(value, datetime.date):
+        return value.isoformat()
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("Non-finite float values are not canonicalizable")
+        return value
+    if isinstance(value, (str, int, bool)) or value is None:
+        return value
+    raise TypeError(f"Object of type {type(value).__name__} is not canonicalizable")
 
 
 def _hash_package_data(package_data: dict[str, Any]) -> str:
     return hashlib.sha256(_canonical_package_json(package_data).encode("utf-8")).hexdigest()
 
 
+REQUIRED_ENGINE_VERSIONS = {
+    "scoring_version": SCORING_VERSION,
+    "calculation_version": CALCULATION_VERSION,
+    "policy_version": POLICY_VERSION,
+    "evidence_passport_version": PASSPORT_ENGINE_VERSION,
+    "feature_schema_version": FEATURE_SCHEMA_VERSION,
+    "package_schema_version": PACKAGE_SCHEMA_VERSION,
+    "audit_hash_version": AUDIT_HASH_VERSION,
+}
+
+
+def _build_replay_feature_snapshot(
+    features: dict[str, Any],
+    evidence_snapshot: dict[str, Any],
+    package_data: dict[str, Any],
+) -> dict[str, Any]:
+    bank_metrics = features.get("bank_metrics") if isinstance(features.get("bank_metrics"), dict) else {}
+    return {
+        "feature_schema_version": FEATURE_SCHEMA_VERSION,
+        "raw_features": features,
+        "consent_status": evidence_snapshot.get("consent_status"),
+        "governed_bank_metrics": bank_metrics,
+        "obligation_state": features.get("obligation_verification_state")
+        or (evidence_snapshot.get("obligation_verification") or {}).get("state"),
+        "evidence_ids": evidence_snapshot.get("authoritative_evidence_ids") or [],
+        "product_request": {
+            "requested_amount": package_data.get("requested_amount"),
+            "requested_product": package_data.get("requested_product"),
+        },
+        "scoring_inputs": {
+            "financial_health_features": features,
+            "scoring_version": package_data.get("scoring_version"),
+        },
+        "calculation_inputs": {
+            "requested_amount": package_data.get("requested_amount"),
+            "requested_product": package_data.get("requested_product"),
+            "calculation_evidence_ids": package_data.get("calculation_evidence_ids") or {},
+            "bank_metrics": bank_metrics,
+            "obligation_state": features.get("obligation_verification_state"),
+        },
+    }
+
+
+def _missing_replay_snapshot_fields(snapshot: dict[str, Any]) -> list[str]:
+    required = (
+        "consent_status",
+        "governed_bank_metrics",
+        "obligation_state",
+        "evidence_ids",
+        "product_request",
+        "scoring_inputs",
+        "calculation_inputs",
+    )
+    missing = []
+    for field in required:
+        value = snapshot.get(field)
+        if value is None or value == {} or value == []:
+            missing.append(field)
+    raw_features = snapshot.get("raw_features")
+    if not isinstance(raw_features, dict) or not raw_features:
+        missing.append("raw_features")
+    return missing
+
+
+def _sealed_package_response(record: DecisionPackage) -> dict[str, Any]:
+    return {
+        "package_id": record.package_id,
+        "assessment_id": record.assessment_id,
+        "case_id": str(record.case_id),
+        "case_version": record.case_version,
+        "package_hash": record.package_hash,
+        "audit_tip_hash": record.audit_tip_hash,
+        "engine_versions": record.engine_versions,
+        "stored": True,
+    }
+
+
 def _semantically_equal_for_replay(original: Any, replayed: Any) -> bool:
+    if isinstance(original, list) and isinstance(replayed, list):
+        return len(original) == len(replayed) and all(
+            _semantically_equal_for_replay(left, right)
+            for left, right in zip(original, replayed)
+        )
+    if isinstance(original, dict) and isinstance(replayed, dict):
+        return set(original.keys()) == set(replayed.keys()) and all(
+            _semantically_equal_for_replay(original[key], replayed[key])
+            for key in original
+        )
     try:
         return Decimal(str(original)) == Decimal(str(replayed))
     except Exception:
+        if isinstance(original, str) and isinstance(replayed, str):
+            return _normalize_numeric_text(original) == _normalize_numeric_text(replayed)
         return original == replayed
+
+
+def _normalize_numeric_text(value: str) -> str:
+    def repl(match: re.Match[str]) -> str:
+        raw = match.group(0)
+        try:
+            normalized = Decimal(raw).normalize()
+            return format(normalized, "f")
+        except Exception:
+            return raw
+
+    return re.sub(r"(?<![\w.])-?\d+(?:\.\d+)?(?![\w.])", repl, value)
 
 
 @router.post("/{case_id}/decision-package")
@@ -1192,18 +1349,44 @@ def seal_decision_package(
         "package_id": package_id,
         "assessment_id": str(latest_eval.id) if latest_eval else f"case-{case.id}-v{case.version}",
         "audit_tip_hash": audit_tip.event_hash if audit_tip else None,
+        "evidence_passport_version": PASSPORT_ENGINE_VERSION,
+        "feature_schema_version": FEATURE_SCHEMA_VERSION,
+        "package_schema_version": PACKAGE_SCHEMA_VERSION,
     })
+
+    existing = (
+        db.query(DecisionPackage)
+        .filter(
+            DecisionPackage.case_id == case.id,
+            DecisionPackage.case_version == case.version,
+            DecisionPackage.assessment_id == package_data["assessment_id"],
+        )
+        .first()
+    )
+    if existing:
+        return _sealed_package_response(existing)
+
     package_hash = _hash_package_data(package_data)
     package_data["package_hash"] = package_hash
-    stored_package_data = json.loads(json.dumps(package_data, default=str))
+    stored_package_data = _canonical_package_value(package_data)
 
     metadata = latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
-    feature_snapshot = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
     evidence_snapshot = package_data.get("evidence_passport") or {}
+    raw_features = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
+    feature_snapshot = _build_replay_feature_snapshot(raw_features, evidence_snapshot, package_data)
+    missing_snapshot_fields = _missing_replay_snapshot_fields(feature_snapshot)
+    if missing_snapshot_fields:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "FEATURE_SNAPSHOT_INCOMPLETE",
+                "missing_fields": missing_snapshot_fields,
+            },
+        )
+    feature_snapshot = _canonical_package_value(feature_snapshot)
+
     engine_versions = {
-        "calculation_version": package_data.get("calculation_version"),
-        "policy_version": package_data.get("policy_version"),
-        "scoring_version": package_data.get("scoring_version"),
+        **REQUIRED_ENGINE_VERSIONS,
     }
     human_actions = {
         "analyst_action": package_data.get("analyst_action"),
@@ -1224,17 +1407,24 @@ def seal_decision_package(
         audit_tip_hash=package_data.get("audit_tip_hash"),
     )
     db.add(record)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = (
+            db.query(DecisionPackage)
+            .filter(
+                DecisionPackage.case_id == case.id,
+                DecisionPackage.case_version == case.version,
+                DecisionPackage.assessment_id == package_data["assessment_id"],
+            )
+            .first()
+        )
+        if existing:
+            return _sealed_package_response(existing)
+        raise
 
-    return {
-        "package_id": package_id,
-        "assessment_id": record.assessment_id,
-        "case_id": str(case.id),
-        "case_version": case.version,
-        "package_hash": package_hash,
-        "audit_tip_hash": record.audit_tip_hash,
-        "stored": True,
-    }
+    return _sealed_package_response(record)
 
 
 @router.post("/{case_id}/decision-package/{package_id}/verify")
@@ -1277,10 +1467,24 @@ def replay_decision_package(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Decision package not found")
-    if record.engine_versions.get("scoring_version") not in (None, "3.0-EVIDENCE-CONDITIONED-FHI"):
-        return {"status": "VERSION_UNAVAILABLE", "package_id": package_id, "differences": []}
+    recorded_versions = record.engine_versions or {}
+    unavailable_versions = [
+        {"version": key, "recorded": recorded_versions.get(key), "available": value}
+        for key, value in REQUIRED_ENGINE_VERSIONS.items()
+        if recorded_versions.get(key) != value
+    ]
+    if unavailable_versions:
+        return {
+            "status": "VERSION_UNAVAILABLE",
+            "package_id": package_id,
+            "differences": [],
+            "unavailable_versions": unavailable_versions,
+        }
 
-    features = record.feature_snapshot or {}
+    snapshot = record.feature_snapshot or {}
+    if _missing_replay_snapshot_fields(snapshot):
+        return {"status": "FEATURE_SNAPSHOT_INCOMPLETE", "package_id": package_id, "differences": []}
+    features = snapshot.get("raw_features") or {}
     scores = ScoringEngine(features).compute_all_scores()
     cap = FinancialCapacityEngine.compute_capacity_from_features(
         features,
@@ -1294,27 +1498,73 @@ def replay_decision_package(
         record.canonical_json.get("requested_product") or "WORKING_CAPITAL_LINE",
     ).evaluate()
 
+    try:
+        from app.domain.bankability.path import compute_bankability_path
+
+        replay_bankability_path = compute_bankability_path(
+            features,
+            scores,
+            Decimal(str(record.canonical_json.get("requested_amount", "0"))),
+            record.canonical_json.get("requested_product") or "WORKING_CAPITAL_LINE",
+        )
+        replay_conditions = [
+            f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> Transitions decision to {m['target_state']} ({m['impact_on_score']})"
+            for m in replay_bankability_path.get("milestones", [])
+        ] if policy.get("decision") in ("CONDITIONAL_OFFER", "DECLINE_RECOMMENDED", "ADDITIONAL_EVIDENCE_REQUIRED") else [
+            f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']}"
+            for m in replay_bankability_path.get("milestones", [])
+        ]
+    except Exception:
+        replay_bankability_path = {}
+        replay_conditions = []
+
+    selected_offer = next(
+        (
+            offer for offer in policy.get("offers", [])
+            if offer.get("product_type") == record.canonical_json.get("requested_product")
+        ),
+        (policy.get("offers") or [{}])[0] if policy.get("offers") else {},
+    )
+    original_selected_offer = next(
+        (
+            offer for offer in record.canonical_json.get("offers", [])
+            if offer.get("product_type") == record.canonical_json.get("requested_product")
+        ),
+        (record.canonical_json.get("offers") or [{}])[0] if record.canonical_json.get("offers") else {},
+    )
     comparisons = {
         "financial_health_index": scores.get("financial_health_index"),
         "vyapar_credit_health_score": scores.get("vyapar_credit_health_score"),
-        "certainty": scores.get("assessment_certainty"),
-        "integrity_state": features.get("integrity_state", "NO_MATERIAL_CONTRADICTION"),
-        "dscr": cap.get("post_loan_dscr"),
+        "assessment_certainty": scores.get("assessment_certainty"),
+        "score_range": scores.get("score_range"),
+        "integrity_state": features.get("integrity_state", "UNKNOWN"),
+        "current_dscr": cap.get("current_dscr"),
+        "proposed_emi": cap.get("proposed_emi"),
+        "post_loan_dscr": cap.get("post_loan_dscr"),
+        "stressed_dscr": cap.get("stressed_dscr"),
         "supportable_amount": float(Decimal(str(policy.get("binding_limit", 0) or 0))),
-        "product": record.canonical_json.get("requested_product"),
-        "policy_decision": policy.get("decision"),
-        "conditions": record.canonical_json.get("conditions", []),
+        "selected_product": record.canonical_json.get("requested_product"),
+        "policy_recommendation": policy.get("decision"),
+        "binding_rule": policy.get("missing_verification_state") or policy.get("reasons", [None])[0],
+        "conditions": replay_conditions,
+        "covenants": original_selected_offer.get("covenants", []),
     }
     original = {
         "financial_health_index": record.canonical_json.get("financial_health_index"),
         "vyapar_credit_health_score": record.canonical_json.get("vyapar_credit_health_score"),
-        "certainty": record.canonical_json.get("assessment_certainty"),
-        "integrity_state": record.canonical_json.get("integrity_state", "NO_MATERIAL_CONTRADICTION"),
-        "dscr": record.canonical_json.get("post_loan_dscr"),
+        "assessment_certainty": record.canonical_json.get("assessment_certainty"),
+        "score_range": record.canonical_json.get("score_range"),
+        "integrity_state": record.canonical_json.get("integrity_state", "UNKNOWN"),
+        "current_dscr": record.canonical_json.get("current_dscr") or record.canonical_json.get("dscr"),
+        "proposed_emi": record.canonical_json.get("proposed_emi"),
+        "post_loan_dscr": record.canonical_json.get("post_loan_dscr"),
+        "stressed_dscr": record.canonical_json.get("stressed_dscr"),
         "supportable_amount": record.canonical_json.get("binding_limit"),
-        "product": record.canonical_json.get("requested_product"),
-        "policy_decision": record.canonical_json.get("recommendation"),
+        "selected_product": record.canonical_json.get("requested_product"),
+        "policy_recommendation": record.canonical_json.get("recommendation"),
+        "binding_rule": (record.canonical_json.get("reason_codes") or [None])[0],
         "conditions": record.canonical_json.get("conditions", []),
+        "covenants": selected_offer.get("covenants", []),
     }
     differences = [
         {"field": key, "original": original.get(key), "replayed": value}
@@ -1358,7 +1608,7 @@ def verify_audit_chain_endpoint(
         analyst_event_status=result.get("analyst_event_status", "NOT VERIFIED"),
         human_decision_event_status=result.get("human_decision_event_status", "NOT VERIFIED"),
         package_hash_valid=package_hash_valid,
-        authorization_scope_valid=result.get("authorization_scope_valid", True),
+        authorization_scope_valid=result["authorization_scope_valid"],
         package_hash=package_hash,
         audit_tip_hash=result["audit_tip_hash"],
         verified_at=result["verified_at"],

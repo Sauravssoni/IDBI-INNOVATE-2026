@@ -181,6 +181,15 @@ class DecisionPackage(Base):
     human_actions = mapped_column(JSON, nullable=False, default=dict)
     audit_tip_hash = mapped_column(String, nullable=True)
 
+    __table_args__ = (
+        UniqueConstraint(
+            "case_id",
+            "case_version",
+            "assessment_id",
+            name="uq_decision_package_case_version_assessment",
+        ),
+    )
+
 
 class IdempotencyRecord(Base):
     """Persistent records for tracking idempotent operations."""

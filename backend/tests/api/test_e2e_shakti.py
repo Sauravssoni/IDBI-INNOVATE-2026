@@ -214,6 +214,41 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     sealed = seal_res.json()
     assert sealed["stored"] is True
     assert len(sealed["package_hash"]) == 64
+    duplicate_seal_res = client.post(
+        f"/api/cases/{case_id}/decision-package",
+        headers=sa_auth["headers"],
+    )
+    assert duplicate_seal_res.status_code == 200, duplicate_seal_res.text
+    assert duplicate_seal_res.json()["package_id"] == sealed["package_id"]
+
+    from app.db.orm.cases import DecisionPackage
+
+    sealed_records = (
+        db.query(DecisionPackage)
+        .filter(
+            DecisionPackage.case_id == case_id,
+            DecisionPackage.case_version == sealed["case_version"],
+            DecisionPackage.assessment_id == sealed["assessment_id"],
+        )
+        .all()
+    )
+    assert len(sealed_records) == 1
+    record = sealed_records[0]
+    assert set(record.engine_versions) >= {
+        "scoring_version",
+        "calculation_version",
+        "policy_version",
+        "evidence_passport_version",
+        "feature_schema_version",
+        "package_schema_version",
+    }
+    assert record.feature_snapshot["consent_status"] == "VALID"
+    assert record.feature_snapshot["governed_bank_metrics"]
+    assert record.feature_snapshot["obligation_state"]
+    assert record.feature_snapshot["evidence_ids"]
+    assert record.feature_snapshot["product_request"]["requested_product"] == "WORKING_CAPITAL_LINE"
+    assert record.feature_snapshot["scoring_inputs"]
+    assert record.feature_snapshot["calculation_inputs"]
 
     verify_res = client.post(
         f"/api/cases/{case_id}/decision-package/{sealed['package_id']}/verify",
@@ -230,6 +265,18 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     replay_data = replay_res.json()
     assert replay_data["status"] == "INDEPENDENTLY_REPRODUCED", replay_data
     assert replay_data["differences"] == []
+
+    original_versions = dict(record.engine_versions)
+    record.engine_versions = {k: v for k, v in original_versions.items() if k != "calculation_version"}
+    db.commit()
+    version_unavailable = client.post(
+        f"/api/cases/{case_id}/decision-package/{sealed['package_id']}/replay",
+        headers=sa_auth["headers"],
+    )
+    assert version_unavailable.status_code == 200, version_unavailable.text
+    assert version_unavailable.json()["status"] == "VERSION_UNAVAILABLE"
+    record.engine_versions = original_versions
+    db.commit()
 
     sys_auth = get_auth_headers(client, "system@bank.example")
     client.cookies.clear()

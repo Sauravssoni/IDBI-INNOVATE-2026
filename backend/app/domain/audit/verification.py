@@ -25,7 +25,12 @@ def reconstruct_payload(event: AuditEvent) -> Dict[str, Any]:
     }
 
 def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
-    can_view_case(db, current_user, UUID(str(case_id)))
+    authorization_scope_valid = False
+    try:
+        can_view_case(db, current_user, UUID(str(case_id)))
+        authorization_scope_valid = True
+    except Exception:
+        return _invalid_chain("GENESIS", "AUTHORIZATION_SCOPE_INVALID", False)
 
     events = db.query(AuditEvent).filter(AuditEvent.case_id == case_id).order_by(AuditEvent.event_sequence.asc()).all()
     
@@ -55,14 +60,14 @@ def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
         "analyst_event_status": "VERIFIED" if any(e.event_type in ("analyst_recommendation", "ANALYST_RECOMMENDATION", "DECISION_CREATED") for e in events) else "NOT VERIFIED",
         "human_decision_event_status": "VERIFIED" if any(e.event_type in ("human_decision", "SANCTION_DECISION") for e in events) else "NOT VERIFIED",
         "package_hash_valid": False,
-        "authorization_scope_valid": True,
+        "authorization_scope_valid": authorization_scope_valid,
         "package_hash": "", # To be populated by caller
         "audit_tip_hash": prior_hash,
         "verified_at": datetime.now(timezone.utc).isoformat(),
         "verification_version": "2.0"
     }
 
-def _invalid_chain(last_valid_hash: str, reason: str) -> dict:
+def _invalid_chain(last_valid_hash: str, reason: str, authorization_scope_valid: bool = True) -> dict:
     return {
         "audit_chain_valid": False,
         "bola_verification_status": "FAILED",
@@ -70,7 +75,7 @@ def _invalid_chain(last_valid_hash: str, reason: str) -> dict:
         "analyst_event_status": "NOT VERIFIED",
         "human_decision_event_status": "NOT VERIFIED",
         "package_hash_valid": False,
-        "authorization_scope_valid": True,
+        "authorization_scope_valid": authorization_scope_valid,
         "package_hash": "",
         "audit_tip_hash": last_valid_hash,
         "verified_at": datetime.now(timezone.utc).isoformat(),
