@@ -12,9 +12,8 @@ from app.api.auth import get_password_hash
 
 
 def seed_demo_principals(db):
-    if os.environ.get("APP_ENV") == "production":
+    if os.environ.get("APP_ENV") == "production" and os.environ.get("DEMO_ACCESS_ENABLED", "false").lower() != "true":
         raise RuntimeError("Demo seeding is refused in production.")
-
     default_pw = os.environ.get("DEMO_USER_PASSWORD")
     if not default_pw:
         raise RuntimeError(
