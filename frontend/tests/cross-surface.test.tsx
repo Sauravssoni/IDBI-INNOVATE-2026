@@ -57,8 +57,21 @@ describe('Cross-Surface Consistency', () => {
         }
       ],
       evidence_passport: {
+        case_id: 'CASE-100',
+        business_id: 'B-100',
+        consent_status: 'VALID',
+        consent_scope: 'ALL',
+        rail_coverage: { gst: true, account_aggregator: true, invoices: true, epfo: true, cibil: true },
+        freshness_depth: {
+          months_of_history: 12, gst_periods: 12, bank_transactions: 100, invoice_records: 50, employment_periods: 12,
+          freshness_scores: { gst: 100, bank: 100, invoices: 100 },
+          composite_freshness_index: 95
+        },
+        obligation_verification: { state: 'VERIFIED_MATCH', cibil_monthly_emi: 5000, observed_monthly_debt_service: 5000 },
+        contradiction_analysis: { severity: 'LOW', reconciliation_ratio: 1.0, gst_declared_revenue: 100000, bank_buyer_receipts: 100000 },
         assessment_certainty: 'HIGH_CERTAINTY',
-        multi_rail_coverage: 100
+        authoritative_evidence_ids: ['e1'],
+        generated_at: '2023-01-01'
       },
       allowed_actions: { run_assessment: { allowed: false } }
     };
