@@ -245,7 +245,6 @@ class DecisionPackageResponse(BaseModel):
     bankability_path: Optional[Dict[str, Any]] = None
     package_hash: Optional[str] = None
 
-
 class AuditVerificationResponse(BaseModel):
     bola_verification_status: str
     cas_verification_status: str
