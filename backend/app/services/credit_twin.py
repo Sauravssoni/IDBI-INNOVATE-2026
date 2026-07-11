@@ -61,6 +61,45 @@ def calculate_dscr_sandbox_v1(db: Session, business_id: str, as_of_date: date):
 
     return round(noi / debt_service, 2)
 
+def calculate_independent_reamortization_dscr(db: Session, business_id: str, as_of_date: date) -> Decimal | None:
+    from app.core.features.engine import FeatureEngine
+    from app.db.orm.evidence import Obligation
+    
+    # 1. Operating inflows
+    start_date = as_of_date - relativedelta(months=12)
+    txns = (
+        db.query(BankTransaction)
+        .filter(
+            BankTransaction.business_id_fk == business_id,
+            BankTransaction.transaction_date >= start_date,
+            BankTransaction.transaction_date < as_of_date,
+            BankTransaction.transaction_type == "CREDIT"
+        )
+        .all()
+    )
+    operating_inflows = sum(
+        (t.amount for t in txns if (t.category or "").upper() in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_INFLOWS"]),
+        Decimal("0.0"),
+    )
+    operating_inflows_monthly = operating_inflows / Decimal("12.0")
+    
+    # 2. Verified active obligations
+    active_obligations = (
+        db.query(Obligation)
+        .filter(
+            Obligation.business_id_fk == business_id
+        )
+        .all()
+    )
+    monthly_emi_total = sum((ob.monthly_emi for ob in active_obligations), Decimal("0.0"))
+    
+    # 3. Add a hypothetical 20% stress buffer to that EMI total
+    stressed_monthly_emi = monthly_emi_total * Decimal("1.2")
+    
+    if stressed_monthly_emi == Decimal("0.0"):
+        return None
+        
+    return operating_inflows_monthly / stressed_monthly_emi
 
 def get_credit_twin(db: Session, case_id: str) -> dict:
     from app.db.orm.cases import AuditEvent
@@ -176,6 +215,7 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
         "case_id": str(case_id),
         "business_id": str(business_id),
         "dscr": dscr if dscr is not None else None,
+        "independent_reamortization_dscr": calculate_independent_reamortization_dscr(db, str(business_id), date.today()),
         "calculation_version": "DSCR_SANDBOX_V1",
         "total_annual_revenue": total_annual_revenue,
         "binding_limit": binding_limit if binding_limit is not None else None,
