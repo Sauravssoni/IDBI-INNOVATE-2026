@@ -100,13 +100,16 @@ export interface FinancialHealthBreakdown {
 }
 
 export interface AuditVerification {
-  bola_verification_status: string;
-  cas_verification_status: string;
   audit_chain_valid: boolean;
+  analyst_event_status: string;
+  human_decision_event_status: string;
+  package_hash_valid: boolean;
+  authorization_scope_valid: boolean;
   package_hash: string;
   audit_tip_hash: string;
   verified_at: string;
   verification_version: string;
+  reason?: string;
 }
 
 export interface BankabilityIntervention {

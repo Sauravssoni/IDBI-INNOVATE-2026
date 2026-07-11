@@ -24,7 +24,7 @@ describe('apiFetch', () => {
     vi.restoreAllMocks();
   });
 
-  it('uses credentials: "include" and default localhost:8000 URL', async () => {
+  it('uses credentials: "include" and relative URL', async () => {
     (global.fetch as any).mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -35,7 +35,7 @@ describe('apiFetch', () => {
     await apiFetch('/api/test');
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'http://localhost:8000/api/test',
+      '/api/test',
       expect.objectContaining({
         credentials: 'include',
         headers: expect.any(Object),
