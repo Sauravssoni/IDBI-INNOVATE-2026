@@ -74,27 +74,31 @@ class FinancialCapacityEngine:
         # 1. Operating inflows (canonical: conservative minimum of verified bank credits and GST revenue if both exist)
         raw_bank_inflows = Decimal(str(bank_metrics.get("operating_inflows_monthly", bank_metrics.get("avg_monthly_credits", features.get("banking_inflow_inr", features.get("monthly_revenue_inr", "0"))))))
         raw_gst_inflows = Decimal(str(gst_metrics.get("avg_monthly_revenue", gst_metrics.get("taxable_turnover", "0")))) if "gst_metrics" in features else Decimal("0")
-        if raw_bank_inflows > 0 and raw_gst_inflows > 0:
-            observed_operating_inflows = min(raw_bank_inflows, raw_gst_inflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        elif raw_gst_inflows > 0:
-            observed_operating_inflows = raw_gst_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        
+        # Check if bank operating cash flows exist
+        if raw_bank_inflows <= Decimal("0"):
+            cash_flow_status = "INSUFFICIENT_CASH_FLOW_DATA"
+            observed_operating_inflows = Decimal("0.00")
         else:
-            observed_operating_inflows = raw_bank_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            cash_flow_status = "SUFFICIENT_CASH_FLOW_DATA"
+            if raw_gst_inflows > 0:
+                observed_operating_inflows = min(raw_bank_inflows, raw_gst_inflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            else:
+                observed_operating_inflows = raw_bank_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 2. Operating outflows & Operating Cash Available
         raw_outflows = Decimal(str(bank_metrics.get("operating_outflows_monthly", bank_metrics.get("avg_monthly_debits", features.get("banking_outflow_inr", features.get("monthly_expenses_inr", "0"))))))
-        observed_operating_outflows = raw_outflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        observed_operating_outflows = raw_outflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA" else Decimal("0.00")
 
         financials = features.get("financials", {})
-        if "ebitda_reported" in financials and financials["ebitda_reported"] is not None:
+        if "ebitda_reported" in financials and financials["ebitda_reported"] is not None and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             operating_cash_available = (Decimal(str(financials["ebitda_reported"])) / Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if observed_operating_outflows <= 0 or (observed_operating_inflows - observed_operating_outflows) != operating_cash_available:
                 observed_operating_outflows = max(Decimal("0.00"), observed_operating_inflows - operating_cash_available).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         else:
-            operating_cash_available = (observed_operating_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            operating_cash_available = (observed_operating_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA" else Decimal("0.00")
 
         # 3. Obligation verification state
-        # Check explicit debt service or verified cibil status in features
         explicit_verification_state = features.get("obligation_verification_state")
         explicit_existing_ds = features.get("verified_existing_debt_service_monthly")
 
@@ -107,8 +111,11 @@ class FinancialCapacityEngine:
             else:
                 verified_existing_ds = Decimal("0.00")
             unknown_reasons = []
+        elif explicit_verification_state == "UNKNOWN_OBLIGATIONS":
+            obligation_verification_state = "UNKNOWN_OBLIGATIONS"
+            verified_existing_ds = Decimal("0.00")
+            unknown_reasons = ["CIBIL obligations not verified and bank transaction feed lacks authoritative DEBT_SERVICE categorization."]
         else:
-            # Check if bank_metrics specifically confirms obligations pulled/verified or existing_monthly_emi > 0
             obligations_list = features.get("obligations", features.get("authoritative_obligations", []))
             existing_emi = bank_metrics.get("existing_monthly_emi")
             has_explicit_cibil = bool(features.get("cibil_pulled") or len(obligations_list) > 0 or bank_metrics.get("debt_service_verified") or existing_emi is not None)
@@ -122,13 +129,12 @@ class FinancialCapacityEngine:
                     verified_existing_ds = Decimal(str(bank_metrics.get("verified_debt_service_monthly", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 unknown_reasons = []
             else:
-                # Institutional truth: DO NOT INFER OBLIGATIONS AS credits/dscr OR debits * 0.20!
                 obligation_verification_state = "UNKNOWN_OBLIGATIONS"
                 verified_existing_ds = Decimal("0.00")
                 unknown_reasons = ["CIBIL obligations not verified and bank transaction feed lacks authoritative DEBT_SERVICE categorization."]
 
         # 4. Base DSCR calculation
-        if obligation_verification_state == "VERIFIED":
+        if obligation_verification_state == "VERIFIED" and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             if verified_existing_ds > Decimal("0.00"):
                 current_dscr = (operating_cash_available / verified_existing_ds).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             else:
@@ -139,7 +145,7 @@ class FinancialCapacityEngine:
         # 5. Proposed facility servicing
         proposed_emi = cls.calculate_emi(requested_amount_dec, custom_annual_rate_dec, custom_tenure_months) if requested_amount_dec > 0 else Decimal("0.00")
         
-        if obligation_verification_state == "VERIFIED":
+        if obligation_verification_state == "VERIFIED" and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             total_post_ds = verified_existing_ds + proposed_emi
             if total_post_ds > Decimal("0.00"):
                 post_loan_dscr = (operating_cash_available / total_post_ds).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -149,16 +155,16 @@ class FinancialCapacityEngine:
             post_loan_dscr = None
 
         # 6. Standard Downside Stress (-15% revenue / cash inflows, +15% debt service due to rate shock)
-        stressed_inflows = (observed_operating_inflows * Decimal("0.85")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        stressed_operating_cash_available = (stressed_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        
-        if obligation_verification_state == "VERIFIED":
+        if obligation_verification_state == "VERIFIED" and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
+            stressed_inflows = (observed_operating_inflows * Decimal("0.85")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            stressed_operating_cash_available = (stressed_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             stressed_debt_service = (verified_existing_ds * Decimal("1.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if stressed_debt_service > Decimal("0.00"):
                 stressed_dscr = (stressed_operating_cash_available / stressed_debt_service).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             else:
                 stressed_dscr = None
         else:
+            stressed_operating_cash_available = Decimal("0.00")
             stressed_debt_service = Decimal("0.00")
             stressed_dscr = None
 
@@ -182,13 +188,13 @@ class FinancialCapacityEngine:
             operating_cash_available=operating_cash_available,
             verified_existing_ds=verified_existing_ds,
             obligation_verification_state=obligation_verification_state,
+            cash_flow_status=cash_flow_status,
             features=features,
             calculation_evidence_ids=calculation_evidence_ids,
             custom_annual_rate=custom_annual_rate_dec,
             custom_tenure_months=custom_tenure_months
         )
 
-        # Determine binding product limit corresponding specifically to requested_product
         binding_limit, matched_method = cls._select_binding_limit(product_limits, requested_product)
 
         verified_rev_ann = float((observed_operating_inflows * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
@@ -197,6 +203,7 @@ class FinancialCapacityEngine:
         prop_ds_ann = float((proposed_emi * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
         return {
+            "cash_flow_status": cash_flow_status,
             "observed_operating_inflows_monthly": observed_operating_inflows,
             "observed_operating_outflows_monthly": observed_operating_outflows,
             "operating_cash_available_for_debt_service_monthly": operating_cash_available,
@@ -212,31 +219,32 @@ class FinancialCapacityEngine:
             "unknown_reasons": unknown_reasons,
             "product_limits": product_limits,
             "binding_product_limit": binding_limit,
+            "max_borrowing_limit": float(binding_limit),
             "requested_product_method": matched_method,
             "calculation_version": CALCULATION_VERSION,
             "verified_revenue_annual": verified_rev_ann,
             "net_operating_cash_flow_annual": net_op_cash_ann,
             "existing_debt_service_annual": exist_ds_ann,
             "proposed_annual_debt_service": prop_ds_ann,
-            "max_borrowing_limit": float(binding_limit) if isinstance(binding_limit, (Decimal, int, float)) else float(binding_limit.get("calculated_limit", 0.0))
         }
 
     @classmethod
     def compute_capacity_from_case(cls, db: Any, case: Any, requested_amount: Decimal = Decimal("0.00"), requested_product: str = "WORKING_CAPITAL_LINE") -> Dict[str, Any]:
         """
-        Derives canonical financial capacity directly from database ORM objects (Case, BankTransaction, GstReturn, Obligation).
+        Derives canonical financial capacity directly from database ORM objects (Case, BankTransaction, GSTPeriod, Obligation).
         """
-        from app.db.orm.evidence import BankTransaction, GstReturn, Obligation
+        from app.db.orm.evidence import BankTransaction, GSTPeriod, Obligation
+        from app.core.features.engine import FeatureEngine
 
-        # 1. Query Bank Transactions for operating inflows & outflows
-        txns = db.query(BankTransaction).filter(BankTransaction.case_id == case.id).all()
+        # 1. Query Bank Transactions for operating inflows & outflows using governed whitelists
+        txns = db.query(BankTransaction).filter(BankTransaction.business_id_fk == case.business_id_fk).all()
         
         inflow_ids = []
         outflow_ids = []
         obligation_ids = []
 
-        total_inflows = Decimal("0.00")
-        total_outflows = Decimal("0.00")
+        total_operating_inflows = Decimal("0.00")
+        total_operating_outflows = Decimal("0.00")
         total_ds_outflows = Decimal("0.00")
 
         months_seen = set()
@@ -245,35 +253,39 @@ class FinancialCapacityEngine:
                 months_seen.add((t.transaction_date.year, t.transaction_date.month))
             amt = Decimal(str(t.amount or "0.00"))
             t_type = str(t.transaction_type or "").upper()
-            t_cat = str(t.category or "").upper()
+            t_cat = str(t.category or "").upper() if t.category else ""
 
             if t_type == "CREDIT":
-                total_inflows += amt
-                inflow_ids.append(str(t.id))
+                if t_cat in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_INFLOWS"]:
+                    total_operating_inflows += amt
+                    inflow_ids.append(str(t.id))
             elif t_type == "DEBIT":
                 if t_cat == "DEBT_SERVICE":
                     total_ds_outflows += amt
-                else:
-                    total_outflows += amt
-                outflow_ids.append(str(t.id))
+                    obligation_ids.append(str(t.id))
+                elif t_cat in FeatureEngine.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_OUTFLOWS"]:
+                    total_operating_outflows += amt
+                    outflow_ids.append(str(t.id))
 
         month_divisor = Decimal(str(max(1, len(months_seen))))
-        observed_inflows = (total_inflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        observed_outflows = (total_outflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        observed_inflows = (total_operating_inflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        observed_outflows = (total_operating_outflows / month_divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # Check explicit verified turnover from GST if available
-        gst_records = db.query(GstReturn).filter(GstReturn.case_id == case.id).all()
-        if gst_records and not txns:
-            gst_turnover = sum((Decimal(str(g.taxable_turnover or "0.00")) for g in gst_records), Decimal("0.00"))
+        # Check explicit verified turnover from GST if available (no *0.75 outflow assumption!)
+        gst_records = db.query(GSTPeriod).filter(GSTPeriod.business_id_fk == case.business_id_fk).all()
+        gst_metrics = {}
+        if gst_records:
+            gst_turnover = sum((Decimal(str(g.declared_revenue or "0.00")) for g in gst_records), Decimal("0.00"))
             gst_months = max(1, len(gst_records))
-            observed_inflows = (gst_turnover / Decimal(str(gst_months))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            observed_outflows = (observed_inflows * Decimal("0.75")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            inflow_ids = [str(g.id) for g in gst_records]
+            avg_gst = (gst_turnover / Decimal(str(gst_months))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            gst_metrics = {
+                "avg_monthly_revenue": str(avg_gst),
+                "taxable_turnover": str(avg_gst),
+                "gst_evidence_ids": [str(g.id) for g in gst_records]
+            }
 
         # 2. Obligations check
-        obligations = db.query(Obligation).filter(
-            (Obligation.case_id == case.id) | (Obligation.business_id_fk == case.business_id)
-        ).all()
+        obligations = db.query(Obligation).filter(Obligation.business_id_fk == case.business_id_fk).all()
 
         if obligations:
             obligation_verification_state = "VERIFIED"
@@ -296,13 +308,16 @@ class FinancialCapacityEngine:
             features_dict = dict(case.features_dict)
         else:
             try:
-                from app.core.features.engine import FeatureEngine
                 fe = FeatureEngine(db, str(case.business_id_fk))
                 features_dict = fe.derive_all_features()
             except Exception:
                 features_dict = {}
+
+        if gst_metrics:
+            features_dict["gst_metrics"] = gst_metrics
+
         features_dict.update({
-            "authoritative_evidence_ids": inflow_ids + outflow_ids + obligation_ids,
+            "authoritative_evidence_ids": inflow_ids + outflow_ids + obligation_ids + gst_metrics.get("gst_evidence_ids", []),
             "inflow_evidence_ids": inflow_ids,
             "outflow_evidence_ids": outflow_ids,
             "obligation_evidence_ids": obligation_ids,
@@ -316,11 +331,15 @@ class FinancialCapacityEngine:
             }
         })
 
+        tenure = getattr(case, "requested_tenure_months", None) or getattr(case, "requested_tenure", None)
+        if not tenure or not isinstance(tenure, int):
+            tenure = 36
+
         return cls.compute_capacity_from_features(
             features=features_dict,
             requested_amount=requested_amount,
             requested_product=requested_product,
-            custom_tenure_months=case.requested_tenure_months or 36,
+            custom_tenure_months=tenure,
             custom_annual_rate=Decimal("0.135")
         )
 
@@ -331,6 +350,7 @@ class FinancialCapacityEngine:
         operating_cash_available: Decimal,
         verified_existing_ds: Decimal,
         obligation_verification_state: str,
+        cash_flow_status: str,
         features: Dict[str, Any],
         calculation_evidence_ids: Dict[str, List[str]],
         custom_annual_rate: Decimal = Decimal("0.135"),
@@ -338,11 +358,36 @@ class FinancialCapacityEngine:
     ) -> Dict[str, Dict[str, Any]]:
         """
         Derives independent product structures without arbitrary cross-product minimums.
+        If obligation_verification_state is UNKNOWN_OBLIGATIONS or cash_flow_status is INSUFFICIENT_CASH_FLOW_DATA,
+        all product limits strictly return 0.
         """
         if custom_annual_rate > Decimal("1.0"):
             custom_annual_rate = custom_annual_rate / Decimal("100")
         if custom_annual_rate <= Decimal("0.00"):
             custom_annual_rate = Decimal("0.135")
+
+        unverified_or_insufficient = (
+            obligation_verification_state == "UNKNOWN_OBLIGATIONS"
+            or cash_flow_status == "INSUFFICIENT_CASH_FLOW_DATA"
+        )
+
+        if unverified_or_insufficient:
+            zero_result = {
+                "applicability": "NOT_APPLICABLE",
+                "calculated_limit": Decimal("0.00"),
+                "supportable_limit_inr": Decimal("0.00"),
+                "confidence": 0.0,
+                "warnings": [
+                    f"Status check failed (Obligations: {obligation_verification_state}, Cash Flow: {cash_flow_status}). Sizing abstained."
+                ],
+                "limitations": ["Requires both verified obligations and sufficient operating cash-flow data."],
+                "evidence_ids": []
+            }
+            return {
+                "WORKING_CAPITAL_LINE": dict(zero_result, method="WORKING_CAPITAL_LINE", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-WC-001"], input_snapshot={}),
+                "RECEIVABLES_FINANCE": dict(zero_result, method="RECEIVABLES_FINANCE", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-REC-001"], input_snapshot={}),
+                "TERM_LOAN": dict(zero_result, method="TERM_LOAN", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-TL-001"], input_snapshot={}),
+            }
 
         # A. Working Capital Line (WORKING_CAPITAL_LINE)
         gst = features.get("gst_metrics", {})
@@ -356,16 +401,14 @@ class FinancialCapacityEngine:
         operating_cycle_days = Decimal(str(wc_metrics.get("operating_cycle_days", features.get("operating_cycle_days", 73))))
         wc_requirement = (turnover * (operating_cycle_days / Decimal("365"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         
-        # Cash flow headroom cap: for interest-only working capital lines serviced from available cash flow with 1.25x cushion
         net_monthly_headroom = max(Decimal("0.00"), operating_cash_available - verified_existing_ds)
         headroom_cap = ((net_monthly_headroom * Decimal("12")) / (custom_annual_rate * Decimal("1.25"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if custom_annual_rate > 0 else Decimal("0.00")
         policy_cap = Decimal("50000000.00")  # ₹5 Crore maximum
 
-        wc_candidates = [wc_requirement, headroom_cap, policy_cap] if obligation_verification_state == "VERIFIED" else [wc_requirement, policy_cap]
+        wc_candidates = [wc_requirement, headroom_cap, policy_cap]
         wc_limit = min(wc_candidates) if wc_requirement > 0 else Decimal("0.00")
 
         wc_binding = "working_capital_requirement" if wc_limit == wc_requirement else ("cash_flow_headroom_cap" if wc_limit == headroom_cap else "policy_cap")
-        wc_warnings = [] if obligation_verification_state == "VERIFIED" else ["Obligation state UNKNOWN_OBLIGATIONS; cash flow headroom cap unverified."]
 
         wc_result = {
             "method": "WORKING_CAPITAL_LINE",
@@ -383,8 +426,8 @@ class FinancialCapacityEngine:
             "binding_constraint": wc_binding,
             "policy_rule_ids": ["POL-WC-001"],
             "evidence_ids": calculation_evidence_ids.get("inflows", []),
-            "confidence": 0.90 if obligation_verification_state == "VERIFIED" and wc_limit > 0 else (0.50 if wc_limit > 0 else 0.0),
-            "warnings": wc_warnings,
+            "confidence": 0.90 if wc_limit > 0 else 0.0,
+            "warnings": [],
             "limitations": ["Subject to quarterly stock and book debt statement verification."]
         }
 
@@ -417,7 +460,7 @@ class FinancialCapacityEngine:
         }
 
         # C. Term Loan (TERM_LOAN)
-        if obligation_verification_state == "VERIFIED" and operating_cash_available > Decimal("0.00"):
+        if operating_cash_available > Decimal("0.00"):
             target_dscr = Decimal("1.30")
             max_total_ds = operating_cash_available / target_dscr
             supportable_emi = max(Decimal("0.00"), max_total_ds - verified_existing_ds)
@@ -445,7 +488,7 @@ class FinancialCapacityEngine:
             "binding_constraint": "target_dscr_serviceability",
             "policy_rule_ids": ["POL-TL-001"],
             "evidence_ids": calculation_evidence_ids.get("inflows", []) + calculation_evidence_ids.get("obligations", []),
-            "confidence": 0.85 if tl_limit > 0 and obligation_verification_state == "VERIFIED" else 0.0,
+            "confidence": 0.85 if tl_limit > 0 else 0.0,
             "warnings": tl_warnings,
             "limitations": [f"Calculated using exact reducing-balance amortization at {custom_annual_rate*100}% p.a. over {custom_tenure_months} months."]
         }
@@ -471,7 +514,6 @@ class FinancialCapacityEngine:
         elif "WORKING_CAPITAL" in req_upper or "WC" in req_upper or "CASH_CREDIT" in req_upper or "OD" in req_upper:
             target_key = "WORKING_CAPITAL_LINE"
         else:
-            # Check which product matches best or pick first applicable
             for key in ["WORKING_CAPITAL_LINE", "RECEIVABLES_FINANCE", "TERM_LOAN"]:
                 if product_limits[key]["applicability"] == "APPLICABLE":
                     return product_limits[key]["calculated_limit"], key
