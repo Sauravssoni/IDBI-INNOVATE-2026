@@ -1105,7 +1105,6 @@ def get_decision_package(
         scoring_version=scoring_ver_val,
         financial_health_index=fhi_dec,
         vyapar_credit_health_score=credit_score_val,
-        total_score=Decimal(str(scores_meta.get("total_score"))) if scores_meta.get("total_score") is not None else None,
         fhi_breakdown=fhi_breakdown_val,
         credit_score_disclaimer=disclaimer_val,
         calculation_evidence_ids=calc_evidence_ids,
