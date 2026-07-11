@@ -3,6 +3,7 @@ from app.schemas.responses import (
     DecisionPackageResponse,
     DecisionPackageReconciliation,
     DecisionPackageAuditItem,
+    AuditVerificationResponse,
 )
 from app.core.versions import POLICY_VERSION, CALCULATION_VERSION
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Query
@@ -1113,3 +1114,48 @@ def get_decision_package(
         audit_chain=audit_chain,
         bankability_path=bankability_path,
     )
+
+@router.post("/{case_id}/verify-audit", response_model=AuditVerificationResponse)
+def verify_audit_chain_endpoint(
+    case_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_active_user)
+):
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    audit_events = (
+        db.query(AuditEvent)
+        .filter(AuditEvent.case_id == case.id)
+        .order_by(AuditEvent.event_sequence.asc())
+        .all()
+    )
+
+    valid = True
+    prior_hash = "GENESIS"
+    bola_status = "NOT_VERIFIED"
+    cas_status = "NOT_VERIFIED"
+    
+    for evt in audit_events:
+        expected_hash = calculate_audit_hash(prior_hash, evt.event_payload)
+        if evt.event_hash != expected_hash:
+            valid = False
+            break
+        prior_hash = expected_hash
+        
+        if evt.event_type == "evaluate":
+            bola_status = "VERIFIED"
+        elif evt.event_type == "human_decision":
+            cas_status = "VERIFIED"
+
+    return AuditVerificationResponse(
+        bola_verification_status=bola_status if valid else "INVALID",
+        cas_verification_status=cas_status if valid else "INVALID",
+        audit_chain_valid=valid,
+        package_hash=prior_hash,
+        audit_tip_hash=prior_hash,
+        verified_at=datetime.datetime.utcnow().isoformat() + "Z",
+        verification_version="1.0-CRYPTOGRAPHIC"
+    )
+

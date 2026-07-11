@@ -240,3 +240,13 @@ class DecisionPackageResponse(BaseModel):
     human_action: Optional[str] = None
     case_version: int
     audit_chain: List[DecisionPackageAuditItem]
+    bankability_path: Optional[Dict[str, Any]] = None
+
+class AuditVerificationResponse(BaseModel):
+    bola_verification_status: str
+    cas_verification_status: str
+    audit_chain_valid: bool
+    package_hash: str
+    audit_tip_hash: str
+    verified_at: str
+    verification_version: str
