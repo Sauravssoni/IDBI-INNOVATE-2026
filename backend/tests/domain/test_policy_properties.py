@@ -142,6 +142,10 @@ def test_scoring_engine_returns_only_three_scores():
         "financial_health_score",
         "evidence_confidence_score",
         "resilience_score",
+        "financial_health_index",
+        "fhi_breakdown",
+        "vyapar_credit_health_score",
+        "credit_health_disclaimer",
     }
     assert "total_score" not in scores
     assert "band" not in scores
