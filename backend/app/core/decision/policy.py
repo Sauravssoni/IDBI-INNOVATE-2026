@@ -88,30 +88,30 @@ class DecisionPolicy:
                 "post_loan_dscr": None,
             }
 
-        # The binding limit for the case is the minimum of all applicable limits to be safe
-        binding_limit = min(limit["calculated_limit"] for limit in applicable_limits)
+        from app.domain.financial.engine import FinancialCapacityEngine
+        cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
+            self.features, self.requested_amount, self.requested_product
+        )
 
-        # Determine the product-specific limit if applicable, otherwise use binding limit
-        product_limit = binding_limit
-        for limit in applicable_limits:
-            # Map requested_product to method if possible, here simplified
-            if (
-                "WORKING_CAPITAL" in self.requested_product.upper()
-                and limit["method"] == "WORKING_CAPITAL_LINE"
-            ):
-                product_limit = limit["calculated_limit"]
+        # The binding product limit is specifically derived for the requested product structure
+        product_limit = cap_summary.get("binding_product_limit", Decimal("0.00"))
+        if product_limit <= 0 and applicable_limits:
+            product_limit = max(l["calculated_limit"] for l in applicable_limits)
 
         # 3. Offer Generation
         offers = self._generate_offers(product_limit, self.requested_product)
 
         # 4. Final Recommendation Precedence
-        # Rule 5: Requested structure unsupported but viable alternatives exist
-        if self.requested_amount > product_limit:
+        if cap_summary.get("obligation_verification_state") == "UNKNOWN_OBLIGATIONS":
+            decision = SystemRecommendation.CONDITIONAL_OFFER.value
+            reasons = [
+                "Obligations unverified (CIBIL/bank debt service not verified); conditional on verified obligation confirmation."
+            ]
+        elif self.requested_amount > product_limit:
             decision = SystemRecommendation.CONDITIONAL_OFFER.value
             reasons = [
                 f"Requested amount ({self.requested_amount}) exceeds supportable limit ({product_limit}). Offering alternatives."
             ]
-        # Rule 6: Requested structure supportable with sufficient evidence
         else:
             decision = SystemRecommendation.READY_FOR_REVIEW.value
             reasons = ["Requested structure supportable."]
@@ -137,37 +137,29 @@ class DecisionPolicy:
         return SafeLimitEngine.calculate_emi_from_loan(principal, annual_rate, tenure_months)
 
     def _derive_offer_dscrs(self, emi: Decimal) -> Tuple[str, str, str]:
-        bank = self.features.get("bank_metrics", {})
-        try:
-            credits = Decimal(str(bank.get("avg_monthly_credits", "0")))
-            debits = Decimal(str(bank.get("avg_monthly_debits", "0")))
-            dscr_str = bank.get("dscr")
-            if dscr_str and Decimal(str(dscr_str)) > 0:
-                existing_obligations = credits / Decimal(str(dscr_str))
-            elif debits > 0:
-                existing_obligations = debits * Decimal("0.20")
-            else:
-                existing_obligations = Decimal("0")
-        except Exception:
-            return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
-
-        total_obligations = existing_obligations + emi
-        if total_obligations <= 0 or credits <= 0:
-            return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
-
-        pre_loan_dscr = credits / existing_obligations if existing_obligations > 0 else (credits / total_obligations)
-        post_loan_dscr = credits / total_obligations
-        stressed_inflows = credits * Decimal("0.80")
-        stressed_obligations = total_obligations * Decimal("1.15")
-        stressed_dscr = (
-            stressed_inflows / stressed_obligations
-            if stressed_obligations > 0
-            else Decimal("0.00")
+        from app.domain.financial.engine import FinancialCapacityEngine
+        cap = FinancialCapacityEngine.compute_capacity_from_features(
+            self.features, self.requested_amount, self.requested_product
         )
+        if cap.get("obligation_verification_state") != "VERIFIED":
+            return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
 
-        pre_str = str(pre_loan_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
-        stressed_str = str(stressed_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
-        post_str = str(post_loan_dscr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        current_dscr = cap.get("current_dscr")
+        pre_str = str(current_dscr) if current_dscr is not None else "UNKNOWN"
+
+        noi = cap.get("operating_cash_available_for_debt_service_monthly", Decimal("0.00"))
+        existing_ds = cap.get("verified_existing_debt_service_monthly", Decimal("0.00"))
+        total_ds = existing_ds + emi
+
+        if total_ds > 0 and noi > 0:
+            post_dscr = (noi / total_ds).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            post_str = str(post_dscr)
+        else:
+            post_str = "UNKNOWN"
+
+        stressed_dscr = cap.get("stressed_dscr")
+        stressed_str = str(stressed_dscr) if stressed_dscr is not None else "UNKNOWN"
+
         return (pre_str, stressed_str, post_str)
 
     def _generate_offers(
