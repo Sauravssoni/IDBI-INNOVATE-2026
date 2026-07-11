@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db.base import Base
 from app.db.orm.users import User, SessionStore  # noqa: F401
-from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord  # noqa: F401
+from app.db.orm.cases import Case, Business, AuditEvent, IdempotencyRecord, DecisionPackage  # noqa: F401
 from app.db.orm.org import Region, Branch, UserBranchScope, SanctioningMandate  # noqa: F401
 from app.db.orm.consents import Consent, DataConnection  # noqa: F401
 from app.db.orm.evidence import (
@@ -36,13 +36,26 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override the database URL if provided in the environment
-env_url = os.getenv("DATABASE_URL")
+# Override the database URL if provided in the environment. Prefer the direct
+# unpooled URL for migrations when providers expose both pooled and direct URLs.
+env_url = os.getenv("DIRECT_DATABASE_URL") or os.getenv("DATABASE_URL")
 if env_url:
     # SQLAlchemy needs postgresql:// instead of postgres://
-    url = env_url.replace("postgres://", "postgresql://")
-    config.set_main_option("sqlalchemy.url", url)
+    url = env_url.strip().strip('"').strip("'").replace("postgres://", "postgresql://", 1)
+    if os.getenv("APP_ENV", "development").lower() == "production":
+        if not url:
+            raise RuntimeError("DATABASE_URL or DIRECT_DATABASE_URL is required in production")
+        from urllib.parse import parse_qs, urlparse
+
+        parsed = urlparse(url)
+        if (parsed.hostname or "").lower() in {"localhost", "127.0.0.1", "::1", "0.0.0.0", "db"}:
+            raise RuntimeError("Production migrations must target managed PostgreSQL")
+        if parse_qs(parsed.query).get("sslmode", [""])[0] not in {"require", "verify-ca", "verify-full"}:
+            raise RuntimeError("Production migrations require TLS")
+    config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 else:
+    if os.getenv("APP_ENV", "development").lower() == "production":
+        raise RuntimeError("DATABASE_URL or DIRECT_DATABASE_URL is required in production")
     db_user = os.getenv("POSTGRES_USER", "vyapar_local")
     db_pass = os.getenv("POSTGRES_PASSWORD", "change-this-local-development-password")
     db_name = os.getenv("POSTGRES_DB", "vyapar_pulse")

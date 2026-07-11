@@ -4,11 +4,24 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 import hashlib
 import secrets
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from app.api.routers import cases, audit, evidence, demo, stress, bankability
 from app.api import auth
 from app.core.config import get_settings
 from app.db.session import SessionLocal
-from app.core.versions import API_SERVICE_NAME, API_VERSION, SCHEMA_VERSION
+from app.core.versions import (
+    API_SERVICE_NAME,
+    API_VERSION,
+    SCHEMA_VERSION,
+    POLICY_VERSION,
+    CALCULATION_VERSION,
+    SCORING_VERSION,
+    PASSPORT_ENGINE_VERSION,
+    FEATURE_SCHEMA_VERSION,
+    PACKAGE_SCHEMA_VERSION,
+    AUDIT_HASH_VERSION,
+)
 
 
 app = FastAPI(
@@ -104,14 +117,49 @@ def ready() -> dict:
     db = SessionLocal()
     try:
         db.execute(text("SELECT 1"))
+        current_revision = db.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        alembic_cfg = Config("alembic.ini")
+        script = ScriptDirectory.from_config(alembic_cfg)
+        heads = script.get_heads()
+        if len(heads) != 1:
+            raise RuntimeError(f"Expected one Alembic head, found {heads}")
+        if current_revision != heads[0]:
+            raise RuntimeError(f"Database migration head mismatch: current={current_revision}, expected={heads[0]}")
+        required_versions = {
+            "schema_version": SCHEMA_VERSION,
+            "policy_version": POLICY_VERSION,
+            "calculation_version": CALCULATION_VERSION,
+            "scoring_version": SCORING_VERSION,
+            "evidence_passport_version": PASSPORT_ENGINE_VERSION,
+            "feature_schema_version": FEATURE_SCHEMA_VERSION,
+            "package_schema_version": PACKAGE_SCHEMA_VERSION,
+            "audit_hash_version": AUDIT_HASH_VERSION,
+        }
+        missing_versions = [key for key, value in required_versions.items() if not value]
+        if missing_versions:
+            raise RuntimeError(f"Version registry incomplete: {missing_versions}")
+        seed_count = db.execute(
+            text(
+                "SELECT count(*) FROM businesss WHERE business_id IN "
+                "('SHAKTI_PRECISION_001', 'NAVPRERNA_TRADERS_001', 'RANGREZ_TEXTILES_001', 'NIRMAAN_WORKS_001')"
+            )
+        ).scalar()
+        demo_seed_ready = int(seed_count or 0) >= 1
+        if settings.DEMO_ACCESS_ENABLED and not demo_seed_ready:
+            raise RuntimeError("Demo access is enabled but demo seed is incomplete")
         return {
             "status": "ready",
             "database": "connected",
+            "migration_head": current_revision,
+            "demo_seed_ready": demo_seed_ready,
             "service": API_SERVICE_NAME,
             "version": API_VERSION,
             "schema_version": SCHEMA_VERSION,
         }
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database not ready: {str(e)}")
+        return JSONResponse(
+            status_code=503,
+            content={"status": "unavailable", "reason": "Database connection or schema failed"},
+        )
     finally:
         db.close()
