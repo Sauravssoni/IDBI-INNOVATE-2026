@@ -129,7 +129,8 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
         
         db.query(GSTPeriod).filter(GSTPeriod.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
         db.query(BankTransaction).filter(BankTransaction.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        db.query(InvoicePayment).filter(InvoicePayment.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        demo_invoice_ids_query = db.query(Invoice.id).filter(Invoice.business_id_fk.in_(demo_business_ids_query))
+        db.query(InvoicePayment).filter(InvoicePayment.invoice_id_fk.in_(demo_invoice_ids_query)).delete(synchronize_session=False)
         db.query(Invoice).filter(Invoice.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
         db.query(EmploymentPeriod).filter(EmploymentPeriod.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
         db.query(Obligation).filter(Obligation.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
