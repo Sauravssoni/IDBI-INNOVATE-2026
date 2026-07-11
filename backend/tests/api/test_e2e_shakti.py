@@ -246,10 +246,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     assert record.feature_snapshot["governed_bank_metrics"]
     assert record.feature_snapshot["obligation_state"]
     assert record.feature_snapshot["evidence_ids"]
-    assert (
-        record.feature_snapshot["product_request"]["requested_product"]
-        == "WORKING_CAPITAL_LINE"
-    )
+    assert record.feature_snapshot["product_request"]["requested_product"] == "WORKING_CAPITAL_LINE"
     assert record.feature_snapshot["scoring_inputs"]
     assert record.feature_snapshot["calculation_inputs"]
 
@@ -270,9 +267,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     assert replay_data["differences"] == []
 
     original_versions = dict(record.engine_versions)
-    record.engine_versions = {
-        k: v for k, v in original_versions.items() if k != "calculation_version"
-    }
+    record.engine_versions = {k: v for k, v in original_versions.items() if k != "calculation_version"}
     db.commit()
     version_unavailable = client.post(
         f"/api/cases/{case_id}/decision-package/{sealed['package_id']}/replay",
@@ -326,17 +321,13 @@ def test_concurrent_idempotency(client: TestClient, db: Session):
 
         shakti_business = (
             db.query(Business)
-            .filter(
-                Business.legal_name.in_(
-                    ["Shakti Precision Components Pvt Ltd", "Navprerna Tech Solutions"]
-                )
-            )
+            .filter(Business.legal_name.in_(["Shakti Precision Components Pvt Ltd", "Navprerna Tech Solutions"]))
             .first()
         )
         if shakti_business and shakti_business.cases:
             shakti_case = next(
                 (c for c in cases if c["id"] == str(shakti_business.cases[0].id)),
-                cases[-1] if cases else None,
+                cases[-1] if cases else None
             )
         else:
             shakti_case = cases[-1] if cases else None
