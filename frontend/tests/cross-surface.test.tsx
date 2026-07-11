@@ -36,6 +36,7 @@ describe('Cross-Surface Consistency', () => {
       id: 'CASE-123',
       business_name: 'Stark Industries',
       requested_amount: 10000000,
+      financial_health_index: 82.0,
       evaluated_at: new Date().toISOString(),
       evaluation_result: {
         decision: {
