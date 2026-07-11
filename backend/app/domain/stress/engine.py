@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.policy import DecisionPolicy
 from app.domain.financial.engine import FinancialCapacityEngine
+from app.core.scoring.scorer import ScoringEngine
 
 
 def run_case_stress_lab(
@@ -56,6 +57,75 @@ def run_case_stress_lab(
             return "VULNERABLE"
         return "DISTRESSED"
 
+    def recompute_scenario(scenario_features: Dict[str, Any], rate: Decimal = Decimal("0.135")) -> Dict[str, Any]:
+        scenario_scores = ScoringEngine(scenario_features).compute_all_scores()
+        scenario_cap = FinancialCapacityEngine.compute_capacity_from_features(
+            scenario_features,
+            requested_amount,
+            requested_product,
+            custom_annual_rate=rate,
+        )
+        scenario_policy = DecisionPolicy(scenario_features, scenario_scores, requested_amount, requested_product).evaluate()
+        binding_details = scenario_policy.get("limit_details") or [scenario_cap.get("product_limits", {}).get(scenario_cap.get("requested_product_method"), {})]
+        binding_constraint = None
+        if binding_details and isinstance(binding_details[0], dict):
+            binding_constraint = binding_details[0].get("binding_constraint")
+        return {
+            "scores": scenario_scores,
+            "capacity": scenario_cap,
+            "policy": scenario_policy,
+            "fhi": scenario_scores.get("financial_health_index"),
+            "credit_health_score": scenario_scores.get("vyapar_credit_health_score"),
+            "assessment_range": scenario_scores.get("score_range"),
+            "post_loan_dscr": scenario_cap.get("post_loan_dscr"),
+            "supportable_amount": float(Decimal(str(scenario_policy.get("binding_limit", 0) or 0))),
+            "decision": scenario_policy.get("decision"),
+            "binding_constraint": binding_constraint,
+            "breached_rules": scenario_policy.get("reasons", []),
+        }
+
+    def scenario_payload(
+        scenario_id: str,
+        name: str,
+        description: str,
+        scenario_features: Dict[str, Any],
+        policy_rule_id: str,
+        rate: Decimal = Decimal("0.135"),
+    ) -> Dict[str, Any]:
+        result = recompute_scenario(scenario_features, rate)
+        dscr_dec = Decimal(str(result["post_loan_dscr"])) if result["post_loan_dscr"] is not None else Decimal("0.00")
+        status = get_status(dscr_dec if dscr_dec > 0 else None)
+        return {
+            "scenario_id": scenario_id,
+            "name": name,
+            "description": description,
+            "recomputed_dscr": float(dscr_dec),
+            "recomputed_limit": result["supportable_amount"],
+            "status": status,
+            "policy_rule_id": policy_rule_id,
+            "transition_explanation": f"{name}: policy state {base_decision.get('decision')} -> {result['decision']}.",
+            "before": {
+                "fhi": scores.get("financial_health_index"),
+                "credit_health_score": scores.get("vyapar_credit_health_score"),
+                "assessment_range": scores.get("score_range"),
+                "post_loan_dscr": base_cap.get("post_loan_dscr"),
+                "supportable_amount": float(base_limit),
+                "decision": base_decision.get("decision"),
+                "binding_constraint": None,
+                "breached_rules": base_decision.get("reasons", []),
+            },
+            "after": {
+                "fhi": result["fhi"],
+                "credit_health_score": result["credit_health_score"],
+                "assessment_range": result["assessment_range"],
+                "post_loan_dscr": result["post_loan_dscr"],
+                "supportable_amount": result["supportable_amount"],
+                "decision": result["decision"],
+                "binding_constraint": result["binding_constraint"],
+                "breached_rules": result["breached_rules"],
+            },
+        }
+
     # 1. Revenue Drop -15%
     s1_features = features.copy()
     s1_inflows = (base_inflows * Decimal("0.85")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -66,25 +136,7 @@ def run_case_stress_lab(
     if "monthly_revenue_inr" in s1_features:
         s1_features["monthly_revenue_inr"] = str(s1_inflows)
     
-    s1_cap = FinancialCapacityEngine.compute_capacity_from_features(s1_features, requested_amount, requested_product)
-    s1_dscr = get_effective_dscr(s1_cap)
-    s1_limit = s1_cap.get("binding_product_limit", Decimal("0.00"))
-    s1_status = get_status(s1_dscr, s1_inflows - base_outflows)
-
-    scenarios.append({
-        "scenario_id": "REVENUE_DROP_15",
-        "name": "Revenue Drop (-15%)",
-        "description": "Simulates a 15% reduction in verified operating cash inflows.",
-        "recomputed_dscr": float(s1_dscr),
-        "recomputed_limit": float(s1_limit),
-        "status": s1_status,
-        "policy_rule_id": "POL-STR-001",
-        "transition_explanation": (
-            f"Under a 15% revenue drop, DSCR transitions from {base_dscr:.2f} to {s1_dscr:.2f}. " +
-            ("Supportable limit remains robust above requested requirement." if s1_status == "PASS" else
-             f"DSCR breaches institutional thresholds, transitioning policy state towards {s1_status}.")
-        )
-    })
+    scenarios.append(scenario_payload("REVENUE_DROP_15", "Revenue Drop (-15%)", "Simulates a 15% reduction in verified operating cash inflows.", s1_features, "POL-STR-001"))
 
     # 2. Interest Rate Hike +200bps (+2%) on proposed facility. Existing EMI remains fixed
     # unless exact facility terms are available for re-amortisation.
@@ -92,25 +144,14 @@ def run_case_stress_lab(
     s2_features["verified_existing_debt_service_monthly"] = str(base_existing_ds)
     s2_features["obligation_verification_state"] = obligation_state
 
-    s2_cap = FinancialCapacityEngine.compute_capacity_from_features(s2_features, requested_amount, requested_product, custom_annual_rate=Decimal("0.155"))
-    s2_dscr = get_effective_dscr(s2_cap)
-    s2_limit = s2_cap.get("binding_product_limit", Decimal("0.00"))
-    s2_status = get_status(s2_dscr, base_inflows - base_outflows)
-
-    scenarios.append({
-        "scenario_id": "RATE_HIKE_200BPS",
-        "name": "Interest Rate Hike (+200bps)",
-        "description": "Simulates a +2.0% increase in proposed facility borrowing cost; existing facility EMI is held fixed because facility terms are unavailable.",
-        "recomputed_dscr": float(s2_dscr),
-        "recomputed_limit": float(s2_limit),
-        "status": s2_status,
-        "policy_rule_id": "POL-STR-002",
-        "transition_explanation": (
-            f"Under a +200bps rate shock, DSCR moves from {base_dscr:.2f} to {s2_dscr:.2f}. " +
-            ("Interest rate shock is well absorbed within existing cash conversion headroom." if s2_status == "PASS" else
-             f"Higher debt service reduces headroom below minimum institutional tolerance ({s2_status}).")
-        )
-    })
+    scenarios.append(scenario_payload(
+        "RATE_HIKE_200BPS",
+        "Interest Rate Hike (+200bps)",
+        "Re-amortises proposed facility at shocked rate. Existing facility EMI is held constant because principal/rate/remaining-tenure fields are unavailable.",
+        s2_features,
+        "POL-STR-002",
+        Decimal("0.155"),
+    ))
 
     # 3. COGS / Outflows Increase +10%
     s3_features = features.copy()
@@ -120,25 +161,7 @@ def run_case_stress_lab(
     s3_bank["avg_monthly_debits"] = str(s3_outflows)
     s3_features["bank_metrics"] = s3_bank
 
-    s3_cap = FinancialCapacityEngine.compute_capacity_from_features(s3_features, requested_amount, requested_product)
-    s3_dscr = get_effective_dscr(s3_cap)
-    s3_limit = s3_cap.get("binding_product_limit", Decimal("0.00"))
-    s3_status = get_status(s3_dscr, base_inflows - s3_outflows)
-
-    scenarios.append({
-        "scenario_id": "COGS_INCREASE_10",
-        "name": "COGS / Outflow Increase (+10%)",
-        "description": "Simulates a 10% inflation in operating expenses and supplier debits.",
-        "recomputed_dscr": float(s3_dscr),
-        "recomputed_limit": float(s3_limit),
-        "status": s3_status,
-        "policy_rule_id": "POL-STR-003",
-        "transition_explanation": (
-            f"With 10% higher supplier outflows, operating margin compresses and DSCR shifts from {base_dscr:.2f} to {s3_dscr:.2f}. " +
-            ("Buffer is sufficient to maintain debt service without covenant breach." if s3_status == "PASS" else
-             "Margin compression requires structural credit mitigation or facility sizing reduction.")
-        )
-    })
+    scenarios.append(scenario_payload("COGS_INCREASE_10", "COGS / Outflow Increase (+10%)", "Simulates a 10% inflation in operating expenses and supplier debits.", s3_features, "POL-STR-003"))
 
     # 4. Combined Downside Shock (-15% revenue, +10% cogs, +200bps rate)
     s4_features = features.copy()
@@ -155,25 +178,7 @@ def run_case_stress_lab(
     s4_features["verified_existing_debt_service_monthly"] = str(s4_existing_ds)
     s4_features["obligation_verification_state"] = obligation_state
 
-    s4_cap = FinancialCapacityEngine.compute_capacity_from_features(s4_features, requested_amount, requested_product, custom_annual_rate=Decimal("0.155"))
-    s4_dscr = get_effective_dscr(s4_cap)
-    s4_limit = s4_cap.get("binding_product_limit", Decimal("0.00"))
-    s4_status = get_status(s4_dscr, s4_inflows - s4_outflows)
-
-    scenarios.append({
-        "scenario_id": "COMBINED_DOWNSIDE",
-        "name": "Combined Downside Shock",
-        "description": "Simulates simultaneous -15% revenue contraction, +10% expense inflation, and +200bps rate shock.",
-        "recomputed_dscr": float(s4_dscr),
-        "recomputed_limit": float(s4_limit),
-        "status": s4_status,
-        "policy_rule_id": "POL-STR-004",
-        "transition_explanation": (
-            f"Under severe combined downside, DSCR degrades from {base_dscr:.2f} to {s4_dscr:.2f} and supportable limit adjusts to INR {float(s4_limit):,.2f}. " +
-            ("Case maintains viability under severe macro-economic stress." if s4_status == "PASS" else
-             f"Severe macroeconomic deterioration triggers explicit policy transition from {base_decision.get('decision')} to DECLINE or CONDITIONAL.")
-        )
-    })
+    scenarios.append(scenario_payload("COMBINED_DOWNSIDE", "Combined Downside Shock", "Simulates simultaneous -15% revenue contraction, +10% expense inflation, and +200bps proposed-rate shock.", s4_features, "POL-STR-004", Decimal("0.155")))
 
     overall_stress_status = (
         "NOT_ASSESSABLE" if any(s["status"] == "NOT_ASSESSABLE" for s in scenarios)

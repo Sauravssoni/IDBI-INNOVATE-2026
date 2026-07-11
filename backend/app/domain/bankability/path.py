@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.policy import DecisionPolicy
 from app.core.scoring.scorer import ScoringEngine
 from app.domain.financial.engine import FinancialCapacityEngine
+from app.domain.financial.obligations import ASSESSABLE_OBLIGATION_STATES
 
 
 def compute_bankability_path(
@@ -87,17 +88,35 @@ def compute_bankability_path(
             sim_features, 30,
         ))
 
-    if base_cap.get("obligation_verification_state") != "VERIFIED":
-        sim_features = copy.deepcopy(features)
-        sim_features["obligation_verification_state"] = "VERIFIED"
-        sim_features["verified_existing_debt_service_monthly"] = sim_features.get("verified_existing_debt_service_monthly", "0")
-        milestones.append(run_sim(
-            "MIL-002", "45_DAYS",
-            "Verify existing obligations through bureau report or authoritative debt-service evidence",
-            "ब्यूरो रिपोर्ट या अधिकृत ऋण-सेवा साक्ष्य से मौजूदा देनदारियां सत्यापित करें",
-            "obligation_verification_state", "Only the verification state changes; debt amount remains the recorded value.",
-            sim_features, 45,
-        ))
+    if base_cap.get("obligation_verification_state") not in ASSESSABLE_OBLIGATION_STATES:
+        milestones.append({
+            "milestone_id": "MIL-002",
+            "timeline_tier": "45_DAYS",
+            "action": "Verify existing obligations through bureau report, obligation records, or explicit zero-debt evidence",
+            "hindi_action": "ब्यूरो रिपोर्ट, देनदारी रिकॉर्ड या स्पष्ट शून्य-ऋण साक्ष्य से मौजूदा देनदारियां सत्यापित करें",
+            "changed_input": "obligation_verification_state",
+            "assumption": "Authoritative obligation amount or explicit zero-debt evidence has not yet been supplied.",
+            "impact_on_score": "IMPACT_NOT_QUANTIFIABLE",
+            "expected_timeline_days": 45,
+            "target_state": current_state,
+            "target_tier": "SCENARIO_ONLY",
+            "projected_limit_inr": float(current_limit),
+            "projected_rate_bps": None,
+            "prerequisites": ["Authoritative obligation amount or explicit zero-debt evidence"],
+            "scenario_disclaimer": "Scenario only. Completion does not guarantee sanction.",
+            "simulation_evidence": {
+                "before_evidence_score": float(evidence_score),
+                "after_evidence_score": None,
+                "before_health_score": numeric(health_score),
+                "after_health_score": None,
+                "before_dscr": numeric(base_dscr),
+                "after_dscr": None,
+                "before_supportable_amount": float(current_limit),
+                "after_supportable_amount": None,
+                "before_policy_state": current_state,
+                "after_policy_state": "IMPACT_NOT_QUANTIFIABLE",
+            },
+        })
 
     bank = features.get("bank_metrics", {})
     inflows = Decimal(str(bank.get("operating_inflows_monthly", "0") or 0))

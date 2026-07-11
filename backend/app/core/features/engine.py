@@ -9,6 +9,7 @@ from app.db.orm.evidence import (
     Invoice,
     EmploymentPeriod,
     InvoicePayment,
+    Obligation,
 )
 from app.services.credit_twin import calculate_dscr_sandbox_v1, calculate_independent_reamortization_dscr
 import datetime
@@ -37,14 +38,35 @@ class FeatureEngine:
             raise ValueError(f"Business not found: {self.business_id}")
 
         receivable_metrics = self._derive_receivable_metrics()
+        obligation_metrics = self._derive_obligation_metrics()
         return {
             "gst_metrics": self._derive_gst_metrics(),
             "bank_metrics": self._derive_bank_metrics(),
+            **obligation_metrics,
             "reconciliation_metrics": self._derive_reconciliation_metrics(),
             "employment_metrics": self._derive_employment_metrics(),
             "receivable_metrics": receivable_metrics,
             "invoice_metrics": receivable_metrics,
         }
+
+    def _derive_obligation_metrics(self) -> Dict[str, Any]:
+        obligations = (
+            self.db.query(Obligation)
+            .filter(Obligation.business_id_fk == self.business_id)
+            .all()
+        )
+        if obligations:
+            total_emi = sum((Decimal(str(o.monthly_emi or "0.00")) for o in obligations), Decimal("0.00"))
+            return {
+                "obligation_verification_state": "VERIFIED_OBLIGATIONS",
+                "verified_existing_debt_service_monthly": str(total_emi.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "obligations": [
+                    {"id": str(o.id), "monthly_emi": str(o.monthly_emi), "facility_type": o.facility_type}
+                    for o in obligations
+                ],
+                "obligation_evidence_ids": [str(o.id) for o in obligations],
+            }
+        return {"obligation_verification_state": "UNKNOWN_OBLIGATIONS"}
 
     def _derive_gst_metrics(self) -> Dict[str, Any]:
         gst_records = (

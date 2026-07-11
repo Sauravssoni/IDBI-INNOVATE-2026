@@ -17,6 +17,20 @@ describe('DecisionPackageTab UI & Contract', () => {
   it('renders non-zero offer amount correctly', async () => {
     const mockData: DecisionPackageResponse = {
       case_id: 'CASE-001',
+      business_name: 'Test Business',
+      requested_amount: 5000000,
+      requested_product: 'TERM_LOAN',
+      reconciliation: {
+        reconciliation_quality: 95,
+        evidence_confidence: 90,
+        source_coverage: 80,
+      },
+      dscr: 1.8,
+      post_loan_dscr: 1.45,
+      binding_limit: 5000000,
+      recommendation: 'CONDITIONAL_OFFER',
+      reason_codes: [],
+      conditions: [],
       offers: [
         {
           product_type: 'TERM_LOAN',
@@ -45,7 +59,12 @@ describe('DecisionPackageTab UI & Contract', () => {
         assessment_certainty: 'HIGH_CERTAINTY',
         authoritative_evidence_ids: ['ev-001'],
         generated_at: '2023-01-01T00:00:00Z'
-      }
+      },
+      policy_version: '2.0-CANONICAL',
+      calculation_version: '2.0-CANONICAL',
+      scoring_version: '3.0-EVIDENCE-CONDITIONED-FHI',
+      case_version: 1,
+      audit_chain: []
     };
 
     mockApiFetch.mockImplementation(async (url: string) => {
@@ -63,15 +82,29 @@ describe('DecisionPackageTab UI & Contract', () => {
     await waitFor(() => {
       // 5000000 -> ₹50.00 lakh formatting typically
       expect(screen.getByText('TERM LOAN')).toBeInTheDocument();
-      expect(screen.getByText(/50\.00 lakh/i)).toBeInTheDocument(); 
+      expect(screen.getAllByText(/50\.00 lakh/i).length).toBeGreaterThan(0);
       expect(screen.getByText('12.5% p.a. / 36M')).toBeInTheDocument();
-      expect(screen.getByText('1.45')).toBeInTheDocument();
+      expect(screen.getAllByText('1.45').length).toBeGreaterThan(0);
     });
   });
 
   it('renders zero offer as Not Applicable', async () => {
     const mockData: DecisionPackageResponse = {
       case_id: 'CASE-001',
+      business_name: 'Test Business',
+      requested_amount: 5000000,
+      requested_product: 'OVERDRAFT',
+      reconciliation: {
+        reconciliation_quality: 95,
+        evidence_confidence: 90,
+        source_coverage: 80,
+      },
+      dscr: 1.8,
+      post_loan_dscr: 0,
+      binding_limit: 0,
+      recommendation: 'ADDITIONAL_EVIDENCE_REQUIRED',
+      reason_codes: [],
+      conditions: [],
       offers: [
         {
           product_type: 'OVERDRAFT',
@@ -100,7 +133,12 @@ describe('DecisionPackageTab UI & Contract', () => {
         assessment_certainty: 'HIGH_CERTAINTY',
         authoritative_evidence_ids: ['ev-001'],
         generated_at: '2023-01-01T00:00:00Z'
-      }
+      },
+      policy_version: '2.0-CANONICAL',
+      calculation_version: '2.0-CANONICAL',
+      scoring_version: '3.0-EVIDENCE-CONDITIONED-FHI',
+      case_version: 1,
+      audit_chain: []
     };
 
     mockApiFetch.mockImplementation(async (url: string) => {
@@ -112,7 +150,7 @@ describe('DecisionPackageTab UI & Contract', () => {
     render(<DecisionPackageTab caseId="CASE-001" />);
 
     await waitFor(() => {
-      expect(screen.getByText('OVERDRAFT')).toBeInTheDocument();
+      expect(screen.getAllByText('OVERDRAFT').length).toBeGreaterThan(0);
       expect(screen.getByText('Not Applicable')).toBeInTheDocument();
       expect(screen.getByText(/Product cap or cash-flow headroom constraints preclude non-zero limit assignment./i)).toBeInTheDocument();
     });

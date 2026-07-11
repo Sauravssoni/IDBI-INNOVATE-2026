@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.limits import SafeLimitEngine
 from app.db.orm.cases import SystemRecommendation
 from app.core.versions import POLICY_VERSION, CALCULATION_VERSION
+from app.domain.financial.obligations import ASSESSABLE_OBLIGATION_STATES
 
 
 class DecisionPolicy:
@@ -135,7 +136,7 @@ class DecisionPolicy:
 
         # Check for unverified existing debt obligations (strict check: never CONDITIONAL_OFFER for unknown obligations)
         obligation_state = cap_summary.get("obligation_verification_state")
-        if obligation_state not in ["VERIFIED", "ASSESSABLE_ZERO", None]:
+        if obligation_state not in ASSESSABLE_OBLIGATION_STATES:
             return {
                 "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
                 "reasons": [
@@ -154,7 +155,7 @@ class DecisionPolicy:
 
         product_limits_dict = cap_summary.get("product_limits", {})
         applicable_limits = [
-            l for l in product_limits_dict.values() if isinstance(l, dict) and l.get("applicability") == "APPLICABLE"
+            limit for limit in product_limits_dict.values() if isinstance(limit, dict) and limit.get("applicability") == "APPLICABLE"
         ]
 
         if not applicable_limits:
@@ -172,7 +173,7 @@ class DecisionPolicy:
         product_limit_val = cap_summary.get("binding_product_limit")
         product_limit = Decimal(str(product_limit_val)) if product_limit_val is not None else Decimal("0.00")
         if product_limit <= 0 and applicable_limits:
-            product_limit = max(Decimal(str(l.get("calculated_limit", "0.00"))) for l in applicable_limits)
+            product_limit = max(Decimal(str(limit.get("calculated_limit", "0.00"))) for limit in applicable_limits)
 
         if product_limit <= 0:
             return {
@@ -221,7 +222,7 @@ class DecisionPolicy:
         return SafeLimitEngine.calculate_emi_from_loan(principal, annual_rate, tenure_months)
 
     def _derive_offer_dscrs(self, cap: Dict[str, Any], emi: Decimal) -> Tuple[str, str, str]:
-        if cap.get("obligation_verification_state") not in ["VERIFIED", "ASSESSABLE_ZERO"]:
+        if cap.get("obligation_verification_state") not in ASSESSABLE_OBLIGATION_STATES:
             return ("UNKNOWN", "UNKNOWN", "UNKNOWN")
 
         current_dscr = cap.get("current_dscr")
