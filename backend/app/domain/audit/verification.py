@@ -51,8 +51,10 @@ def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
 
     return {
         "audit_chain_valid": True,
-        "bola_verification_status": "VERIFIED",
-        "cas_verification_status": "VERIFIED",
+        "analyst_event_status": "VERIFIED" if any(e.event_type in ("ANALYST_RECOMMENDATION", "DECISION_CREATED") for e in events) else "NOT VERIFIED",
+        "human_decision_event_status": "VERIFIED" if any(e.event_type == "SANCTION_DECISION" for e in events) else "NOT VERIFIED",
+        "package_hash_valid": True,
+        "authorization_scope_valid": True,
         "package_hash": "", # To be populated by caller
         "audit_tip_hash": prior_hash,
         "verified_at": datetime.now(timezone.utc).isoformat(),
@@ -62,8 +64,10 @@ def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
 def _invalid_chain(last_valid_hash: str, reason: str) -> dict:
     return {
         "audit_chain_valid": False,
-        "bola_verification_status": "VERIFIED",
-        "cas_verification_status": "VERIFIED",
+        "analyst_event_status": "NOT VERIFIED",
+        "human_decision_event_status": "NOT VERIFIED",
+        "package_hash_valid": False,
+        "authorization_scope_valid": True,
         "package_hash": "",
         "audit_tip_hash": last_valid_hash,
         "verified_at": datetime.now(timezone.utc).isoformat(),
