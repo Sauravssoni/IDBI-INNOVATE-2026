@@ -127,12 +127,25 @@ export interface DecisionPackageResponse {
   bankability_path?: BankabilityPath | null;
 }
 
+export interface ScenarioResult {
+  scenario_id: string;
+  name: string;
+  description: string;
+  recomputed_dscr: number;
+  recomputed_limit: number;
+  status: string;
+  policy_rule_id: string;
+  transition_explanation: string;
+}
+
 export interface StressResult {
-  shock_scenario: string;
-  interest_rate_shock: number;
-  stressed_dscr: number;
-  stressed_repayment: number;
-  viability: string;
-  cushion_percentage: number;
-  amortisation_approximation?: boolean;
+  overall_stress_status: string;
+  base_dscr: number;
+  base_binding_limit: number;
+  scenarios: ScenarioResult[];
+  stressed: {
+    dscr: number;
+    max_loan_amount: number;
+    status: string;
+  };
 }
