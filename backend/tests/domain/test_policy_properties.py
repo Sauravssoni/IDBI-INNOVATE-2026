@@ -156,9 +156,12 @@ def test_generate_offers_no_percentage_fallbacks():
         "integrity_flag": False,
         "monthly_revenue_inr": "5000000.00",
         "monthly_expenses_inr": "3000000.00",
-        "operating_inflows_monthly": "5000000.00",
-        "operating_outflows_monthly": "3000000.00",
-        "verified_existing_ds_monthly": "100000.00",
+        "verified_existing_debt_service_monthly": "100000.00",
+        "obligation_verification_state": "VERIFIED",
+        "bank_metrics": {
+            "operating_inflows_monthly": "5000000.00",
+            "operating_outflows_monthly": "3000000.00",
+        },
         "cibil_pulled": True,
         "average_bank_balance": "1000000.00",
         "gst_metrics": {"months_filed": 12, "avg_monthly_revenue": "5000000.00"},
@@ -183,5 +186,4 @@ def test_generate_offers_no_percentage_fallbacks():
         amt = Decimal(offer["amount"])
         assert amt >= Decimal("0.00")
         assert amt <= decision["binding_limit"]
-
 

@@ -1,6 +1,4 @@
 import math
-import pytest
-from decimal import Decimal
 from app.domain.financial.engine import FinancialCapacityEngine
 
 
@@ -139,4 +137,27 @@ def test_financial_capacity_missing_data_abstention():
 
     assert result["verified_revenue_annual"] == 0.0
     assert result["max_borrowing_limit"] == 0.0
-    assert result["current_dscr"] == 0.0
+    assert result["current_dscr"] is None
+    assert result["post_loan_dscr"] is None
+    assert result["obligation_verification_state"] == "UNKNOWN_OBLIGATIONS"
+
+
+def test_financial_capacity_does_not_use_unrestricted_credit_fallbacks():
+    features = {
+        "monthly_revenue_inr": 10000000,
+        "monthly_expenses_inr": 1000000,
+        "bank_metrics": {
+            "avg_monthly_credits": 10000000,
+            "avg_monthly_debits": 1000000,
+        },
+        "obligation_verification_state": "VERIFIED",
+        "verified_existing_debt_service_monthly": 0,
+    }
+
+    result = FinancialCapacityEngine.compute_capacity_from_features(
+        features, "TERM_LOAN", 5000000.0, 13.5, 36
+    )
+
+    assert result["cash_flow_status"] == "INSUFFICIENT_CASH_FLOW_DATA"
+    assert result["verified_revenue_annual"] == 0.0
+    assert result["max_borrowing_limit"] == 0.0

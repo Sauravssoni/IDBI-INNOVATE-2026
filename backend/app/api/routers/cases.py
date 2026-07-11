@@ -31,6 +31,7 @@ from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
 from app.api.dependencies import get_current_user
 from app.core.audit import calculate_audit_hash
+from app.domain.audit.verification import verify_audit_chain
 from app.db.orm.users import User
 from app.services.authz import (
     apply_case_list_scope,
@@ -1161,5 +1162,4 @@ def verify_audit_chain_endpoint(
         verification_version=result["verification_version"],
         reason=result.get("reason")
     )
-
 

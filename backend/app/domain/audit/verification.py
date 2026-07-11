@@ -1,8 +1,7 @@
-import hashlib
-import json
 from typing import Dict, Any
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+from app.core.audit import calculate_audit_hash
 from app.db.orm.cases import AuditEvent
 from app.db.orm.users import User, UserRole
 
@@ -14,8 +13,8 @@ def reconstruct_payload(event: AuditEvent) -> Dict[str, Any]:
         "action": event.event_type,
         "rationale": event.reason,
         "correlation_id": event.correlation_id,
-        "prior_case_version": event.prior_case_version,
-        "resulting_case_version": event.resulting_case_version,
+        "prior_version": event.prior_case_version,
+        "resulting_version": event.resulting_case_version,
         "idempotency_record_id": str(event.idempotency_record_id) if event.idempotency_record_id else None,
         "model_version": event.model_version,
         "policy_version": event.policy_version,
@@ -41,8 +40,7 @@ def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
             return _invalid_chain(prior_hash, f"HASH_MISMATCH_AT_INDEX_{idx}")
 
         payload = reconstruct_payload(event)
-        payload_str = json.dumps(payload, sort_keys=True)
-        expected_hash = hashlib.sha256((prior_hash + payload_str).encode("utf-8")).hexdigest()
+        expected_hash = calculate_audit_hash(prior_hash, payload)
 
         if event.event_hash != expected_hash:
             return _invalid_chain(prior_hash, f"PAYLOAD_TAMPERED_AT_INDEX_{idx}")
@@ -51,9 +49,11 @@ def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
 
     return {
         "audit_chain_valid": True,
-        "analyst_event_status": "VERIFIED" if any(e.event_type in ("ANALYST_RECOMMENDATION", "DECISION_CREATED") for e in events) else "NOT VERIFIED",
-        "human_decision_event_status": "VERIFIED" if any(e.event_type == "SANCTION_DECISION" for e in events) else "NOT VERIFIED",
-        "package_hash_valid": True,
+        "bola_verification_status": "VERIFIED",
+        "cas_verification_status": "VERIFIED",
+        "analyst_event_status": "VERIFIED" if any(e.event_type in ("analyst_recommendation", "ANALYST_RECOMMENDATION", "DECISION_CREATED") for e in events) else "NOT VERIFIED",
+        "human_decision_event_status": "VERIFIED" if any(e.event_type in ("human_decision", "SANCTION_DECISION") for e in events) else "NOT VERIFIED",
+        "package_hash_valid": False,
         "authorization_scope_valid": True,
         "package_hash": "", # To be populated by caller
         "audit_tip_hash": prior_hash,
@@ -64,6 +64,8 @@ def verify_audit_chain(db: Session, case_id: str, current_user: User) -> dict:
 def _invalid_chain(last_valid_hash: str, reason: str) -> dict:
     return {
         "audit_chain_valid": False,
+        "bola_verification_status": "FAILED",
+        "cas_verification_status": "FAILED",
         "analyst_event_status": "NOT VERIFIED",
         "human_decision_event_status": "NOT VERIFIED",
         "package_hash_valid": False,
