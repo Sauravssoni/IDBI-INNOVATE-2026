@@ -116,6 +116,7 @@ export interface DecisionPackage {
   scoring_version?: string | null;
   financial_health_index?: number | null;
   vyapar_credit_health_score?: number | null;
+  total_score?: number | null;
   fhi_breakdown?: Record<string, FinancialHealthBreakdown> | null;
   credit_score_disclaimer?: string | null;
   calculation_evidence_ids?: Record<string, string[]> | null;

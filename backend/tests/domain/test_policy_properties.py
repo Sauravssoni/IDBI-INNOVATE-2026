@@ -146,8 +146,8 @@ def test_scoring_engine_returns_only_three_scores():
         "fhi_breakdown",
         "vyapar_credit_health_score",
         "credit_health_disclaimer",
+        "total_score",
     }
-    assert "total_score" not in scores
     assert "band" not in scores
 
 
