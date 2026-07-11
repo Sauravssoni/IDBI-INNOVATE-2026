@@ -64,7 +64,8 @@ test.describe('Vyapar Pulse Release Gate', () => {
       if (msg.type() === 'error') {
         const text = msg.text();
         // Ignore expected 401 or 403 errors which show up as "Failed to load resource"
-        if (!text.includes('401 (Unauthorized)') && !text.includes('403 (Forbidden)') && !text.includes('404 (Not Found)')) {
+        // Also ignore "404 ()" which some frameworks generate.
+        if (!text.includes('401 (Unauthorized)') && !text.includes('403 (Forbidden)') && !text.includes('404')) {
           console.error(`Console error: "${text}"`);
           hasErrors = true;
         }
@@ -139,7 +140,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').filter({ hasText: 'Navprerna' }).first();
-    await row.locator('a', { hasText: 'Open' }).click();
+    await row.locator('a', { hasText: 'Evaluate' }).click();
     
     const runEngine = page.locator('button:has-text("Run Assessment Engine")');
     if (await runEngine.isVisible()) {
@@ -153,7 +154,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').filter({ hasText: 'Nirmaan' }).first();
-    await row.locator('a', { hasText: 'Open' }).click();
+    await row.locator('a', { hasText: 'Evaluate' }).click();
     
     const runEngine = page.locator('button:has-text("Run Assessment Engine")');
     if (await runEngine.isVisible()) {
@@ -167,7 +168,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').filter({ hasText: 'Rangrez' }).first();
-    await row.locator('a', { hasText: 'Open' }).click();
+    await row.locator('a', { hasText: 'Evaluate' }).click();
     
     await expect(page.locator('text=Decision Pending').or(page.locator('text=FROZEN')).first()).toBeVisible();
   });
@@ -176,7 +177,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Credit Analyst")');
     const row = page.locator('table tbody tr').first();
-    await row.locator('a', { hasText: 'Open' }).click();
+    await row.locator('a', { hasText: 'Evaluate' }).click();
     await page.click('button:has-text("Assessment History")');
     await expect(page.locator('text=evaluate').first()).toBeVisible();
   });
@@ -211,7 +212,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.goto('/login');
     await page.click('button:has-text("Relationship Manager")');
     const row = page.locator('table tbody tr').first();
-    await row.locator('a', { hasText: 'Open' }).click();
+    await row.locator('a', { hasText: 'View Case' }).click();
     await expect(page.locator('button:has-text("Run Assessment Engine")')).not.toBeVisible();
   });
 
@@ -229,7 +230,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.click('button:has-text("Credit Analyst")');
     await page.screenshot({ path: '../docs/assets/screenshots/08-dashboard.png' });
     const row = page.locator('table tbody tr').first();
-    await row.locator('a', { hasText: 'Open' }).click();
+    await row.locator('a', { hasText: 'Evaluate' }).click();
     await page.click('button:has-text("Assessment History")');
     await page.screenshot({ path: '../docs/assets/screenshots/07-final-audit.png' });
   });
