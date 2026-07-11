@@ -31,13 +31,22 @@ describe('DecisionPackageTab UI & Contract', () => {
       ],
       evidence_passport: {
         case_id: 'CASE-001',
-        multi_rail_coverage: 100,
-        composite_freshness_index: 95,
-        obligation_verification: true,
-        contradiction_severity: 'LOW',
-        assessment_certainty: 'HIGH'
+        business_id: 'BUS-001',
+        consent_status: 'VALID',
+        consent_scope: 'ALL',
+        rail_coverage: { gst: true, account_aggregator: true, invoices: false, epfo: false, cibil: true },
+        freshness_depth: {
+          months_of_history: 12, gst_periods: 12, bank_transactions: 100, invoice_records: 0, employment_periods: 0,
+          freshness_scores: { gst: 100, bank: 90, invoices: 0 },
+          composite_freshness_index: 95
+        },
+        obligation_verification: { state: 'VERIFIED_MATCH', cibil_monthly_emi: 5000, observed_monthly_debt_service: 5000 },
+        contradiction_analysis: { severity: 'LOW', reconciliation_ratio: 1.0, gst_declared_revenue: 100000, bank_buyer_receipts: 100000 },
+        assessment_certainty: 'HIGH_CERTAINTY',
+        authoritative_evidence_ids: ['ev-001'],
+        generated_at: '2023-01-01T00:00:00Z'
       }
-    } as any;
+    };
 
     mockApiFetch.mockImplementation(async (url: string) => {
       if (url.includes('decision-package')) {
@@ -69,12 +78,30 @@ describe('DecisionPackageTab UI & Contract', () => {
           amount: 0,
           interest_rate_pct: 14.0,
           tenure_months: 12,
+          estimated_repayment: 0,
+          post_loan_dscr: 0,
+          covenants: [],
+          collateral_structure: 'None'
         }
       ],
       evidence_passport: {
-        case_id: 'CASE-001'
+        case_id: 'CASE-001',
+        business_id: 'BUS-001',
+        consent_status: 'VALID',
+        consent_scope: 'ALL',
+        rail_coverage: { gst: true, account_aggregator: true, invoices: false, epfo: false, cibil: true },
+        freshness_depth: {
+          months_of_history: 12, gst_periods: 12, bank_transactions: 100, invoice_records: 0, employment_periods: 0,
+          freshness_scores: { gst: 100, bank: 90, invoices: 0 },
+          composite_freshness_index: 95
+        },
+        obligation_verification: { state: 'VERIFIED_MATCH', cibil_monthly_emi: 5000, observed_monthly_debt_service: 5000 },
+        contradiction_analysis: { severity: 'LOW', reconciliation_ratio: 1.0, gst_declared_revenue: 100000, bank_buyer_receipts: 100000 },
+        assessment_certainty: 'HIGH_CERTAINTY',
+        authoritative_evidence_ids: ['ev-001'],
+        generated_at: '2023-01-01T00:00:00Z'
       }
-    } as any;
+    };
 
     mockApiFetch.mockImplementation(async (url: string) => {
       if (url.includes('decision-package')) return { status: 200, data: mockData };
