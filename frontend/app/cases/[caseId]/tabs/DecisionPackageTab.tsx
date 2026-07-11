@@ -131,7 +131,6 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
     }
   };
 
-  const singleFactors = (stressData as any)?.single_factor_results || {};
 
   return (
     <div className="space-y-6">
@@ -524,28 +523,20 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-400">Policy Stress Tests (Engine Evaluated)</h3>
             <div className="bg-black/20 rounded-xl p-4 border border-white/5 space-y-3">
-              {Object.keys(singleFactors).length > 0 ? (
+              {stressData?.scenarios && stressData.scenarios.length > 0 ? (
                 <>
-                  {singleFactors.revenue_drop && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400">Revenue Drop Shock (-20%)</span>
-                      <span className={`font-semibold ${singleFactors.revenue_drop.viable ? "text-emerald-400" : "text-amber-400"}`}>
-                        {singleFactors.revenue_drop.viable ? "VIABLE (DSCR > 1.2)" : `STRESSED (DSCR: ${singleFactors.revenue_drop.dscr_shocked.toFixed(2)})`}
+                  {stressData.scenarios.slice(0, 2).map((scenario, idx) => (
+                    <div key={idx} className="flex justify-between items-center text-sm">
+                      <span className="text-gray-400">{scenario.name}</span>
+                      <span className={`font-semibold ${scenario.status === "PASS" ? "text-emerald-400" : "text-amber-400"}`}>
+                        {scenario.status === "PASS" ? "VIABLE (DSCR > 1.2)" : `STRESSED (DSCR: ${scenario.recomputed_dscr.toFixed(2)})`}
                       </span>
                     </div>
-                  )}
-                  {singleFactors.rate_hike && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-400">Interest Rate Hike (+200 bps)</span>
-                      <span className={`font-semibold ${singleFactors.rate_hike.viable ? "text-emerald-400" : "text-amber-400"}`}>
-                        {singleFactors.rate_hike.viable ? "VIABLE (DSCR > 1.2)" : `STRESSED (DSCR: ${singleFactors.rate_hike.dscr_shocked.toFixed(2)})`}
-                      </span>
-                    </div>
-                  )}
-                  {stressData?.dscr_shocked !== undefined && (
+                  ))}
+                  {stressData.stressed?.dscr !== undefined && (
                     <div className="flex justify-between items-center text-sm pt-2 border-t border-white/10">
                       <span className="text-gray-300 font-medium">Combined Shock DSCR</span>
-                      <span className="text-white font-bold">{Number(stressData.dscr_shocked).toFixed(2)}</span>
+                      <span className="text-white font-bold">{Number(stressData.stressed.dscr).toFixed(2)}</span>
                     </div>
                   )}
                 </>
