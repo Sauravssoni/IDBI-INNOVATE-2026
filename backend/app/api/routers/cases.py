@@ -1125,38 +1125,21 @@ def verify_audit_chain_endpoint(
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
-
-    audit_events = (
-        db.query(AuditEvent)
-        .filter(AuditEvent.case_id == case.id)
-        .order_by(AuditEvent.event_sequence.asc())
-        .all()
-    )
-
-    valid = True
-    prior_hash = "GENESIS"
-    bola_status = "NOT_VERIFIED"
-    cas_status = "NOT_VERIFIED"
-    
-    for evt in audit_events:
-        expected_hash = calculate_audit_hash(prior_hash, evt.event_payload)
-        if evt.event_hash != expected_hash:
-            valid = False
-            break
-        prior_hash = expected_hash
         
-        if evt.event_type == "evaluate":
-            bola_status = "VERIFIED"
-        elif evt.event_type == "human_decision":
-            cas_status = "VERIFIED"
-
+    result = verify_audit_chain(db, str(case.id), user)
+    
+    # Extract decision package hash if present
+    dp = db.query(DecisionPackage).filter(DecisionPackage.case_id == case.id).order_by(DecisionPackage.created_at.desc()).first()
+    package_hash = dp.package_hash if dp else ""
+    
     return AuditVerificationResponse(
-        bola_verification_status=bola_status if valid else "INVALID",
-        cas_verification_status=cas_status if valid else "INVALID",
-        audit_chain_valid=valid,
-        package_hash=prior_hash,
-        audit_tip_hash=prior_hash,
-        verified_at=datetime.datetime.utcnow().isoformat() + "Z",
-        verification_version="1.0-CRYPTOGRAPHIC"
+        bola_verification_status=result["bola_verification_status"],
+        cas_verification_status=result["cas_verification_status"],
+        audit_chain_valid=result["audit_chain_valid"],
+        package_hash=package_hash,
+        audit_tip_hash=result["audit_tip_hash"],
+        verified_at=result["verified_at"],
+        verification_version=result["verification_version"]
     )
+
 
