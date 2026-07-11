@@ -288,7 +288,18 @@ class FinancialCapacityEngine:
             obligation_verification_state = "UNKNOWN_OBLIGATIONS"
             verified_ds = Decimal("0.00")
 
-        features_dict = case.feature_snapshot or {}
+        features_dict = {}
+        if hasattr(case, "feature_snapshot") and case.feature_snapshot:
+            features_dict = dict(case.feature_snapshot)
+        elif hasattr(case, "features_dict") and case.features_dict:
+            features_dict = dict(case.features_dict)
+        else:
+            try:
+                from app.core.features.engine import FeatureEngine
+                fe = FeatureEngine(db, str(case.business_id_fk))
+                features_dict = fe.derive_all_features()
+            except Exception:
+                features_dict = {}
         features_dict.update({
             "authoritative_evidence_ids": inflow_ids + outflow_ids + obligation_ids,
             "inflow_evidence_ids": inflow_ids,
