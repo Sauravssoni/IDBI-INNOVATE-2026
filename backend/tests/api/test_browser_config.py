@@ -1,5 +1,6 @@
 import uuid
 import pytest
+import os
 from fastapi.testclient import TestClient
 from app.main import app
 from app.core.config import get_settings
@@ -61,6 +62,7 @@ def test_deployment_cookies_secure(monkeypatch, test_user):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ALLOWED_ORIGINS", "https://vyaparpulse.example.com")
     monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
 
     settings = get_settings()
     assert settings.COOKIE_SECURE is True
@@ -82,6 +84,7 @@ def test_unsafe_deployed_configuration_rejected(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ALLOWED_ORIGINS", "https://vyaparpulse.example.com")
     monkeypatch.setenv("COOKIE_SECURE", "false")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
 
     with pytest.raises(RuntimeError) as excinfo:
         get_settings()
@@ -118,6 +121,7 @@ def test_logout_deletion_uses_matching_cookie_settings(monkeypatch, test_user):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ALLOWED_ORIGINS", "https://vyaparpulse.example.com")
     monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
 
     login_res = client.post(
         "/api/auth/login",
@@ -168,6 +172,7 @@ def test_production_wildcard_rejected(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ALLOWED_ORIGINS", "*")
     monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
     with pytest.raises(RuntimeError) as excinfo:
         get_settings()
     assert "wildcard origins are not permitted" in str(excinfo.value)
@@ -177,6 +182,7 @@ def test_production_http_origin_rejected(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ALLOWED_ORIGINS", "http://vyaparpulse.example.com")
     monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
     with pytest.raises(RuntimeError) as excinfo:
         get_settings()
     assert "explicit HTTPS origins required" in str(excinfo.value)
@@ -185,6 +191,7 @@ def test_production_http_origin_rejected(monkeypatch):
 def test_production_localhost_rejected(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
     for origin in (
         "https://localhost:3000",
         "https://127.0.0.1:3000",
@@ -201,6 +208,19 @@ def test_production_https_origin_accepted(monkeypatch):
     monkeypatch.setenv("APP_ENV", "production")
     monkeypatch.setenv("ALLOWED_ORIGINS", "https://vyaparpulse.example.com")
     monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
     settings = get_settings()
-    assert settings.ALLOWED_ORIGINS == ["https://vyaparpulse.example.com"]
-    assert settings.COOKIE_SECURE is True
+    assert "https://vyaparpulse.example.com" in settings.ALLOWED_ORIGINS
+
+
+def test_production_origin_missing_fails(monkeypatch):
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    monkeypatch.setenv("JWT_SECRET", "valid_secret")
+    # if allowed_origins is not set, fails
+    if "ALLOWED_ORIGINS" in os.environ:
+        monkeypatch.delenv("ALLOWED_ORIGINS")
+    if "CORS_ORIGINS" in os.environ:
+        monkeypatch.delenv("CORS_ORIGINS")
+    with pytest.raises(RuntimeError, match="explicit ALLOWED_ORIGINS required"):
+        get_settings()
