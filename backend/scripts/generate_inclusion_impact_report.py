@@ -229,7 +229,7 @@ def evaluate_cohort(cohort: List[Dict[str, Any]]) -> Dict[str, Any]:
                 "segment": seg,
                 "tier": tier,
                 "dscr": float(dscr),
-                "fhi": fhi,
+                "fhi": float(fhi),
                 "vyapar_credit_health_score": credit_score,
                 "decision": dec_value,
                 "supportable_limit_inr": float(limit_inr)

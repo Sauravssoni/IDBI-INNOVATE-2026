@@ -1,6 +1,6 @@
 {
   "report_title": "Vyapar Pulse RC3 \u2014 500-MSME Deterministic Cohort Inclusion Impact Report",
-  "timestamp": "2026-07-11T06:21:52.613233+00:00",
+  "timestamp": "2026-07-11T10:36:22.893912+00:00",
   "policy_version": "2.0-CANONICAL",
   "calculation_version": "2.0-CANONICAL",
   "cohort_size": 500,
@@ -9,29 +9,29 @@
     "traditional_rejected_or_unassessed_count": 356,
     "vyapar_pulse_included_count": 273,
     "inclusion_rate_pct": 76.7,
-    "total_credit_unlocked_inr": 1765958527.68,
-    "avg_financial_health_index": 69.5,
-    "avg_vyapar_credit_health_score": 717
+    "total_credit_unlocked_inr": 1186682935.72,
+    "avg_financial_health_index": 48.3,
+    "avg_vyapar_credit_health_score": 435
   },
   "decision_distribution": {
     "READY_FOR_REVIEW": 0,
-    "CONDITIONAL_OFFER": 417,
-    "ADDITIONAL_EVIDENCE_REQUIRED": 0,
+    "CONDITIONAL_OFFER": 333,
+    "ADDITIONAL_EVIDENCE_REQUIRED": 84,
     "ENHANCED_DUE_DILIGENCE": 0,
     "DECLINE_RECOMMENDED": 83
   },
   "tier_breakdown": {
     "Tier 1 Urban": {
       "total": 150,
-      "ready_or_conditional": 126,
-      "bankability_path": 0,
-      "total_limit_inr": 851982440.82
+      "ready_or_conditional": 84,
+      "bankability_path": 42,
+      "total_limit_inr": 557165797.79
     },
     "Tier 2 Semi-Urban": {
       "total": 200,
-      "ready_or_conditional": 167,
-      "bankability_path": 0,
-      "total_limit_inr": 1101508708.76
+      "ready_or_conditional": 125,
+      "bankability_path": 42,
+      "total_limit_inr": 817049759.83
     },
     "Tier 3 Rural / Micro": {
       "total": 150,
@@ -67,9 +67,9 @@
     },
     "IT & Tech Services": {
       "total": 50,
-      "ready_or_conditional": 42,
-      "bankability_path": 0,
-      "total_limit_inr": 294816643.03
+      "ready_or_conditional": 0,
+      "bankability_path": 42,
+      "total_limit_inr": 0.0
     },
     "Logistics & Transport": {
       "total": 50,
@@ -97,9 +97,9 @@
     },
     "Healthcare & Diagnostics Clinics": {
       "total": 50,
-      "ready_or_conditional": 42,
-      "bankability_path": 0,
-      "total_limit_inr": 284458948.93
+      "ready_or_conditional": 0,
+      "bankability_path": 42,
+      "total_limit_inr": 0.0
     }
   },
   "demographic_inclusion_impact": {
@@ -107,13 +107,13 @@
       "total_msmes": 166,
       "included_msmes": 137,
       "inclusion_pct": 82.5,
-      "unlocked_limit_inr": 902753693.1
+      "unlocked_limit_inr": 723412453.16
     },
     "new_to_credit_or_thin_file": {
       "total_msmes": 225,
       "included_msmes": 188,
       "inclusion_pct": 83.6,
-      "unlocked_limit_inr": 1199788821.35
+      "unlocked_limit_inr": 1060582947.59
     },
     "seasonal_cash_flow": {
       "total_msmes": 150,
@@ -125,7 +125,7 @@
       "total_msmes": 300,
       "included_msmes": 249,
       "inclusion_pct": 83.0,
-      "unlocked_limit_inr": 1633133283.38
+      "unlocked_limit_inr": 1348674334.45
     }
   },
   "sample_evaluated_profiles": [
@@ -134,8 +134,8 @@
       "segment": "Precision Manufacturing",
       "tier": "Tier 1 Urban",
       "dscr": 1.16,
-      "fhi": 71.0,
-      "vyapar_credit_health_score": 726,
+      "fhi": 50.0,
+      "vyapar_credit_health_score": 450,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 191256.46
     },
@@ -144,8 +144,8 @@
       "segment": "Seasonal Agri-Processing",
       "tier": "Tier 2 Semi-Urban",
       "dscr": 1.47,
-      "fhi": 78.0,
-      "vyapar_credit_health_score": 768,
+      "fhi": 50.0,
+      "vyapar_credit_health_score": 450,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 268019.38
     },
@@ -154,8 +154,8 @@
       "segment": "Textile & Garments",
       "tier": "Tier 2 Semi-Urban",
       "dscr": 1.78,
-      "fhi": 76.0,
-      "vyapar_credit_health_score": 756,
+      "fhi": 50.0,
+      "vyapar_credit_health_score": 450,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 353576.42
     },
@@ -164,8 +164,8 @@
       "segment": "Retail Trade & Kirana",
       "tier": "Tier 3 Rural / Micro",
       "dscr": 2.09,
-      "fhi": 74.0,
-      "vyapar_credit_health_score": 744,
+      "fhi": 50.0,
+      "vyapar_credit_health_score": 450,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 447927.58
     },
@@ -174,18 +174,18 @@
       "segment": "IT & Tech Services",
       "tier": "Tier 1 Urban",
       "dscr": 2.4,
-      "fhi": 59.0,
-      "vyapar_credit_health_score": 654,
-      "decision": "CONDITIONAL_OFFER",
-      "supportable_limit_inr": 551072.88
+      "fhi": 50.0,
+      "vyapar_credit_health_score": 450,
+      "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+      "supportable_limit_inr": 0.0
     },
     {
       "msme_id": "MSME-COHORT-2026-0006",
       "segment": "Logistics & Transport",
       "tier": "Tier 2 Semi-Urban",
       "dscr": 0.91,
-      "fhi": 48.0,
-      "vyapar_credit_health_score": 588,
+      "fhi": 36.67,
+      "vyapar_credit_health_score": 330,
       "decision": "DECLINE_RECOMMENDED",
       "supportable_limit_inr": 0.0
     },
@@ -194,8 +194,8 @@
       "segment": "Food & Beverage Processing",
       "tier": "Tier 3 Rural / Micro",
       "dscr": 1.22,
-      "fhi": 66.0,
-      "vyapar_credit_health_score": 696,
+      "fhi": 46.67,
+      "vyapar_credit_health_score": 420,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 200795.41
     },
@@ -204,8 +204,8 @@
       "segment": "Micro Artisan & Craft Vendors",
       "tier": "Tier 3 Rural / Micro",
       "dscr": 1.53,
-      "fhi": 79.0,
-      "vyapar_credit_health_score": 774,
+      "fhi": 50.0,
+      "vyapar_credit_health_score": 450,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 299882.3
     },
@@ -214,8 +214,8 @@
       "segment": "Electronics Assembly & Components",
       "tier": "Tier 1 Urban",
       "dscr": 1.84,
-      "fhi": 80.0,
-      "vyapar_credit_health_score": 780,
+      "fhi": 53.33,
+      "vyapar_credit_health_score": 480,
       "decision": "CONDITIONAL_OFFER",
       "supportable_limit_inr": 407763.32
     },
@@ -224,10 +224,10 @@
       "segment": "Healthcare & Diagnostics Clinics",
       "tier": "Tier 2 Semi-Urban",
       "dscr": 2.15,
-      "fhi": 72.0,
-      "vyapar_credit_health_score": 732,
-      "decision": "CONDITIONAL_OFFER",
-      "supportable_limit_inr": 524438.47
+      "fhi": 56.67,
+      "vyapar_credit_health_score": 510,
+      "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+      "supportable_limit_inr": 0.0
     }
   ]
 }
