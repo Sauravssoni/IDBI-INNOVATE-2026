@@ -7,7 +7,16 @@
 ---
 
 ## 1. Value Proposition & Deterministic Architecture
-Vyapar Pulse eliminates black-box AI risk in MSME lending. Instead of relying on opaque LLM scoring, it mathematically normalizes multi-rail evidence (GST returns, Bank Statements, Invoices, Bureau data) into a deterministic `Credit Twin` vector. It executes strictly versioned financial math (`SafeLimitEngine` exact reducing-balance amortization and DSCR rules) and enforces a human-in-the-loop sanction workflow where AI explains and organizes, but deterministic policy engines and human authorities control decisions.
+Vyapar Pulse eliminates black-box AI risk in MSME lending. Instead of relying on opaque LLM scoring, it mathematically normalizes multi-rail evidence (GST returns, Bank Statements, Invoices, Bureau data) into a deterministic `Credit Twin` vector. It executes strictly versioned financial math (6-Pillar Structural Scoring, `SafeLimitEngine` exact reducing-balance amortization, and DSCR rules) and enforces a human-in-the-loop sanction workflow where AI explains and organizes, but deterministic policy engines and human authorities control decisions.
+
+---
+
+## 1.1 The 500-MSME Inclusion Impact
+We deterministically simulated 500 Indian MSMEs across tiers and segments against our 6-Pillar scoring engine. 
+- **Traditional Model Unassessed/Rejected**: 356 MSMEs
+- **Vyapar Pulse Included**: 273 MSMEs (76.7% Inclusion Rate)
+- **Credit Unlocked**: ₹ 118+ Crores
+*See `artifacts/inclusion_impact_report.json` for full breakdown.*
 
 ---
 
@@ -23,8 +32,8 @@ Vyapar Pulse eliminates black-box AI risk in MSME lending. Instead of relying on
 1. **Demo Reset**: Click **Demo Reset** (`/api/demo/reset`) to seed exactly four canonical deterministic MSME personas.
 2. **Analyst Login**: Select **Credit Analyst** role (`credit@bank.example`).
 3. **Inspect Shakti Precision Components**: View multi-rail evidence, reconcile GST turnover vs. bank credits, and generate the deterministic `Credit Twin`.
-4. **Inspect Decision Package & Evidence Passport**: Review the `Evidence Sufficiency Passport` (`EVD-001`) with exponential freshness decay (`decay_score = 100 * e^(-0.015*t)`) and authoritative evidence linkage.
-5. **Analyze Stress Lab & Bankability Path**: Open the **Decision Sensitivity Lab** (`STR-001`) to test revenue/margin shocks and the **Bankability Path Engine** (`BNK-001`) for 30/60/90-day intervention roadmaps.
+4. **Inspect Decision Package & Evidence Passport**: Review the `Decision Package` featuring a cryptographic `package_hash` (SHA-256), the `Evidence Sufficiency Passport` (`EVD-001`) with exponential freshness decay (`decay_score = 100 * e^(-0.015*t)`), and authoritative evidence linkage.
+5. **Analyze Stress Lab & Bankability Path**: Open the **Decision Sensitivity Lab** (`STR-001`) to test revenue/margin shocks, and the **Bankability Path Engine** (`BNK-001`) for 30/60/90-day intervention roadmaps.
 6. **Submit Recommendation**: Recommend an alternative facility structure (`CONDITIONAL_OFFER`).
 7. **Sanction Authority Review**: Switch role to **Sanctioning Authority** (`sa@bank.example`) to inspect the proposal and issue final human sanction.
 
