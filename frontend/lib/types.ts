@@ -31,11 +31,55 @@ export interface LimitDetail {
   reason_codes: string[];
 }
 
+export interface EvidencePassportRailCoverage {
+  gst: boolean;
+  account_aggregator: boolean;
+  invoices: boolean;
+  epfo: boolean;
+  cibil: boolean;
+}
+
+export interface EvidencePassportFreshnessScores {
+  gst: number;
+  bank: number;
+  invoices: number;
+}
+
+export interface EvidencePassportFreshnessDepth {
+  months_of_history: number;
+  gst_periods: number;
+  bank_transactions: number;
+  invoice_records: number;
+  employment_periods: number;
+  freshness_scores: EvidencePassportFreshnessScores;
+  composite_freshness_index: number;
+}
+
+export interface EvidencePassportObligationVerification {
+  state: string;
+  cibil_monthly_emi: number;
+  observed_monthly_debt_service: number;
+}
+
+export interface EvidencePassportContradictionAnalysis {
+  severity: string;
+  reconciliation_ratio: number;
+  gst_declared_revenue: number;
+  bank_buyer_receipts: number;
+}
+
 export interface EvidencePassport {
-  multi_rail_coverage?: number | null;
-  composite_freshness_index?: number | null;
-  obligation_verification?: boolean | null;
-  contradiction_severity?: string | null;
+  case_id: string;
+  business_id: string;
+  consent_status: string;
+  consent_scope: string;
+  rail_coverage: EvidencePassportRailCoverage;
+  freshness_depth: EvidencePassportFreshnessDepth;
+  obligation_verification: EvidencePassportObligationVerification;
+  contradiction_analysis: EvidencePassportContradictionAnalysis;
+  assessment_certainty: string;
+  authoritative_evidence_ids: string[];
+  generated_at: string;
 }
 
 export interface PeerContext {
@@ -110,14 +154,13 @@ export interface DecisionPackageResponse {
   assessment_certainty?: string | null;
   certainty_reasons?: string[] | null;
   peer_context?: PeerContext | null;
-  hindi_summary?: any | null;
+  hindi_summary?: Record<string, unknown> | null;
   policy_version: string;
   calculation_version: string;
   scoring_version?: string | null;
-  financial_health_index?: number | null;
+  financial_health_index?: number | string | null;
   vyapar_credit_health_score?: number | null;
-  total_score?: number | null;
-  fhi_breakdown?: Record<string, FinancialHealthBreakdown> | null;
+    fhi_breakdown?: Record<string, FinancialHealthBreakdown> | null;
   credit_score_disclaimer?: string | null;
   calculation_evidence_ids?: Record<string, string[]> | null;
   analyst_action?: string | null;
