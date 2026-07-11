@@ -92,6 +92,59 @@ class FeatureEngine:
             "trend": trend,
         }
 
+    TRANSACTION_CATEGORY_WHITELISTS = {
+        "OPERATING_INFLOWS": {
+            "BUYER_RECEIPT",
+            "INVOICE_SETTLEMENT",
+            "POS_MERCHANT_SETTLEMENT",
+            "UPI_MERCHANT_RECEIPT",
+            "OPERATING_RECEIPT",
+            "OPERATING_REVENUE",
+            "SALES",
+            "RECEIPT",
+            "BUSINESS_RECEIPT",
+            "TURN_OVER",
+        },
+        "EXCLUDED_INFLOWS": {
+            "LOAN",
+            "LOAN_DISBURSEMENT",
+            "CAPITAL_INFUSION",
+            "INTER_ACCOUNT_TRANSFER",
+            "TRANSFER",
+            "REFUND",
+            "REVERSAL",
+            "UNIDENTIFIED_CREDIT",
+            "ASSET_SALE",
+            "OWNER_CONTRIBUTION",
+            "EQUITY",
+        },
+        "OPERATING_OUTFLOWS": {
+            "SUPPLIER_PAYMENT",
+            "PAYROLL",
+            "SALARY",
+            "RENT",
+            "UTILITIES",
+            "TAX",
+            "OPERATING_EXPENSE",
+            "EXPENSE",
+            "VENDOR_PAYMENT",
+            "RAW_MATERIAL",
+            "LOGISTICS",
+            "MAINTENANCE",
+        },
+        "EXCLUDED_OUTFLOWS": {
+            "DEBT_SERVICE",
+            "TRANSFER",
+            "INTER_ACCOUNT_TRANSFER",
+            "CAPITAL_EXPENDITURE",
+            "CAPEX",
+            "DRAWINGS",
+            "UNIDENTIFIED_DEBIT",
+            "DIVIDEND",
+            "INVESTMENT",
+        },
+    }
+
     def _derive_bank_metrics(self) -> Dict[str, Any]:
         bank_txns = (
             self.db.query(BankTransaction)
@@ -104,17 +157,36 @@ class FeatureEngine:
                 "total_debits": "0.00",
                 "avg_monthly_credits": "0.00",
                 "avg_monthly_debits": "0.00",
+                "operating_inflows_monthly": "0.00",
+                "operating_outflows_monthly": "0.00",
+                "verified_debt_service_monthly": "0.00",
+                "transaction_categorization_summary": {
+                    "version": "1.0.0",
+                    "included_inflow_ids": [],
+                    "excluded_inflow_ids": [],
+                    "unresolved_inflow_ids": [],
+                    "included_outflow_ids": [],
+                    "excluded_outflow_ids": [],
+                    "unresolved_outflow_ids": [],
+                    "debt_service_ids": [],
+                    "has_material_unresolved_activity": False,
+                },
             }
 
-        credits = sum(
-            (t.amount for t in bank_txns if t.transaction_type == "CREDIT"),
-            Decimal("0"),
-        )
-        debits = sum(
-            (t.amount for t in bank_txns if t.transaction_type == "DEBIT"), Decimal("0")
-        )
+        total_credits = Decimal("0")
+        total_debits = Decimal("0")
+        operating_inflows = Decimal("0")
+        operating_outflows = Decimal("0")
+        debt_service = Decimal("0")
 
-        # Calculate observed month coverage from actual distinct reporting periods
+        included_inflow_ids = []
+        excluded_inflow_ids = []
+        unresolved_inflow_ids = []
+        included_outflow_ids = []
+        excluded_outflow_ids = []
+        unresolved_outflow_ids = []
+        debt_service_ids = []
+
         distinct_months = set()
         latest_date = None
         for t in bank_txns:
@@ -122,6 +194,32 @@ class FeatureEngine:
                 distinct_months.add((t.transaction_date.year, t.transaction_date.month))
                 if latest_date is None or t.transaction_date > latest_date:
                     latest_date = t.transaction_date
+            amt = Decimal(str(t.amount or "0.00"))
+            t_type = str(t.transaction_type or "").upper()
+            t_cat = str(t.category or "").upper() if t.category else ""
+
+            if t_type == "CREDIT":
+                total_credits += amt
+                if t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_INFLOWS"]:
+                    operating_inflows += amt
+                    included_inflow_ids.append(str(t.id))
+                elif t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["EXCLUDED_INFLOWS"]:
+                    excluded_inflow_ids.append(str(t.id))
+                else:
+                    unresolved_inflow_ids.append(str(t.id))
+            elif t_type == "DEBIT":
+                total_debits += amt
+                if t_cat == "DEBT_SERVICE":
+                    debt_service += amt
+                    debt_service_ids.append(str(t.id))
+                elif t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_OUTFLOWS"]:
+                    operating_outflows += amt
+                    included_outflow_ids.append(str(t.id))
+                elif t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["EXCLUDED_OUTFLOWS"]:
+                    excluded_outflow_ids.append(str(t.id))
+                else:
+                    unresolved_outflow_ids.append(str(t.id))
+
         months = (
             Decimal(str(len(distinct_months))) if distinct_months else Decimal("1.0")
         )
@@ -135,20 +233,39 @@ class FeatureEngine:
         )
         dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, eval_date)
 
+        has_material_unresolved = (
+            len(unresolved_inflow_ids) + len(unresolved_outflow_ids) > 0
+        )
+
+        avg_monthly_inflows = (operating_inflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if operating_inflows > 0 else (total_credits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_monthly_outflows = (operating_outflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if operating_outflows > 0 else (total_debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        verified_ds_monthly = (debt_service / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
         return {
             "total_credits": str(
-                credits.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                total_credits.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ),
             "total_debits": str(
-                debits.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                total_debits.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ),
-            "avg_monthly_credits": str(
-                (credits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            ),
-            "avg_monthly_debits": str(
-                (debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            ),
+            "avg_monthly_credits": str(avg_monthly_inflows),
+            "avg_monthly_debits": str(avg_monthly_outflows),
+            "operating_inflows_monthly": str(avg_monthly_inflows),
+            "operating_outflows_monthly": str(avg_monthly_outflows),
+            "verified_debt_service_monthly": str(verified_ds_monthly),
+            "debt_service_verified": len(debt_service_ids) > 0,
             "dscr": str(dscr) if dscr is not None else None,
+            "transaction_categorization_summary": {
+                "version": "1.0.0",
+                "included_inflow_ids": included_inflow_ids,
+                "excluded_inflow_ids": excluded_inflow_ids,
+                "unresolved_inflow_ids": unresolved_inflow_ids,
+                "included_outflow_ids": included_outflow_ids,
+                "excluded_outflow_ids": excluded_outflow_ids,
+                "unresolved_outflow_ids": unresolved_outflow_ids,
+                "debt_service_ids": debt_service_ids,
+                "has_material_unresolved_activity": has_material_unresolved,
+            },
         }
 
     def _derive_reconciliation_metrics(self) -> Dict[str, Any]:
