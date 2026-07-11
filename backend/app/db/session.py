@@ -8,7 +8,7 @@ load_dotenv()
 # Use standard postgresql:// for SQLAlchemy
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse",
+    "postgresql://vyapar_local:vyapar_local_password@127.0.0.1:5433/vyapar_pulse",
 )
 
 # When connecting from localhost to docker-compose postgres port 5432 we might need localhost instead of 'db' depending on execution context.
