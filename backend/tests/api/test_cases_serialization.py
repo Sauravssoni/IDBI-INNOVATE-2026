@@ -211,12 +211,16 @@ def test_decision_package_cd_fields(setup_data):
 
     # Verify DPK-001: 6-pillar FHI, 300-900 Credit Health Score, and calculation evidence IDs
     assert "financial_health_index" in data
-    assert data["financial_health_index"] is not None
     assert "vyapar_credit_health_score" in data
-    assert 0 <= data["vyapar_credit_health_score"] <= 900
+    if data["assessment_certainty"] == "INSUFFICIENT_TO_ASSESS":
+        assert data["financial_health_index"] is None
+        assert data["vyapar_credit_health_score"] is None
+    else:
+        assert data["financial_health_index"] is not None
+        assert 300 <= data["vyapar_credit_health_score"] <= 900
     assert "fhi_breakdown" in data
     assert isinstance(data["fhi_breakdown"], dict)
-    for pillar in ["operating_resilience", "cash_flow_health", "margin_stability", "working_capital_velocity", "gst_compliance", "obligation_discipline"]:
+    for pillar in ["liquidity", "cash_flow_capacity", "revenue_stability_momentum", "repayment_burden_discipline", "compliance_formalisation", "concentration_resilience"]:
         assert pillar in data["fhi_breakdown"]
     assert data.get("scoring_version") == "2.0-CANONICAL"
     assert "calculation_evidence_ids" in data

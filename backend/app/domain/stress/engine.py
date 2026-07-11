@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.policy import DecisionPolicy
 from app.domain.financial.engine import FinancialCapacityEngine
@@ -21,14 +21,10 @@ def run_case_stress_lab(
     base_decision = base_policy.evaluate()
     base_limit = base_decision.get("binding_limit", Decimal("0.00"))
 
-    # Helper to obtain post-facility DSCR with fallback to current_dscr
     def get_effective_dscr(cap: Dict[str, Any]) -> Decimal:
         post_dscr = cap.get("post_loan_dscr")
         if post_dscr is not None and Decimal(str(post_dscr)) > Decimal("0.00"):
             return Decimal(str(post_dscr))
-        curr_dscr = cap.get("current_dscr")
-        if curr_dscr is not None and Decimal(str(curr_dscr)) > Decimal("0.00"):
-            return Decimal(str(curr_dscr))
         return Decimal("0.00")
 
     # Base Financial Capacity
@@ -44,7 +40,7 @@ def run_case_stress_lab(
     # Helper for status grading
     def get_status(dscr: Optional[Decimal], free_cash: Decimal = Decimal("0.00")) -> str:
         if dscr is None or dscr == Decimal("0.00"):
-            return "PASS" if free_cash > Decimal("0.00") else "FAIL"
+            return "NOT_ASSESSABLE"
         if dscr >= Decimal("1.15"):
             return "PASS"
         elif dscr >= Decimal("1.00"):
@@ -53,7 +49,7 @@ def run_case_stress_lab(
 
     def get_custom_status(dscr: Optional[Decimal], free_cash: Decimal = Decimal("0.00")) -> str:
         if dscr is None or dscr == Decimal("0.00"):
-            return "SECURE" if free_cash > Decimal("0.00") else "DISTRESSED"
+            return "NOT_ASSESSABLE"
         if dscr >= Decimal("1.25"):
             return "SECURE"
         elif dscr >= Decimal("1.05"):
@@ -90,10 +86,10 @@ def run_case_stress_lab(
         )
     })
 
-    # 2. Interest Rate Hike +200bps (+2%) on floating debt service and re-amortized facility
+    # 2. Interest Rate Hike +200bps (+2%) on proposed facility. Existing EMI remains fixed
+    # unless exact facility terms are available for re-amortisation.
     s2_features = features.copy()
-    s2_existing_ds = (base_existing_ds * Decimal("1.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    s2_features["verified_existing_debt_service_monthly"] = str(s2_existing_ds)
+    s2_features["verified_existing_debt_service_monthly"] = str(base_existing_ds)
     s2_features["obligation_verification_state"] = obligation_state
 
     s2_cap = FinancialCapacityEngine.compute_capacity_from_features(s2_features, requested_amount, requested_product, custom_annual_rate=Decimal("0.155"))
@@ -104,7 +100,7 @@ def run_case_stress_lab(
     scenarios.append({
         "scenario_id": "RATE_HIKE_200BPS",
         "name": "Interest Rate Hike (+200bps)",
-        "description": "Simulates a +2.0% increase in borrowing costs across existing and proposed facilities.",
+        "description": "Simulates a +2.0% increase in proposed facility borrowing cost; existing facility EMI is held fixed because facility terms are unavailable.",
         "recomputed_dscr": float(s2_dscr),
         "recomputed_limit": float(s2_limit),
         "status": s2_status,
@@ -148,7 +144,7 @@ def run_case_stress_lab(
     s4_features = features.copy()
     s4_inflows = (base_inflows * Decimal("0.85")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     s4_outflows = (base_outflows * Decimal("1.10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    s4_existing_ds = (base_existing_ds * Decimal("1.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    s4_existing_ds = base_existing_ds
 
     s4_bank = dict(features.get("bank_metrics", {}))
     s4_bank["operating_inflows_monthly"] = str(s4_inflows)
@@ -179,14 +175,18 @@ def run_case_stress_lab(
         )
     })
 
-    overall_stress_status = "PASS" if all(s["status"] == "PASS" for s in scenarios) else ("FAIL" if any(s["status"] == "FAIL" for s in scenarios) else "MARGINAL")
+    overall_stress_status = (
+        "NOT_ASSESSABLE" if any(s["status"] == "NOT_ASSESSABLE" for s in scenarios)
+        else "PASS" if all(s["status"] == "PASS" for s in scenarios)
+        else "FAIL" if any(s["status"] == "FAIL" for s in scenarios)
+        else "MARGINAL"
+    )
 
     # Interactive Custom Query Recomputation with Re-amortized Shocked Rate
     custom_rev_factor = Decimal("1") - (Decimal(str(revenue_drop_pct)) / Decimal("100"))
     custom_inflows = (base_inflows * custom_rev_factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     rate_hike_dec = (Decimal(str(interest_rate_hike_bps)) / Decimal("10000"))
-    custom_rate_factor = Decimal("1") + rate_hike_dec * Decimal("0.75")
-    custom_ds = (base_existing_ds * custom_rate_factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    custom_ds = base_existing_ds
     custom_annual_rate_dec = Decimal("0.135") + rate_hike_dec
 
     custom_features = features.copy()

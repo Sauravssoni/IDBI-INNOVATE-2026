@@ -6,7 +6,7 @@ and obligation verification states across Vyapar Pulse.
 Removes unsafe inferences (e.g., obligations = credits / dscr, obligations = debits * 0.20)
 and guarantees canonical DSCR numerator definitions across base, proposed, and stressed states.
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.versions import CALCULATION_VERSION
 from app.core.decision.limits import SafeLimitEngine
@@ -69,8 +69,6 @@ class FinancialCapacityEngine:
 
         bank_metrics = features.get("bank_metrics", {})
         gst_metrics = features.get("gst_metrics", {})
-        invoice_metrics = features.get("invoice_metrics", {})
-
         # 1. Operating inflows (canonical: conservative minimum of verified bank credits and GST revenue if both exist)
         # Strictly no fallbacks to total_credits or avg_monthly_credits
         summary = bank_metrics.get("transaction_categorization_summary", {})
@@ -79,7 +77,7 @@ class FinancialCapacityEngine:
         if "operating_inflows_monthly" in bank_metrics:
             raw_bank_inflows = Decimal(str(bank_metrics.get("operating_inflows_monthly", "0")))
         else:
-            raw_bank_inflows = Decimal(str(features.get("verified_operating_inflows_monthly", features.get("banking_inflow_inr", features.get("monthly_revenue_inr", "0")))))
+            raw_bank_inflows = Decimal(str(features.get("verified_operating_inflows_monthly", "0")))
 
         raw_gst_inflows = Decimal(str(gst_metrics.get("avg_monthly_revenue", gst_metrics.get("taxable_turnover", "0")))) if "gst_metrics" in features else Decimal("0")
         
@@ -98,7 +96,7 @@ class FinancialCapacityEngine:
         if "operating_outflows_monthly" in bank_metrics:
             raw_outflows = Decimal(str(bank_metrics.get("operating_outflows_monthly", "0")))
         else:
-            raw_outflows = Decimal(str(features.get("verified_operating_outflows_monthly", features.get("banking_outflow_inr", features.get("monthly_expenses_inr", "0")))))
+            raw_outflows = Decimal(str(features.get("verified_operating_outflows_monthly", "0")))
 
         observed_operating_outflows = raw_outflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA" else Decimal("0.00")
 
@@ -220,14 +218,28 @@ class FinancialCapacityEngine:
             "observed_operating_outflows_monthly": observed_operating_outflows,
             "operating_cash_available_for_debt_service_monthly": operating_cash_available,
             "verified_existing_debt_service_monthly": verified_existing_ds,
-            "current_dscr": float(current_dscr) if current_dscr is not None else 0.0,
+            "current_dscr": float(current_dscr) if current_dscr is not None else None,
             "proposed_emi": proposed_emi,
-            "post_loan_dscr": float(post_loan_dscr) if post_loan_dscr is not None else 0.0,
+            "post_loan_dscr": float(post_loan_dscr) if post_loan_dscr is not None else None,
             "stressed_operating_cash_available": stressed_operating_cash_available,
             "stressed_debt_service": stressed_debt_service,
-            "stressed_dscr": float(stressed_dscr) if stressed_dscr is not None else 0.0,
+            "stressed_dscr": float(stressed_dscr) if stressed_dscr is not None else None,
             "obligation_verification_state": obligation_verification_state,
             "calculation_evidence_ids": calculation_evidence_ids,
+            "transaction_lineage": {
+                "included_inflow_ids": calculation_evidence_ids["inflows"],
+                "included_outflow_ids": calculation_evidence_ids["outflows"],
+                "obligation_ids": calculation_evidence_ids["obligations"],
+                "excluded_inflow_ids": summary.get("excluded_inflow_ids", []),
+                "excluded_outflow_ids": summary.get("excluded_outflow_ids", []),
+                "unresolved_inflow_ids": summary.get("unresolved_inflow_ids", []),
+                "unresolved_outflow_ids": summary.get("unresolved_outflow_ids", []),
+                "unresolved_credit_amount": summary.get("unresolved_credit_amount", "0.00"),
+                "unresolved_debit_amount": summary.get("unresolved_debit_amount", "0.00"),
+                "unresolved_credit_ratio": summary.get("unresolved_credit_ratio", 0),
+                "unresolved_debit_ratio": summary.get("unresolved_debit_ratio", 0),
+                "has_material_unresolved_activity": has_material_unresolved,
+            },
             "unknown_reasons": unknown_reasons,
             "product_limits": product_limits,
             "binding_product_limit": binding_limit,

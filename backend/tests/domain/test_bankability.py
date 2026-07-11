@@ -1,5 +1,4 @@
 from decimal import Decimal
-import pytest
 from app.domain.bankability.path import compute_bankability_path, simulate_bankability_variable
 
 
@@ -21,7 +20,8 @@ def test_compute_bankability_path_deterministic_milestones():
         },
         "working_capital_metrics": {
             "operating_cycle_days": 75
-        }
+        },
+        "obligation_verification_state": "UNKNOWN_OBLIGATIONS",
     }
     scores = {
         "evidence_confidence_score": Decimal("60.0"),
@@ -49,6 +49,9 @@ def test_compute_bankability_path_deterministic_milestones():
         assert "after_dscr" in ev
         assert "projected_limit_inr" in m
         assert m["projected_limit_inr"] >= 0
+        assert m["impact_on_score"] != "+5 points on Evidence Confidence Score"
+        assert m.get("projected_rate_bps") is None
+        assert "scenario_disclaimer" in m
         
     assert path["gap_to_target"] >= 0
     assert "hindi_bilingual_presentation" in path
@@ -79,6 +82,8 @@ def test_compute_bankability_path_already_approved():
     scores = {
         "evidence_confidence_score": Decimal("95.0"),
         "financial_health_score": Decimal("90.0"),
+        "financial_health_index": Decimal("90.0"),
+        "vyapar_credit_health_score": 840,
         "resilience_score": Decimal("85.0")
     }
     
@@ -87,6 +92,9 @@ def test_compute_bankability_path_already_approved():
     # When already approved/ready for review without gaps, should generate MIL-OPT
     assert len(path["milestones"]) >= 1
     assert any(m["milestone_id"] == "MIL-OPT" for m in path["milestones"])
+    opt = next(m for m in path["milestones"] if m["milestone_id"] == "MIL-OPT")
+    assert opt["projected_limit_inr"] == path["current_binding_limit"]
+    assert opt["impact_on_score"] == "IMPACT_NOT_QUANTIFIABLE"
 
 
 def test_simulate_bankability_variable():
@@ -130,9 +138,26 @@ def test_simulate_bankability_variable():
     
     before = result["before_simulation"]
     after = result["after_simulation"]
-    uplift = result["uplift_summary"]
-    
     assert after["binding_limit_inr"] >= before["binding_limit_inr"]
-    assert after["verified_dscr"] >= before["verified_dscr"]
-    assert after["financial_health_score"] >= before["financial_health_score"]
+    if before["verified_dscr"] is not None and after["verified_dscr"] is not None:
+        assert after["verified_dscr"] >= before["verified_dscr"]
+    if before["financial_health_score"] is not None and after["financial_health_score"] is not None:
+        assert after["financial_health_score"] >= before["financial_health_score"]
 
+
+def test_bankability_path_does_not_fabricate_requested_amount_targets():
+    features = {
+        "consent_status": "PENDING",
+        "bank_metrics": {},
+        "gst_metrics": {},
+        "obligation_verification_state": "UNKNOWN_OBLIGATIONS",
+    }
+    scores = {"evidence_confidence_score": Decimal("0.0"), "financial_health_score": None}
+
+    path = compute_bankability_path(features, scores, Decimal("5000000"), "WORKING_CAPITAL_LINE")
+
+    projected_limits = [m["projected_limit_inr"] for m in path["milestones"]]
+    assert 3000000.0 not in projected_limits
+    assert 4000000.0 not in projected_limits
+    assert 5000000.0 not in projected_limits
+    assert all(m["impact_on_score"] == "IMPACT_NOT_QUANTIFIABLE" for m in path["milestones"])
