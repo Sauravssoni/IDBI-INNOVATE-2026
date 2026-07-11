@@ -96,11 +96,7 @@ def create_demo_session(
             detail="Guided demo access is unavailable in this environment.",
         )
 
-    if settings.APP_ENV not in ("development", "demo"):
-        raise HTTPException(
-            status_code=404,
-            detail="Demo session is only available in development or demo environments.",
-        )
+
 
     # Rate limit based on IP
     client_ip = request.client.host if request.client else "unknown"

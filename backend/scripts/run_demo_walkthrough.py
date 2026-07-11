@@ -8,10 +8,22 @@ def run():
     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
     from app.db.session import SessionLocal
     from app.db.orm.cases import Case, Business, CaseStatus, AuditEvent
-    from fastapi.testclient import TestClient
-    from app.main import app
+    api_base_url = os.environ.get("API_BASE_URL")
+    if api_base_url:
+        import requests
+        class ProxyClient:
+            def __init__(self, base_url):
+                self.base_url = base_url
+            def get(self, url, **kwargs):
+                return requests.get(f"{self.base_url}{url}", **kwargs)
+            def post(self, url, **kwargs):
+                return requests.post(f"{self.base_url}{url}", **kwargs)
+        client = ProxyClient(api_base_url)
+    else:
+        from fastapi.testclient import TestClient
+        from app.main import app
+        client = TestClient(app)
 
-    client = TestClient(app)
     db = SessionLocal()
 
     walkthrough_log = []
