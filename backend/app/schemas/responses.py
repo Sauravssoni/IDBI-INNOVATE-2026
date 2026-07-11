@@ -233,7 +233,6 @@ class DecisionPackageResponse(BaseModel):
     scoring_version: Optional[str] = "2.0-CANONICAL"
     financial_health_index: Optional[Decimal] = None
     vyapar_credit_health_score: Optional[int] = None
-    total_score: Optional[Decimal] = None
     fhi_breakdown: Optional[Dict[str, Any]] = None
     credit_score_disclaimer: Optional[str] = None
     calculation_evidence_ids: Optional[Dict[str, List[str]]] = None
