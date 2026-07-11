@@ -1,4 +1,5 @@
 import os
+from typing import Any
 import urllib.parse
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -44,7 +45,7 @@ if APP_ENV == "production":
 # When connecting from localhost to docker-compose postgres port 5432 we might need localhost instead of 'db' depending on execution context.
 # We will check if we are in docker by a simple environment variable, or just use the connection string as provided.
 
-engine_kwargs = {"pool_pre_ping": True, "echo": False}
+engine_kwargs: dict[str, Any] = {"pool_pre_ping": True, "echo": False}
 if APP_ENV == "production":
     engine_kwargs["poolclass"] = NullPool
 
