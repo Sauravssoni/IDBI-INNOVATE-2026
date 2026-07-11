@@ -473,27 +473,33 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="bg-black/20 rounded-xl p-4 border border-white/5 space-y-3">
                 <div className="flex justify-between items-center text-xs">
-                  <span className="text-gray-400">BOLA Verification Status</span>
-                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.bola_verification_status === 'VERIFIED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.bola_verification_status}
+                  <span className="text-gray-400">Chain Integrity</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.audit_chain_valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.audit_chain_valid ? 'VERIFIED' : 'NOT VERIFIED'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                  <span className="text-gray-400">CAS Authority Sign-off</span>
-                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.cas_verification_status === 'VERIFIED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.cas_verification_status}
+                  <span className="text-gray-400">Analyst Evaluation Event</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.analyst_event_status === 'VERIFIED' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.analyst_event_status}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                  <span className="text-gray-400">Cryptographic Evidence Hash</span>
-                  <span className="text-gray-300 font-mono text-[11px] truncate max-w-[180px]">
-                    {verificationResult.package_hash}
+                  <span className="text-gray-400">Human Decision Event</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.human_decision_event_status === 'VERIFIED' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.human_decision_event_status}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
-                  <span className="text-gray-400">Audit Chain Valid</span>
-                  <span className={`font-mono font-semibold ${verificationResult.audit_chain_valid ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {verificationResult.audit_chain_valid ? "VALID" : "INVALID"}
+                  <span className="text-gray-400">Package Hash Match</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.package_hash_valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.package_hash_valid ? 'VERIFIED' : 'NOT VERIFIED'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-white/5 pt-2">
+                  <span className="text-gray-400">Authorization Scope</span>
+                  <span className={`font-mono font-semibold flex items-center gap-1 ${verificationResult.authorization_scope_valid ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <CheckCircle2 className="w-3.5 h-3.5" /> {verificationResult.authorization_scope_valid ? 'VERIFIED' : 'NOT VERIFIED'}
                   </span>
                 </div>
               </div>

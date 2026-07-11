@@ -20,11 +20,11 @@ services:
       - key: DEMO_ACCESS_ENABLED
         value: "true"
       - key: DEMO_USER_PASSWORD
-        value: "testpassword123"
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: CORS_ORIGINS
-        value: "https://vyapar-pulse.vercel.app,http://localhost:3005"
+        sync: false
 
 databases:
   - name: vyapar-pulse-db
