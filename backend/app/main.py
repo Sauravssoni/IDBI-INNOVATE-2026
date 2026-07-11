@@ -91,6 +91,7 @@ app.include_router(evidence.router)
 app.include_router(demo.router)
 app.include_router(stress.router)
 app.include_router(bankability.router)
+app.include_router(bankability.simulation_router)
 
 
 @app.get("/health")

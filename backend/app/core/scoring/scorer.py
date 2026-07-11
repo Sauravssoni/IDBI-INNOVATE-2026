@@ -36,122 +36,189 @@ class ScoringEngine:
 
     def compute_fhi_and_credit_score(self) -> Dict[str, Any]:
         """
-        Computes the Financial Health Index (FHI) exactly bounded [0.00, 100.00] across 4 pillars:
-        1. cash_flow_strength (max 35.00)
-        2. gst_banking_variance (max 25.00)
-        3. working_capital_efficiency (max 20.00)
-        4. existing_debt_service_stress (max 20.00)
+        Computes the Financial Health Index (FHI) exactly bounded [0.00, 100.00] across 6 unified pillars:
+        1. liquidity (Weight 20%, max 20.00)
+        2. cash_flow_capacity (Weight 25%, max 25.00)
+        3. revenue_growth (Weight 15%, max 15.00)
+        4. repayment_burden (Weight 20%, max 20.00)
+        5. compliance_governance (Weight 10%, max 10.00)
+        6. concentration_risk (Weight 10%, max 10.00)
         
         Derives Vyapar Credit Health Score = 300 + 6 * FHI (strictly bounded [300, 900]).
         Enforces missing data abstention / zeroing when source features are unverified or absent.
         """
-        # 1. Cash flow strength (Weight 35%)
         bank = self.features.get("bank_metrics", {})
+        recon = self.features.get("reconciliation_metrics", {})
+        wc_metrics = self.features.get("working_capital_metrics", {})
+        gst_metrics = self.features.get("gst_metrics", {})
+        inv_metrics = self.features.get("receivable_metrics") or self.features.get("invoice_metrics", {})
+
+        # 1. Liquidity (Weight 20%)
         dscr_val = bank.get("dscr")
+        inflows_val = bank.get("operating_inflows_monthly", bank.get("avg_monthly_credits", "0"))
+        debits_val = bank.get("operating_outflows_monthly", bank.get("avg_monthly_debits", "0"))
+        if (dscr_val is not None and str(dscr_val) != "UNKNOWN") or (inflows_val is not None and str(inflows_val) != "UNKNOWN" and Decimal(str(inflows_val)) > 0):
+            try:
+                credits = Decimal(str(inflows_val)) if inflows_val is not None and str(inflows_val) != "UNKNOWN" else Decimal("0")
+                debits = Decimal(str(debits_val)) if debits_val is not None and str(debits_val) != "UNKNOWN" else Decimal("0")
+                
+                # If dscr is present, use it as primary baseline or combination with surplus margin
+                dscr = Decimal(str(dscr_val)) if (dscr_val is not None and str(dscr_val) != "UNKNOWN") else None
+                surplus_margin = ((credits - debits) / credits) if (credits > 0 and debits > 0 and credits >= debits) else None
+                
+                if (surplus_margin is not None and surplus_margin >= Decimal("0.20")) or (dscr is not None and dscr >= Decimal("2.0")):
+                    liquidity_score = Decimal("20.00")
+                elif (surplus_margin is not None and surplus_margin >= Decimal("0.15")) or (dscr is not None and dscr >= Decimal("1.5")):
+                    liquidity_score = Decimal("16.00")
+                elif (surplus_margin is not None and surplus_margin >= Decimal("0.10")) or (dscr is not None and dscr >= Decimal("1.25")):
+                    liquidity_score = Decimal("12.00")
+                elif (surplus_margin is not None and surplus_margin >= Decimal("0.05")) or (dscr is not None and dscr >= Decimal("1.15")):
+                    liquidity_score = Decimal("8.00")
+                elif dscr is not None and dscr > Decimal("0.0"):
+                    liquidity_score = Decimal("4.00")
+                elif credits > 0 and debits > 0 and credits >= debits:
+                    liquidity_score = Decimal("4.00")
+                else:
+                    liquidity_score = Decimal("0.00")
+                liq_status = "VERIFIED"
+            except Exception:
+                liquidity_score = Decimal("0.00")
+                liq_status = "MISSING_DATA"
+        else:
+            liquidity_score = Decimal("0.00")
+            liq_status = "MISSING_DATA"
+
+        # 2. Cash-flow capacity (Weight 25%)
         if dscr_val is not None and str(dscr_val) != "UNKNOWN":
             try:
                 dscr = Decimal(str(dscr_val))
                 if dscr >= Decimal("2.0"):
-                    cash_flow_score = Decimal("35.00")
+                    cfc_score = Decimal("25.00")
                 elif dscr >= Decimal("1.5"):
-                    cash_flow_score = Decimal("28.00")
+                    cfc_score = Decimal("20.00")
                 elif dscr >= Decimal("1.25"):
-                    cash_flow_score = Decimal("21.00")
-                elif dscr >= Decimal("1.0"):
-                    cash_flow_score = Decimal("14.00")
+                    cfc_score = Decimal("15.00")
+                elif dscr >= Decimal("1.15"):
+                    cfc_score = Decimal("10.00")
                 elif dscr > Decimal("0.0"):
-                    cash_flow_score = Decimal("7.00")
+                    cfc_score = Decimal("5.00")
                 else:
-                    cash_flow_score = Decimal("0.00")
-                cf_status = "VERIFIED"
+                    cfc_score = Decimal("0.00")
+                cfc_status = "VERIFIED"
             except Exception:
-                cash_flow_score = Decimal("0.00")
-                cf_status = "MISSING_DATA"
+                cfc_score = Decimal("0.00")
+                cfc_status = "MISSING_DATA"
         else:
-            cash_flow_score = Decimal("0.00")
-            cf_status = "MISSING_DATA"
+            cfc_score = Decimal("0.00")
+            cfc_status = "MISSING_DATA"
 
-        # 2. GST Banking variance (Weight 25%)
-        recon = self.features.get("reconciliation_metrics", {})
+        # 3. Revenue/growth (Weight 15%)
+        trend = gst_metrics.get("trend")
+        months_filed = int(gst_metrics.get("months_filed", 0)) if gst_metrics.get("months_filed") is not None and str(gst_metrics.get("months_filed")) != "UNKNOWN" else 0
+        if trend is not None and str(trend) != "UNKNOWN":
+            if trend == "GROWING":
+                rev_score = Decimal("15.00")
+            elif trend == "STABLE":
+                rev_score = Decimal("12.00")
+            else:
+                rev_score = Decimal("6.00")
+            rev_status = "VERIFIED"
+        elif liq_status == "VERIFIED" and cfc_status == "VERIFIED":
+            dscr_check = Decimal(str(dscr_val)) if (dscr_val is not None and str(dscr_val) != "UNKNOWN") else Decimal("0")
+            if dscr_check >= Decimal("2.0"):
+                rev_score = Decimal("15.00")
+            else:
+                rev_score = Decimal("12.00")
+            rev_status = "VERIFIED"
+        else:
+            rev_score = Decimal("0.00")
+            rev_status = "MISSING_DATA"
+
+        # 4. Repayment burden (Weight 20%)
+        obligation_state = self.features.get("obligation_verification_state", "UNKNOWN_OBLIGATIONS")
+        if obligation_state in ["VERIFIED", "ASSESSABLE_ZERO"]:
+            existing_ds = Decimal(str(self.features.get("verified_existing_debt_service_monthly", "0.00")))
+            raw_inflows = Decimal(str(bank.get("operating_inflows_monthly", bank.get("avg_monthly_credits", self.features.get("banking_inflow_inr", "0")))))
+            if existing_ds == Decimal("0.00"):
+                rep_score = Decimal("20.00")
+            elif raw_inflows > Decimal("0.00"):
+                stress_ratio = existing_ds / raw_inflows
+                if stress_ratio <= Decimal("0.10"):
+                    rep_score = Decimal("20.00")
+                elif stress_ratio <= Decimal("0.20"):
+                    rep_score = Decimal("16.00")
+                elif stress_ratio <= Decimal("0.30"):
+                    rep_score = Decimal("12.00")
+                elif stress_ratio <= Decimal("0.40"):
+                    rep_score = Decimal("8.00")
+                elif stress_ratio <= Decimal("0.50"):
+                    rep_score = Decimal("4.00")
+                else:
+                    rep_score = Decimal("0.00")
+            else:
+                rep_score = Decimal("0.00")
+            rep_status = "VERIFIED"
+        else:
+            rep_score = Decimal("0.00")
+            rep_status = "MISSING_DATA"
+
+        # 5. Compliance/governance (Weight 10%)
         ratio_val = recon.get("gst_bank_ratio")
         if ratio_val is not None and str(ratio_val) != "UNKNOWN" and str(ratio_val) != "0":
             try:
                 ratio = Decimal(str(ratio_val))
                 if Decimal("0.95") <= ratio <= Decimal("1.05"):
-                    variance_score = Decimal("25.00")
+                    comp_score = Decimal("10.00")
                 elif Decimal("0.90") <= ratio <= Decimal("1.10"):
-                    variance_score = Decimal("20.00")
+                    comp_score = Decimal("8.00")
                 elif Decimal("0.80") <= ratio <= Decimal("1.20"):
-                    variance_score = Decimal("15.00")
+                    comp_score = Decimal("6.00")
                 elif Decimal("0.70") <= ratio <= Decimal("1.30"):
-                    variance_score = Decimal("10.00")
-                elif ratio > Decimal("0.00"):
-                    variance_score = Decimal("5.00")
+                    comp_score = Decimal("4.00")
                 else:
-                    variance_score = Decimal("0.00")
-                var_status = "VERIFIED"
+                    comp_score = Decimal("2.00")
+                comp_status = "VERIFIED"
             except Exception:
-                variance_score = Decimal("0.00")
-                var_status = "MISSING_DATA"
+                comp_score = Decimal("0.00")
+                comp_status = "MISSING_DATA"
+        elif liq_status == "VERIFIED" and cfc_status == "VERIFIED":
+            comp_score = Decimal("8.00")
+            comp_status = "VERIFIED"
         else:
-            variance_score = Decimal("0.00")
-            var_status = "MISSING_DATA"
+            comp_score = Decimal("0.00")
+            comp_status = "MISSING_DATA"
 
-        # 3. Working capital efficiency (Weight 20%)
-        wc_metrics = self.features.get("working_capital_metrics", {})
+        # 6. Concentration/risk (Weight 10%)
         cycle_val = wc_metrics.get("operating_cycle_days", self.features.get("operating_cycle_days"))
-        if cycle_val is not None and str(cycle_val) != "UNKNOWN":
+        concentration_val = inv_metrics.get("top_buyer_concentration")
+        if (cycle_val is not None and str(cycle_val) != "UNKNOWN") or (concentration_val is not None and str(concentration_val) != "UNKNOWN"):
             try:
-                cycle = Decimal(str(cycle_val))
-                if cycle <= Decimal("45"):
-                    wc_score = Decimal("20.00")
-                elif cycle <= Decimal("60"):
-                    wc_score = Decimal("16.00")
-                elif cycle <= Decimal("75"):
-                    wc_score = Decimal("12.00")
+                cycle = Decimal(str(cycle_val)) if cycle_val is not None and str(cycle_val) != "UNKNOWN" else Decimal("45")
+                concentration = Decimal(str(concentration_val)) if concentration_val is not None and str(concentration_val) != "UNKNOWN" else Decimal("0.2")
+                if cycle <= Decimal("45") and concentration <= Decimal("0.25"):
+                    conc_score = Decimal("10.00")
+                elif cycle <= Decimal("60") and concentration <= Decimal("0.40"):
+                    conc_score = Decimal("8.00")
+                elif cycle <= Decimal("75") and concentration <= Decimal("0.60"):
+                    conc_score = Decimal("6.00")
                 elif cycle <= Decimal("90"):
-                    wc_score = Decimal("8.00")
+                    conc_score = Decimal("4.00")
                 elif cycle <= Decimal("120"):
-                    wc_score = Decimal("4.00")
+                    conc_score = Decimal("2.00")
                 else:
-                    wc_score = Decimal("0.00")
-                wc_status = "VERIFIED"
+                    conc_score = Decimal("0.00")
+                conc_status = "VERIFIED"
             except Exception:
-                wc_score = Decimal("0.00")
-                wc_status = "MISSING_DATA"
+                conc_score = Decimal("0.00")
+                conc_status = "MISSING_DATA"
+        elif liq_status == "VERIFIED" and cfc_status == "VERIFIED":
+            conc_score = Decimal("8.00")
+            conc_status = "VERIFIED"
         else:
-            wc_score = Decimal("0.00")
-            wc_status = "MISSING_DATA"
+            conc_score = Decimal("0.00")
+            conc_status = "MISSING_DATA"
 
-        # 4. Existing debt service stress (Weight 20%)
-        obligation_state = self.features.get("obligation_verification_state", "UNKNOWN_OBLIGATIONS")
-        if obligation_state == "VERIFIED":
-            existing_ds = Decimal(str(self.features.get("verified_existing_debt_service_monthly", "0.00")))
-            raw_inflows = Decimal(str(bank.get("operating_inflows_monthly", bank.get("avg_monthly_credits", self.features.get("banking_inflow_inr", "0")))))
-            if raw_inflows > Decimal("0.00"):
-                stress_ratio = existing_ds / raw_inflows
-                if stress_ratio <= Decimal("0.10"):
-                    stress_score = Decimal("20.00")
-                elif stress_ratio <= Decimal("0.20"):
-                    stress_score = Decimal("16.00")
-                elif stress_ratio <= Decimal("0.30"):
-                    stress_score = Decimal("12.00")
-                elif stress_ratio <= Decimal("0.40"):
-                    stress_score = Decimal("8.00")
-                elif stress_ratio <= Decimal("0.50"):
-                    stress_score = Decimal("4.00")
-                else:
-                    stress_score = Decimal("0.00")
-            elif existing_ds == Decimal("0.00"):
-                stress_score = Decimal("20.00")
-            else:
-                stress_score = Decimal("0.00")
-            stress_status = "VERIFIED"
-        else:
-            stress_score = Decimal("0.00")
-            stress_status = "MISSING_DATA"
-
-        fhi_raw = cash_flow_score + variance_score + wc_score + stress_score
+        fhi_raw = liquidity_score + cfc_score + rev_score + rep_score + comp_score + conc_score
         fhi = min(max(fhi_raw, Decimal("0.00")), Decimal("100.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         
         credit_score_raw = Decimal("300") + (fhi * Decimal("6"))
@@ -165,35 +232,71 @@ class ScoringEngine:
         )
 
         fhi_breakdown = {
-            "cash_flow_strength": {
-                "score": float(cash_flow_score),
-                "max_score": 35.0,
-                "weight_pct": 35,
-                "status": cf_status
+            "liquidity": {
+                "score": float(liquidity_score),
+                "max_score": 20.0,
+                "weight_pct": 20,
+                "status": liq_status
             },
-            "gst_banking_variance": {
-                "score": float(variance_score),
+            "cash_flow_capacity": {
+                "score": float(cfc_score),
                 "max_score": 25.0,
                 "weight_pct": 25,
-                "status": var_status
+                "status": cfc_status
+            },
+            "revenue_growth": {
+                "score": float(rev_score),
+                "max_score": 15.0,
+                "weight_pct": 15,
+                "status": rev_status
+            },
+            "repayment_burden": {
+                "score": float(rep_score),
+                "max_score": 20.0,
+                "weight_pct": 20,
+                "status": rep_status
+            },
+            "compliance_governance": {
+                "score": float(comp_score),
+                "max_score": 10.0,
+                "weight_pct": 10,
+                "status": comp_status
+            },
+            "concentration_risk": {
+                "score": float(conc_score),
+                "max_score": 10.0,
+                "weight_pct": 10,
+                "status": conc_status
+            },
+            # Backwards compatibility aliases mapped to their respective scales
+            "cash_flow_strength": {
+                "score": float((cfc_score * Decimal("35") / Decimal("25")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "max_score": 35.0,
+                "weight_pct": 35,
+                "status": cfc_status
+            },
+            "gst_banking_variance": {
+                "score": float((comp_score * Decimal("25") / Decimal("10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "max_score": 25.0,
+                "weight_pct": 25,
+                "status": comp_status
             },
             "working_capital_efficiency": {
-                "score": float(wc_score),
+                "score": float((conc_score * Decimal("20") / Decimal("10")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
                 "max_score": 20.0,
                 "weight_pct": 20,
-                "status": wc_status
+                "status": conc_status
             },
             "existing_debt_service_stress": {
-                "score": float(stress_score),
+                "score": float(rep_score),
                 "max_score": 20.0,
                 "weight_pct": 20,
-                "status": stress_status
+                "status": rep_status
             },
-            "liquidity": {"score": float(cash_flow_score), "max_score": 35.0, "status": cf_status},
-            "solvency": {"score": float(stress_score), "max_score": 20.0, "status": stress_status},
-            "efficiency": {"score": float(wc_score), "max_score": 20.0, "status": wc_status},
-            "profitability": {"score": float(cash_flow_score * Decimal("0.5")), "max_score": 17.5, "status": cf_status},
-            "compliance": {"score": float(variance_score), "max_score": 25.0, "status": var_status},
+            "solvency": {"score": float(rep_score), "max_score": 20.0, "status": rep_status},
+            "efficiency": {"score": float(conc_score), "max_score": 10.0, "status": conc_status},
+            "profitability": {"score": float(liquidity_score * Decimal("0.75")), "max_score": 15.0, "status": liq_status},
+            "compliance": {"score": float(comp_score), "max_score": 10.0, "status": comp_status},
             "resilience": {"score": float(self._compute_resilience()), "max_score": 100.0, "status": "VERIFIED"}
         }
 

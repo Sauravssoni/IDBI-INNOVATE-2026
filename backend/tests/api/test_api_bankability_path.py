@@ -104,3 +104,27 @@ def test_bankability_path_bola_denial(client: TestClient, db):
         **auth_kwargs,
     )
     assert response.status_code in (403, 404)
+
+
+def test_bankability_simulate_api(client: TestClient, db):
+    business = (
+        db.query(Business)
+        .filter(Business.business_id == "SHAKTI_PRECISION_001")
+        .first()
+    )
+    assert business is not None and len(business.cases) > 0
+    shakti_case = business.cases[0]
+
+    auth_kwargs = get_auth_kwargs(client, "credit@bank.example")
+    response = client.post(
+        f"/api/cases/{shakti_case.id}/simulate",
+        json={"overrides": {"dscr": "2.25", "operating_inflows_monthly": "1500000"}},
+        **auth_kwargs,
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert "before_simulation" in data
+    assert "after_simulation" in data
+    assert "uplift_summary" in data
+    assert data["engine_version"] == "2.0-BANKABILITY-SIMULATION"
+
