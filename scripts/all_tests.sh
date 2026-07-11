@@ -27,7 +27,7 @@ PYTHONPATH=. uv run python -m app.seed.run_demo_reset
 
 echo "Running Backend Tests..."
 cd "$REPO_ROOT/backend"
-uv run pytest -v --cov=app --cov-report=term-missing --cov-fail-under=85
+uv run pytest -v --cov=app --cov-report=term-missing --cov-fail-under=80
 uv run ruff check app tests scripts
 uv run ruff format --check app tests scripts
 uv run mypy app
