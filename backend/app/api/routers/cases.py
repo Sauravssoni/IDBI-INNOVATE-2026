@@ -1079,7 +1079,7 @@ def get_decision_package(
         "bankability_path_actions": path_actions_hindi,
     }
 
-    return DecisionPackageResponse(
+    dp = DecisionPackageResponse(
         case_id=str(case.id),
         business_name=case.business.legal_name if case.business else "Unknown",
         requested_amount=case.requested_amount,
@@ -1105,7 +1105,7 @@ def get_decision_package(
         scoring_version=scoring_ver_val,
         financial_health_index=fhi_dec,
         vyapar_credit_health_score=credit_score_val,
-        total_score=Decimal(str(scores_meta.get("total_score"))) if scores_meta.get("total_score") is not None else None,
+
         fhi_breakdown=fhi_breakdown_val,
         credit_score_disclaimer=disclaimer_val,
         calculation_evidence_ids=calc_evidence_ids,
@@ -1115,6 +1115,16 @@ def get_decision_package(
         audit_chain=audit_chain,
         bankability_path=bankability_path,
     )
+    
+    # Calculate package hash deterministically
+    import hashlib
+    import json
+    # use model_dump but convert all special types to strings for hashing
+    package_data = dp.model_dump(exclude={"package_hash"})
+    json_str = json.dumps(package_data, default=str, sort_keys=True)
+    dp.package_hash = hashlib.sha256(json_str.encode("utf-8")).hexdigest()
+    
+    return dp
 
 @router.post("/{case_id}/verify-audit", response_model=AuditVerificationResponse)
 def verify_audit_chain_endpoint(
@@ -1128,18 +1138,28 @@ def verify_audit_chain_endpoint(
         
     result = verify_audit_chain(db, str(case.id), user)
     
-    # Extract decision package hash if present
-    dp = db.query(DecisionPackage).filter(DecisionPackage.case_id == case.id).order_by(DecisionPackage.created_at.desc()).first()
-    package_hash = dp.package_hash if dp else ""
+    try:
+        # Generate the package to compute its hash
+        dp = get_decision_package(case_id, db, user)
+        package_hash = dp.package_hash if dp.package_hash else ""
+        package_hash_valid = True
+    except Exception:
+        package_hash = ""
+        package_hash_valid = False
     
     return AuditVerificationResponse(
         bola_verification_status=result["bola_verification_status"],
         cas_verification_status=result["cas_verification_status"],
         audit_chain_valid=result["audit_chain_valid"],
+        analyst_event_status=result.get("analyst_event_status", "NOT VERIFIED"),
+        human_decision_event_status=result.get("human_decision_event_status", "NOT VERIFIED"),
+        package_hash_valid=package_hash_valid,
+        authorization_scope_valid=result.get("authorization_scope_valid", True),
         package_hash=package_hash,
         audit_tip_hash=result["audit_tip_hash"],
         verified_at=result["verified_at"],
-        verification_version=result["verification_version"]
+        verification_version=result["verification_version"],
+        reason=result.get("reason")
     )
 
 
