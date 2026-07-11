@@ -35,10 +35,13 @@ def compute_bankability_path(
         
     consent_status = features.get("consent_status", "PENDING")
     
-    # Base baseline DSCR
+    # Base baseline DSCR (use stressed independent reamortization DSCR if available)
     base_bank = features.get("bank_metrics", {})
     try:
-        base_dscr = Decimal(str(base_bank.get("dscr", "1.0")))
+        if "independent_reamortization_dscr" in base_bank and base_bank["independent_reamortization_dscr"] is not None:
+            base_dscr = Decimal(str(base_bank["independent_reamortization_dscr"]))
+        else:
+            base_dscr = Decimal(str(base_bank.get("dscr", "1.0")))
     except Exception:
         base_dscr = Decimal("1.0")
 

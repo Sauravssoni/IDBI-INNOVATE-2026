@@ -10,7 +10,7 @@ from app.db.orm.evidence import (
     EmploymentPeriod,
     InvoicePayment,
 )
-from app.services.credit_twin import calculate_dscr_sandbox_v1
+from app.services.credit_twin import calculate_dscr_sandbox_v1, calculate_independent_reamortization_dscr
 import datetime
 
 
@@ -257,6 +257,8 @@ class FeatureEngine:
         avg_monthly_debits = (total_debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         verified_ds_monthly = (debt_service / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
+        indep_dscr = calculate_independent_reamortization_dscr(self.db, self.business_id, eval_date)
+
         return {
             "total_credits": str(
                 total_credits.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -271,6 +273,7 @@ class FeatureEngine:
             "verified_debt_service_monthly": str(verified_ds_monthly),
             "debt_service_verified": len(debt_service_ids) > 0,
             "dscr": str(dscr) if dscr is not None else None,
+            "independent_reamortization_dscr": str(indep_dscr) if indep_dscr is not None else None,
             "transaction_categorization_summary": {
                 "version": "1.0.0",
                 "included_inflow_ids": included_inflow_ids,
