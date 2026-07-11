@@ -22,7 +22,7 @@ def test_fhi_and_credit_score_perfect_verified_case():
         "reconciliation_metrics": {"gst_bank_ratio": "1.00"},
         "working_capital_metrics": {"operating_cycle_days": "20"},
         "invoice_metrics": {"top_buyer_concentration": "0.20"},
-        "obligation_verification_state": "VERIFIED",
+        "obligation_verification_state": "VERIFIED_ZERO_DEBT",
         "verified_existing_debt_service_monthly": "0",
     }
     engine = ScoringEngine(features)
@@ -68,7 +68,7 @@ def test_fhi_and_credit_score_intermediate_values():
         "reconciliation_metrics": {"gst_bank_ratio": "0.92"},
         "working_capital_metrics": {"operating_cycle_days": "65"},
         "invoice_metrics": {"top_buyer_concentration": "0.45"},
-        "obligation_verification_state": "VERIFIED",
+        "obligation_verification_state": "VERIFIED_OBLIGATIONS",
         "verified_existing_debt_service_monthly": "25000",
     }
     engine = ScoringEngine(features)
@@ -88,7 +88,7 @@ def test_missing_reconciliation_and_concentration_do_not_earn_points():
         "monthly_revenue_inr": "1000000",
         "bank_metrics": {"dscr": "1.50", "operating_inflows_monthly": "1000000", "operating_outflows_monthly": "700000"},
         "gst_metrics": {"months_filed": 12, "avg_monthly_revenue": "1000000", "revenue_cv": "0.08", "trend": "STABLE"},
-        "obligation_verification_state": "VERIFIED",
+        "obligation_verification_state": "VERIFIED_OBLIGATIONS",
         "verified_existing_debt_service_monthly": "100000",
     }
 
@@ -116,3 +116,21 @@ def test_unknown_obligations_abstain_from_score():
     assert fhi_data["financial_health_index"] is None
     assert fhi_data["vyapar_credit_health_score"] is None
     assert "verified_obligations_or_verified_zero_debt" in fhi_data["missing_material_evidence"]
+
+
+def test_generic_verified_without_amount_abstains():
+    features = {
+        "consent_status": "VALID",
+        "monthly_revenue_inr": "1000000",
+        "bank_metrics": {"operating_inflows_monthly": "1000000", "operating_outflows_monthly": "700000"},
+        "gst_metrics": {"months_filed": 12, "avg_monthly_revenue": "1000000", "revenue_cv": "0.08", "trend": "STABLE"},
+        "reconciliation_metrics": {"gst_bank_ratio": "1.00"},
+        "working_capital_metrics": {"operating_cycle_days": "45"},
+        "invoice_metrics": {"top_buyer_concentration": "0.20"},
+        "obligation_verification_state": "VERIFIED",
+    }
+
+    fhi_data = ScoringEngine(features).compute_fhi_and_credit_score()
+
+    assert fhi_data["assessment_certainty"] == "INSUFFICIENT_TO_ASSESS"
+    assert fhi_data["financial_health_index"] is None

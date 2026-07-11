@@ -22,7 +22,7 @@ class Settings:
         raw_demo_access = os.getenv("DEMO_ACCESS_ENABLED", "false").lower()
         self.DEMO_ACCESS_ENABLED: bool = raw_demo_access in ("true", "1", "t", "yes")
 
-        raw_origins = os.getenv("ALLOWED_ORIGINS")
+        raw_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS")
         if self.APP_ENV == "production" and (
             raw_origins is None or raw_origins.strip() == ""
         ):

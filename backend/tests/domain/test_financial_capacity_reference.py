@@ -150,7 +150,7 @@ def test_financial_capacity_does_not_use_unrestricted_credit_fallbacks():
             "avg_monthly_credits": 10000000,
             "avg_monthly_debits": 1000000,
         },
-        "obligation_verification_state": "VERIFIED",
+        "obligation_verification_state": "VERIFIED_ZERO_DEBT",
         "verified_existing_debt_service_monthly": 0,
     }
 

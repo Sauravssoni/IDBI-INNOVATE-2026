@@ -206,6 +206,40 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     assert events[-1].correlation_id is not None
     assert events[-1].idempotency_record_id is not None
 
+    seal_res = client.post(
+        f"/api/cases/{case_id}/decision-package",
+        headers=sa_auth["headers"],
+    )
+    assert seal_res.status_code == 200, seal_res.text
+    sealed = seal_res.json()
+    assert sealed["stored"] is True
+    assert len(sealed["package_hash"]) == 64
+
+    verify_res = client.post(
+        f"/api/cases/{case_id}/decision-package/{sealed['package_id']}/verify",
+        headers=sa_auth["headers"],
+    )
+    assert verify_res.status_code == 200, verify_res.text
+    assert verify_res.json()["valid"] is True
+
+    replay_res = client.post(
+        f"/api/cases/{case_id}/decision-package/{sealed['package_id']}/replay",
+        headers=sa_auth["headers"],
+    )
+    assert replay_res.status_code == 200, replay_res.text
+    replay_data = replay_res.json()
+    assert replay_data["status"] == "INDEPENDENTLY_REPRODUCED", replay_data
+    assert replay_data["differences"] == []
+
+    sys_auth = get_auth_headers(client, "system@bank.example")
+    client.cookies.clear()
+    client.cookies.update(sys_auth["cookies"])
+    denied = client.post(
+        f"/api/cases/{case_id}/decision-package/{sealed['package_id']}/verify",
+        headers=sys_auth["headers"],
+    )
+    assert denied.status_code in (403, 404)
+
 
 def test_concurrent_idempotency(client: TestClient, db: Session):
     from concurrent.futures import ThreadPoolExecutor

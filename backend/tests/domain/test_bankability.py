@@ -61,7 +61,7 @@ def test_compute_bankability_path_deterministic_milestones():
 def test_compute_bankability_path_already_approved():
     features = {
         "consent_status": "VALID",
-        "obligation_verification_state": "VERIFIED",
+        "obligation_verification_state": "VERIFIED_ZERO_DEBT",
         "bank_metrics": {
             "months_filed": 18,
             "dscr": "2.50",

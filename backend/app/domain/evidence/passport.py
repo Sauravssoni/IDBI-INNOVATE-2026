@@ -1,12 +1,16 @@
 import math
 from datetime import datetime, timezone, date
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any, Dict
 from sqlalchemy.orm import Session
 
 from app.db.orm.evidence import GSTPeriod, BankTransaction, Invoice, EmploymentPeriod, Obligation
 from app.db.orm.cases import Case
 from app.db.orm.consents import Consent, ConsentStatus
+from app.domain.financial.obligations import (
+    UNKNOWN_OBLIGATIONS,
+    VERIFIED_OBLIGATIONS,
+    VERIFIED_ZERO_DEBT,
+)
 
 
 def generate_evidence_passport(db: Session, case_id: str) -> Dict[str, Any]:
@@ -100,22 +104,22 @@ def generate_evidence_passport(db: Session, case_id: str) -> Dict[str, Any]:
 
     if cibil_total_emi == 0 and observed_debt_service == 0:
         if cibil_pulled or getattr(case, "zero_debt_verified", False):
-            obligation_verification_state = "VERIFIED_NO_DEBT"
+            obligation_verification_state = VERIFIED_ZERO_DEBT
         else:
-            obligation_verification_state = "UNKNOWN_OBLIGATIONS"
+            obligation_verification_state = UNKNOWN_OBLIGATIONS
     elif cibil_total_emi > 0 and observed_debt_service > 0:
         diff_ratio = abs(cibil_total_emi - monthly_observed_ds) / max(cibil_total_emi, monthly_observed_ds)
         if diff_ratio <= 0.15:
-            obligation_verification_state = "VERIFIED_MATCH"
+            obligation_verification_state = VERIFIED_OBLIGATIONS
         else:
-            obligation_verification_state = "UNVERIFIED_MISMATCH"
+            obligation_verification_state = UNKNOWN_OBLIGATIONS
     elif cibil_total_emi > 0:
         if cibil_pulled:
-            obligation_verification_state = "VERIFIED_CIBIL_ONLY"
+            obligation_verification_state = VERIFIED_OBLIGATIONS
         else:
-            obligation_verification_state = "UNVERIFIED_CIBIL_ONLY"
+            obligation_verification_state = UNKNOWN_OBLIGATIONS
     else:
-        obligation_verification_state = "UNVERIFIED_BANK_ONLY"
+        obligation_verification_state = UNKNOWN_OBLIGATIONS
 
     # 5. Contradiction and reconciliation severity
     total_gst_rev = sum(float(getattr(g, "declared_revenue", 0)) for g in gst_records)
@@ -139,9 +143,9 @@ def generate_evidence_passport(db: Session, case_id: str) -> Dict[str, Any]:
         assessment_certainty = "INSUFFICIENT_TO_ASSESS"
     elif not rail_coverage["gst"] and not rail_coverage["account_aggregator"]:
         assessment_certainty = "INSUFFICIENT_TO_ASSESS"
-    elif contradiction_severity == "HIGH_CONTRADICTION" or obligation_verification_state == "UNKNOWN_OBLIGATIONS":
+    elif contradiction_severity == "HIGH_CONTRADICTION" or obligation_verification_state == UNKNOWN_OBLIGATIONS:
         assessment_certainty = "LIMITED_CERTAINTY"
-    elif months_of_history >= 12 and rail_coverage["gst"] and rail_coverage["account_aggregator"] and obligation_verification_state in ("VERIFIED_MATCH", "VERIFIED_NO_DEBT", "VERIFIED_CIBIL_ONLY"):
+    elif months_of_history >= 12 and rail_coverage["gst"] and rail_coverage["account_aggregator"] and obligation_verification_state in (VERIFIED_OBLIGATIONS, VERIFIED_ZERO_DEBT):
         assessment_certainty = "HIGH_CERTAINTY"
     elif months_of_history >= 6 and (rail_coverage["gst"] or rail_coverage["account_aggregator"]):
         assessment_certainty = "MODERATE_CERTAINTY"

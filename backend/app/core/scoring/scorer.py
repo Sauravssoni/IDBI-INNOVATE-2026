@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, Tuple
 from decimal import Decimal, ROUND_HALF_UP
+from app.domain.financial.obligations import ASSESSABLE_OBLIGATION_STATES, VERIFIED_ZERO_DEBT
 
 
 class ScoringEngine:
@@ -29,6 +30,11 @@ class ScoringEngine:
             "fhi_breakdown": fhi_data["fhi_breakdown"],
             "vyapar_credit_health_score": fhi_data["vyapar_credit_health_score"],
             "credit_health_disclaimer": fhi_data["credit_health_disclaimer"],
+            "credit_score_disclaimer": fhi_data["credit_score_disclaimer"],
+            "assessment_certainty": fhi_data["assessment_certainty"],
+            "score_range": fhi_data["score_range"],
+            "missing_material_evidence": fhi_data["missing_material_evidence"],
+            "scoring_version": fhi_data["scoring_version"],
         }
 
     def compute_fhi_and_credit_score(self) -> Dict[str, Any]:
@@ -102,7 +108,7 @@ class ScoringEngine:
             missing_core.append("governed_operating_cash_flow")
         if unresolved_material:
             missing_core.append("acceptable_unresolved_transaction_materiality")
-        if obligation_state != "VERIFIED":
+        if obligation_state not in ASSESSABLE_OBLIGATION_STATES:
             missing_core.append("verified_obligations_or_verified_zero_debt")
         if revenue is None or revenue <= 0:
             missing_core.append("sufficient_revenue_evidence")
@@ -117,9 +123,9 @@ class ScoringEngine:
             liquidity_score, liquidity_status, liquidity_missing = None, "MISSING_DATA", ["operating_inflows_monthly", "operating_outflows_monthly"]
 
         # Cash-flow capacity - only DSCR/cash from canonical capacity inputs.
-        if operating_cash is not None and existing_ds is not None and obligation_state == "VERIFIED":
+        if operating_cash is not None and existing_ds is not None and obligation_state in ASSESSABLE_OBLIGATION_STATES:
             dscr_for_score = post_loan_dscr or current_dscr
-            if dscr_for_score is None and existing_ds == 0:
+            if dscr_for_score is None and existing_ds == 0 and obligation_state == VERIFIED_ZERO_DEBT:
                 dscr_for_score = Decimal("2.00")
             cashflow_score = Decimal("100") if dscr_for_score >= Decimal("1.75") else Decimal("80") if dscr_for_score >= Decimal("1.40") else Decimal("60") if dscr_for_score >= Decimal("1.15") else Decimal("30") if dscr_for_score >= Decimal("1.00") else Decimal("0")
             cashflow_status = "VERIFIED"
@@ -143,7 +149,7 @@ class ScoringEngine:
             revenue_score, revenue_status, revenue_missing = None, "MISSING_DATA", ["six_month_revenue_series", "revenue_volatility"]
 
         # Repayment burden and discipline - unknown obligations stay unknown.
-        if obligation_state == "VERIFIED" and existing_ds is not None:
+        if obligation_state in ASSESSABLE_OBLIGATION_STATES and existing_ds is not None:
             burden = Decimal("0") if operating_cash in (None, Decimal("0")) else existing_ds / max(operating_cash, Decimal("1"))
             repay_score = Decimal("100") if existing_ds == 0 else Decimal("90") if burden <= Decimal("0.25") else Decimal("70") if burden <= Decimal("0.45") else Decimal("40") if burden <= Decimal("0.70") else Decimal("0")
             repay_status, repay_missing = "VERIFIED", []

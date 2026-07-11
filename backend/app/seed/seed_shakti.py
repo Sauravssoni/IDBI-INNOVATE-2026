@@ -2,7 +2,7 @@ import random
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-from app.db.orm.cases import Business, Case, CaseStatus
+from app.db.orm.cases import Business, Case, CaseStatus, DecisionPackage
 from app.db.orm.consents import Consent, DataConnection, ConsentStatus
 from app.db.orm.evidence import (
     GSTPeriod,
@@ -80,6 +80,7 @@ def seed_shakti(db_session=None):
         for c in existing_business.cases:
             from app.db.orm.cases import AuditEvent
 
+            db.query(DecisionPackage).filter(DecisionPackage.case_id == c.id).delete()
             db.query(AuditEvent).filter(AuditEvent.case_id == c.id).delete()
             from app.db.orm.cases import IdempotencyRecord
 
@@ -93,16 +94,19 @@ def seed_shakti(db_session=None):
 
     malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
     if not malviya_nagar_branch:
-        raise RuntimeError(
-            "Branch BR-MN-JAI not found. Did you run seed_demo_principals?"
-        )
+        from app.seed.seed_demo_principals import seed_demo_principals
+
+        seed_demo_principals(db)
+        malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
 
     rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
     ca_user = db.query(User).filter(User.email == "credit@bank.example").first()
     if not rm_user or not ca_user:
-        raise RuntimeError(
-            "Demo principals not found. Did you run seed_demo_principals?"
-        )
+        from app.seed.seed_demo_principals import seed_demo_principals
+
+        seed_demo_principals(db)
+        rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
+        ca_user = db.query(User).filter(User.email == "credit@bank.example").first()
 
     # Seed deterministic random for reproducibility
     random.seed(42)
