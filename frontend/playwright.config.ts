@@ -44,6 +44,7 @@ export default defineConfig({
         command: 'npm run start -- -p 3005',
         env: {
           NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+          BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:8000',
         },
         port: 3005,
         reuseExistingServer: false,
