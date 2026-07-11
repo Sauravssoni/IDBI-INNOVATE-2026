@@ -3,13 +3,11 @@ import pytest
 import importlib
 from unittest import mock
 from fastapi.testclient import TestClient
-from sqlalchemy import text
 from app.main import app
 
 @pytest.fixture
 def clean_env():
     import app.db.session as session_module
-    original_url = session_module.DATABASE_URL
     original_env = os.environ.copy()
     with mock.patch.dict(os.environ, clear=True):
         yield

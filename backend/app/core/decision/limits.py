@@ -1,6 +1,5 @@
 from typing import Dict, Any, List
 from decimal import Decimal, ROUND_HALF_UP
-from app.core.versions import CALCULATION_VERSION
 
 
 class SafeLimitEngine:

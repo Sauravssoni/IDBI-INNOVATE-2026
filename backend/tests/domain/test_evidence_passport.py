@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal, engine
 from app.seed.seed_shakti import seed_shakti
-from app.db.orm.cases import Case, Business
+from app.db.orm.cases import Business
 from app.domain.evidence.passport import generate_evidence_passport
 
 
