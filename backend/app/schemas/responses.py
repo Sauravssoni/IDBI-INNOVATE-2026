@@ -109,6 +109,7 @@ class CreditTwinResponse(BaseModel):
     case_id: UUID
     business_id: str
     dscr: Decimal | None
+    independent_reamortization_dscr: Decimal | None = None
     calculation_version: str
     total_annual_revenue: Decimal
     binding_limit: Decimal | None
