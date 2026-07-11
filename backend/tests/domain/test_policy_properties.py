@@ -149,3 +149,40 @@ def test_scoring_engine_returns_only_three_scores():
     }
     assert "total_score" not in scores
     assert "band" not in scores
+
+
+def test_generate_offers_no_percentage_fallbacks():
+    features = {
+        "consent_status": "VALID",
+        "integrity_flag": False,
+        "monthly_revenue_inr": "5000000.00",
+        "monthly_expenses_inr": "3000000.00",
+        "operating_inflows_monthly": "5000000.00",
+        "operating_outflows_monthly": "3000000.00",
+        "verified_existing_ds_monthly": "100000.00",
+        "cibil_pulled": True,
+        "average_bank_balance": "1000000.00",
+        "gst_metrics": {"months_filed": 12, "avg_monthly_revenue": "5000000.00"},
+        "reconciliation_metrics": {"gst_bank_ratio": 1.0},
+        "eligible_receivables": 0,  # 0 receivables means RECEIVABLES_FINANCE should get 0 limit, NOT 100% of max borrowing
+    }
+    scores = {"evidence_confidence_score": 85.0, "financial_health_score": 90.0}
+
+    policy = DecisionPolicy(
+        features, scores, Decimal("2000000.00"), ProductType.WORKING_CAPITAL_LINE
+    )
+    decision = policy.evaluate()
+    offers = decision["offers"]
+    assert len(offers) == 3
+
+    # Check each offer uses calculated product limits rather than arbitrary 60%/80%/100% fallbacks
+    # RECEIVABLES_FINANCE offer (GROWTH tier / INVOICE_DISCOUNTING) must be 0.00 since eligible_receivables is 0
+    rf_offer = next(o for o in offers if o["product_type"] == "INVOICE_DISCOUNTING")
+    assert Decimal(rf_offer["amount"]) == Decimal("0.00")
+
+    for offer in offers:
+        amt = Decimal(offer["amount"])
+        assert amt >= Decimal("0.00")
+        assert amt <= decision["binding_limit"]
+
+
