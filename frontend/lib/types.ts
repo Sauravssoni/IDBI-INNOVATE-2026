@@ -92,7 +92,7 @@ export interface BankabilityPath {
   feasibility: string;
 }
 
-export interface DecisionPackage {
+export interface DecisionPackageResponse {
   case_id: string;
   business_name: string;
   requested_amount: number;
