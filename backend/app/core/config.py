@@ -22,6 +22,12 @@ class Settings:
         raw_demo_access = os.getenv("DEMO_ACCESS_ENABLED", "false").lower()
         self.DEMO_ACCESS_ENABLED: bool = raw_demo_access in ("true", "1", "t", "yes")
 
+        raw_demo_reset = os.getenv("DEMO_RESET_ENABLED", "false").lower()
+        self.DEMO_RESET_ENABLED: bool = raw_demo_reset in ("true", "1", "t", "yes")
+        
+        self.DEMO_RESET_TOKEN: str | None = os.getenv("DEMO_RESET_TOKEN")
+        self.DEMO_DATABASE_FINGERPRINT: str | None = os.getenv("DEMO_DATABASE_FINGERPRINT")
+
         raw_origins = os.getenv("ALLOWED_ORIGINS") or os.getenv("CORS_ORIGINS")
         if self.APP_ENV == "production" and (
             raw_origins is None or raw_origins.strip() == ""

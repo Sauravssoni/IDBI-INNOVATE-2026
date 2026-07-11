@@ -106,21 +106,46 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
     logger.info(f"DEMO_RESET_STARTED: User={actor_email}")
     fingerprint = get_db_fingerprint(db)
     logger.info(f"DB_FINGERPRINT: {fingerprint}")
+    
+    from app.core.config import get_settings
+    settings = get_settings()
+    if not settings.DEMO_DATABASE_FINGERPRINT or fingerprint != settings.DEMO_DATABASE_FINGERPRINT:
+        db.execute(text(f"SELECT pg_advisory_unlock({lock_id})"))
+        db.commit()
+        raise DemoResetConflict("Database fingerprint mismatch. Aborting reset.")
 
     try:
-        # Delete all existing case and business data to guarantee clean four-persona state
-        db.query(AuditEvent).delete(synchronize_session=False)
-        db.query(IdempotencyRecord).delete(synchronize_session=False)
-        db.query(GSTPeriod).delete(synchronize_session=False)
-        db.query(BankTransaction).delete(synchronize_session=False)
-        db.query(InvoicePayment).delete(synchronize_session=False)
-        db.query(Invoice).delete(synchronize_session=False)
-        db.query(EmploymentPeriod).delete(synchronize_session=False)
-        db.query(Obligation).delete(synchronize_session=False)
-        db.query(DataConnection).delete(synchronize_session=False)
-        db.query(Consent).delete(synchronize_session=False)
-        db.query(Case).delete(synchronize_session=False)
-        db.query(Business).delete(synchronize_session=False)
+        total_biz = db.query(Business).count()
+        target_biz_count = db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).count()
+        if total_biz > target_biz_count:
+            raise DemoResetConflict("Non-demo workspace detected. Aborting reset.")
+
+        # Scoped deletion
+        demo_business_ids_query = db.query(Business.id).filter(Business.business_id.in_(TARGET_BUSINESS_IDS))
+        demo_case_ids_query = db.query(Case.id).filter(Case.business_id_fk.in_(demo_business_ids_query))
+        
+        from app.db.orm.cases import DecisionPackage
+        db.query(DecisionPackage).filter(DecisionPackage.case_id.in_(demo_case_ids_query)).delete(synchronize_session=False)
+        db.query(AuditEvent).filter(AuditEvent.case_id.in_(demo_case_ids_query)).delete(synchronize_session=False)
+        db.query(IdempotencyRecord).filter(IdempotencyRecord.case_id.in_(demo_case_ids_query)).delete(synchronize_session=False)
+        
+        db.query(GSTPeriod).filter(GSTPeriod.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(BankTransaction).filter(BankTransaction.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(InvoicePayment).filter(InvoicePayment.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(Invoice).filter(Invoice.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(EmploymentPeriod).filter(EmploymentPeriod.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(Obligation).filter(Obligation.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        
+        db.query(DataConnection).filter(DataConnection.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(Consent).filter(Consent.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        
+        db.query(Case).filter(Case.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+        db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).delete(synchronize_session=False)
+
+        # Delete demo sessions
+        from app.db.orm.users import SessionStore
+        demo_user_ids_query = db.query(User.id).filter(User.email.like("demo_%@vyaparpulse.com"))
+        db.query(SessionStore).filter(SessionStore.user_id.in_(demo_user_ids_query)).delete(synchronize_session=False)
 
         seed_demo_principals(db)
         seed_shakti(db)
