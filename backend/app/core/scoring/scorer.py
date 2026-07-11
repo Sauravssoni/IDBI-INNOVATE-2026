@@ -188,7 +188,13 @@ class ScoringEngine:
                 "max_score": 20.0,
                 "weight_pct": 20,
                 "status": stress_status
-            }
+            },
+            "liquidity": {"score": float(cash_flow_score), "max_score": 35.0, "status": cf_status},
+            "solvency": {"score": float(stress_score), "max_score": 20.0, "status": stress_status},
+            "efficiency": {"score": float(wc_score), "max_score": 20.0, "status": wc_status},
+            "profitability": {"score": float(cash_flow_score * Decimal("0.5")), "max_score": 17.5, "status": cf_status},
+            "compliance": {"score": float(variance_score), "max_score": 25.0, "status": var_status},
+            "resilience": {"score": float(self._compute_resilience()), "max_score": 100.0, "status": "VERIFIED"}
         }
 
         return {

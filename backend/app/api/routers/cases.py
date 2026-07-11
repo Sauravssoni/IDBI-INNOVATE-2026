@@ -960,7 +960,38 @@ def get_decision_package(
     except Exception:
         recon_quality = case.data_confidence_score
 
+    features_dict = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
+    if not features_dict:
+        try:
+            from app.core.features.engine import FeatureEngine
+            fe = FeatureEngine(db, str(case.business_id_fk))
+            features_dict = fe.derive_all_features()
+        except Exception:
+            features_dict = {}
+
+    if not scores_meta or "vyapar_credit_health_score" not in scores_meta or scores_meta.get("financial_health_index") is None:
+        try:
+            from app.core.scoring.scorer import ScoringEngine
+            scorer = ScoringEngine(features_dict)
+            scores_meta = scorer.compute_all_scores()
+        except Exception:
+            pass
+
     evidence_confidence = Decimal(str(scores_meta["evidence_confidence_score"])) if scores_meta.get("evidence_confidence_score") is not None else case.data_confidence_score
+
+    fhi_val = scores_meta.get("financial_health_index")
+    fhi_dec = Decimal(str(fhi_val)) if fhi_val is not None else None
+    credit_score_val = scores_meta.get("vyapar_credit_health_score")
+    fhi_breakdown_val = scores_meta.get("fhi_breakdown")
+    disclaimer_val = scores_meta.get("credit_score_disclaimer")
+    scoring_ver_val = scores_meta.get("scoring_version", "2.0-CANONICAL")
+
+    try:
+        from app.domain.financial.engine import FinancialCapacityEngine
+        cap_summary = FinancialCapacityEngine.compute_capacity_from_features(features_dict)
+        calc_evidence_ids = cap_summary.get("calculation_evidence_ids", {})
+    except Exception:
+        calc_evidence_ids = {}
 
     coverage_score = case.resilience_score
     if passport and "rail_coverage" in passport:
@@ -1034,6 +1065,12 @@ def get_decision_package(
         hindi_summary=hindi_summary,
         policy_version=POLICY_VERSION,
         calculation_version=CALCULATION_VERSION,
+        scoring_version=scoring_ver_val,
+        financial_health_index=fhi_dec,
+        vyapar_credit_health_score=credit_score_val,
+        fhi_breakdown=fhi_breakdown_val,
+        credit_score_disclaimer=disclaimer_val,
+        calculation_evidence_ids=calc_evidence_ids,
         analyst_action=case.analyst_recommendation,
         human_action=case.human_decision,
         case_version=case.version,
