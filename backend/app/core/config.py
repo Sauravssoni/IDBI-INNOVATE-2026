@@ -84,7 +84,12 @@ class Settings:
             if not val:
                 return None
             val = val.strip().strip('"').strip("'")
-            if not val or val.lower() in ("none", "null", "replace_this_with_a_secure_random_string_for_production", "change-this-local-development-password"):
+            if not val or val.lower() in (
+                "none",
+                "null",
+                "replace_this_with_a_secure_random_string_for_production",
+                "change-this-local-development-password",
+            ):
                 return None
             return val
 
@@ -93,8 +98,14 @@ class Settings:
             raise RuntimeError("In production, a valid JWT_SECRET is required")
 
         self.DEMO_USER_PASSWORD = _clean_secret(os.getenv("DEMO_USER_PASSWORD"))
-        if self.APP_ENV == "production" and self.DEMO_ACCESS_ENABLED and not self.DEMO_USER_PASSWORD:
-            raise RuntimeError("In production, DEMO_USER_PASSWORD is required when DEMO_ACCESS_ENABLED is true")
+        if (
+            self.APP_ENV == "production"
+            and self.DEMO_ACCESS_ENABLED
+            and not self.DEMO_USER_PASSWORD
+        ):
+            raise RuntimeError(
+                "In production, DEMO_USER_PASSWORD is required when DEMO_ACCESS_ENABLED is true"
+            )
 
 
 def get_settings() -> Settings:

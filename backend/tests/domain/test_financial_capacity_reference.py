@@ -16,7 +16,9 @@ def test_financial_capacity_reference_term_loan():
             "avg_monthly_debits": 2833333.33,
             "existing_monthly_emi": 100000.0,  # 12.0 Lakh / yr existing debt service
         },
-        "financials": {"ebitda_reported": 6000000.0},  # 60.0 Lakh net operating cash flow annual
+        "financials": {
+            "ebitda_reported": 6000000.0
+        },  # 60.0 Lakh net operating cash flow annual
     }
 
     result = FinancialCapacityEngine.compute_capacity_from_features(
@@ -29,7 +31,9 @@ def test_financial_capacity_reference_term_loan():
 
     # 1. Check verified annual revenue and cash flows
     assert math.isclose(result["verified_revenue_annual"], 40000000.0, rel_tol=1e-3)
-    assert math.isclose(result["net_operating_cash_flow_annual"], 6000000.0, rel_tol=1e-3)
+    assert math.isclose(
+        result["net_operating_cash_flow_annual"], 6000000.0, rel_tol=1e-3
+    )
     assert math.isclose(result["existing_debt_service_annual"], 1200000.0, rel_tol=1e-3)
 
     # 2. Check current DSCR: 60,00,000 / 12,00,000 = 5.0
@@ -38,7 +42,9 @@ def test_financial_capacity_reference_term_loan():
     # 3. Check proposed debt service for 1 Cr at 13.5% over 36 months
     # r = 0.135/12 = 0.01125. factor = 1.01125^36 = 1.4965158...
     # EMI = 1,00,00,000 * 0.01125 * 1.4965158 / 0.4965158 = 339,353.111 per month -> annual = 4,072,237.33
-    assert math.isclose(result["proposed_annual_debt_service"], 4072237.33, rel_tol=1e-3)
+    assert math.isclose(
+        result["proposed_annual_debt_service"], 4072237.33, rel_tol=1e-3
+    )
 
     # 4. Check post-loan DSCR: 60,00,000 / (12,00,000 + 4,072,237.33) = 1.138
     assert math.isclose(result["post_loan_dscr"], 1.138, rel_tol=1e-2)

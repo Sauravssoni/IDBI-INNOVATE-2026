@@ -84,7 +84,12 @@ def test_stress_lab_success(client: TestClient, db):
     # Verify baseline vs stressed
     assert data["scenario"]["revenue_drop_pct"] == 10.0
     assert data["scenario"]["interest_rate_hike_bps"] == 200
-    assert data["stressed"]["status"] in ["SECURE", "VULNERABLE", "DISTRESSED", "NOT_ASSESSABLE"]
+    assert data["stressed"]["status"] in [
+        "SECURE",
+        "VULNERABLE",
+        "DISTRESSED",
+        "NOT_ASSESSABLE",
+    ]
     # Check bounds safety and exact formula behavior
     assert data["stressed"]["max_loan_amount"] <= data["baseline"]["max_loan_amount"]
 

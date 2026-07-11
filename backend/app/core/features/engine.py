@@ -11,7 +11,10 @@ from app.db.orm.evidence import (
     InvoicePayment,
     Obligation,
 )
-from app.services.credit_twin import calculate_dscr_sandbox_v1, calculate_independent_reamortization_dscr
+from app.services.credit_twin import (
+    calculate_dscr_sandbox_v1,
+    calculate_independent_reamortization_dscr,
+)
 import datetime
 
 
@@ -56,12 +59,21 @@ class FeatureEngine:
             .all()
         )
         if obligations:
-            total_emi = sum((Decimal(str(o.monthly_emi or "0.00")) for o in obligations), Decimal("0.00"))
+            total_emi = sum(
+                (Decimal(str(o.monthly_emi or "0.00")) for o in obligations),
+                Decimal("0.00"),
+            )
             return {
                 "obligation_verification_state": "VERIFIED_OBLIGATIONS",
-                "verified_existing_debt_service_monthly": str(total_emi.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
+                "verified_existing_debt_service_monthly": str(
+                    total_emi.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                ),
                 "obligations": [
-                    {"id": str(o.id), "monthly_emi": str(o.monthly_emi), "facility_type": o.facility_type}
+                    {
+                        "id": str(o.id),
+                        "monthly_emi": str(o.monthly_emi),
+                        "facility_type": o.facility_type,
+                    }
                     for o in obligations
                 ],
                 "obligation_evidence_ids": [str(o.id) for o in obligations],
@@ -233,21 +245,27 @@ class FeatureEngine:
                     excluded_inflow_ids.append(str(t.id))
                 else:
                     unresolved_inflow_ids.append(str(t.id))
-                    unresolved_inflow_items.append({"id": str(t.id), "amount": str(amt)})
+                    unresolved_inflow_items.append(
+                        {"id": str(t.id), "amount": str(amt)}
+                    )
                     unresolved_credit_amount += amt
             elif t_type == "DEBIT":
                 total_debits += amt
                 if t_cat == "DEBT_SERVICE":
                     debt_service += amt
                     debt_service_ids.append(str(t.id))
-                elif t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_OUTFLOWS"]:
+                elif (
+                    t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["OPERATING_OUTFLOWS"]
+                ):
                     operating_outflows += amt
                     included_outflow_ids.append(str(t.id))
                 elif t_cat in self.TRANSACTION_CATEGORY_WHITELISTS["EXCLUDED_OUTFLOWS"]:
                     excluded_outflow_ids.append(str(t.id))
                 else:
                     unresolved_outflow_ids.append(str(t.id))
-                    unresolved_outflow_items.append({"id": str(t.id), "amount": str(amt)})
+                    unresolved_outflow_items.append(
+                        {"id": str(t.id), "amount": str(amt)}
+                    )
                     unresolved_debit_amount += amt
 
         months = (
@@ -264,8 +282,20 @@ class FeatureEngine:
         dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, eval_date)
 
         threshold = getattr(self, "materiality_threshold", Decimal("0.05"))
-        unresolved_credit_ratio = (unresolved_credit_amount / total_credits).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if total_credits > 0 else Decimal("0.0000")
-        unresolved_debit_ratio = (unresolved_debit_amount / total_debits).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if total_debits > 0 else Decimal("0.0000")
+        unresolved_credit_ratio = (
+            (unresolved_credit_amount / total_credits).quantize(
+                Decimal("0.0001"), rounding=ROUND_HALF_UP
+            )
+            if total_credits > 0
+            else Decimal("0.0000")
+        )
+        unresolved_debit_ratio = (
+            (unresolved_debit_amount / total_debits).quantize(
+                Decimal("0.0001"), rounding=ROUND_HALF_UP
+            )
+            if total_debits > 0
+            else Decimal("0.0000")
+        )
 
         has_material_unresolved = (
             unresolved_credit_ratio > threshold
@@ -273,13 +303,25 @@ class FeatureEngine:
             or len(unresolved_inflow_ids) + len(unresolved_outflow_ids) > 0
         )
 
-        avg_monthly_inflows = (operating_inflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        avg_monthly_outflows = (operating_outflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        avg_monthly_credits = (total_credits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        avg_monthly_debits = (total_debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        verified_ds_monthly = (debt_service / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_monthly_inflows = (operating_inflows / months).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        avg_monthly_outflows = (operating_outflows / months).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        avg_monthly_credits = (total_credits / months).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        avg_monthly_debits = (total_debits / months).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
+        verified_ds_monthly = (debt_service / months).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
 
-        indep_dscr = calculate_independent_reamortization_dscr(self.db, self.business_id, eval_date)
+        indep_dscr = calculate_independent_reamortization_dscr(
+            self.db, self.business_id, eval_date
+        )
 
         return {
             "total_credits": str(
@@ -295,7 +337,9 @@ class FeatureEngine:
             "verified_debt_service_monthly": str(verified_ds_monthly),
             "debt_service_verified": len(debt_service_ids) > 0,
             "dscr": str(dscr) if dscr is not None else None,
-            "independent_reamortization_dscr": str(indep_dscr) if indep_dscr is not None else None,
+            "independent_reamortization_dscr": str(indep_dscr)
+            if indep_dscr is not None
+            else None,
             "transaction_categorization_summary": {
                 "version": "1.0.0",
                 "included_inflow_ids": included_inflow_ids,

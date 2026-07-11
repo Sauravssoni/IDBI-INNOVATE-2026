@@ -36,16 +36,26 @@ def get_case_stress_lab(
     revenue_drop_pct: float = 15.0,
     interest_rate_hike_bps: int = 200,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
 ):
     case = can_view_case(db, user, case_id)
     features = FeatureEngine(db, str(case.business_id_fk)).derive_all_features()
     scores = ScoringEngine(features).compute_all_scores()
-    
+
     requested_amount = Decimal(str(getattr(case, "requested_amount_inr", "2500000")))
-    requested_product = getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE"
-    
-    return run_case_stress_lab(features, scores, requested_amount, requested_product, revenue_drop_pct=revenue_drop_pct, interest_rate_hike_bps=interest_rate_hike_bps)
+    requested_product = (
+        getattr(case, "requested_product", "WORKING_CAPITAL_LINE")
+        or "WORKING_CAPITAL_LINE"
+    )
+
+    return run_case_stress_lab(
+        features,
+        scores,
+        requested_amount,
+        requested_product,
+        revenue_drop_pct=revenue_drop_pct,
+        interest_rate_hike_bps=interest_rate_hike_bps,
+    )
 
 
 @router.post("/{case_id}/stress-lab")
@@ -53,15 +63,18 @@ def post_case_stress_lab(
     case_id: UUID,
     payload: Optional[StressLabRequest] = Body(None),
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
 ):
     case = can_view_case(db, user, case_id)
     features = FeatureEngine(db, str(case.business_id_fk)).derive_all_features()
     scores = ScoringEngine(features).compute_all_scores()
-    
+
     requested_amount = Decimal(str(getattr(case, "requested_amount_inr", "2500000")))
-    requested_product = getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE"
-    
+    requested_product = (
+        getattr(case, "requested_product", "WORKING_CAPITAL_LINE")
+        or "WORKING_CAPITAL_LINE"
+    )
+
     rev_drop = 15.0
     rate_hike = 200
     if payload:
@@ -74,5 +87,11 @@ def post_case_stress_lab(
             if payload.interest_rate_hike_bps is not None:
                 rate_hike = payload.interest_rate_hike_bps
 
-    return run_case_stress_lab(features, scores, requested_amount, requested_product, revenue_drop_pct=rev_drop, interest_rate_hike_bps=rate_hike)
-
+    return run_case_stress_lab(
+        features,
+        scores,
+        requested_amount,
+        requested_product,
+        revenue_drop_pct=rev_drop,
+        interest_rate_hike_bps=rate_hike,
+    )

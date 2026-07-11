@@ -35,7 +35,11 @@ def db():
 
 
 def test_generate_evidence_passport(db):
-    business = db.query(Business).filter(Business.business_id == "SHAKTI_PRECISION_001").first()
+    business = (
+        db.query(Business)
+        .filter(Business.business_id == "SHAKTI_PRECISION_001")
+        .first()
+    )
     assert business is not None and len(business.cases) > 0
     case = business.cases[0]
 
@@ -54,13 +58,20 @@ def test_generate_evidence_passport(db):
 
 def test_api_evidence_passport(db):
     client = TestClient(app)
-    business = db.query(Business).filter(Business.business_id == "SHAKTI_PRECISION_001").first()
+    business = (
+        db.query(Business)
+        .filter(Business.business_id == "SHAKTI_PRECISION_001")
+        .first()
+    )
     assert business is not None and len(business.cases) > 0
     case = business.cases[0]
 
     login_resp = client.post(
         "/api/auth/login",
-        json={"email": "credit@bank.example", "password": os.environ["DEMO_USER_PASSWORD"]},
+        json={
+            "email": "credit@bank.example",
+            "password": os.environ["DEMO_USER_PASSWORD"],
+        },
     )
     assert login_resp.status_code == 200
     cookies = login_resp.cookies

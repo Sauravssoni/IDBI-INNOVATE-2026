@@ -117,14 +117,18 @@ def ready() -> dict:
     db = SessionLocal()
     try:
         db.execute(text("SELECT 1"))
-        current_revision = db.execute(text("SELECT version_num FROM alembic_version")).scalar()
+        current_revision = db.execute(
+            text("SELECT version_num FROM alembic_version")
+        ).scalar()
         alembic_cfg = Config("alembic.ini")
         script = ScriptDirectory.from_config(alembic_cfg)
         heads = script.get_heads()
         if len(heads) != 1:
             raise RuntimeError(f"Expected one Alembic head, found {heads}")
         if current_revision != heads[0]:
-            raise RuntimeError(f"Database migration head mismatch: current={current_revision}, expected={heads[0]}")
+            raise RuntimeError(
+                f"Database migration head mismatch: current={current_revision}, expected={heads[0]}"
+            )
         required_versions = {
             "schema_version": SCHEMA_VERSION,
             "policy_version": POLICY_VERSION,
@@ -135,7 +139,9 @@ def ready() -> dict:
             "package_schema_version": PACKAGE_SCHEMA_VERSION,
             "audit_hash_version": AUDIT_HASH_VERSION,
         }
-        missing_versions = [key for key, value in required_versions.items() if not value]
+        missing_versions = [
+            key for key, value in required_versions.items() if not value
+        ]
         if missing_versions:
             raise RuntimeError(f"Version registry incomplete: {missing_versions}")
         seed_count = db.execute(
@@ -159,7 +165,10 @@ def ready() -> dict:
     except Exception:
         return JSONResponse(
             status_code=503,
-            content={"status": "unavailable", "reason": "Database connection or schema failed"},
+            content={
+                "status": "unavailable",
+                "reason": "Database connection or schema failed",
+            },
         )
     finally:
         db.close()

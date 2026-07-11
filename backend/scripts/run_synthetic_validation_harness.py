@@ -43,145 +43,165 @@ def create_synthetic_scenarios() -> List[Dict[str, Any]]:
         turnover = Decimal("45000000") + Decimal(i * 5000000)
         monthly_inflows = turnover / Decimal("12")
         monthly_outflows = monthly_inflows * Decimal("0.84")  # 16% margin
-        scenarios.append({
-            "scenario_id": f"SEG1_MFG_T1_{i}",
-            "segment": "Precision Manufacturing (Tier 1)",
-            "features": {
-                "consent_status": "VALID",
-                "integrity_flag": False,
-                "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
-                "bank_metrics": {
-                    "dscr": "1.66",
-                    "avg_monthly_credits": str(monthly_inflows),
-                    "avg_monthly_debits": str(monthly_outflows),
+        scenarios.append(
+            {
+                "scenario_id": f"SEG1_MFG_T1_{i}",
+                "segment": "Precision Manufacturing (Tier 1)",
+                "features": {
+                    "consent_status": "VALID",
+                    "integrity_flag": False,
+                    "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
+                    "bank_metrics": {
+                        "dscr": "1.66",
+                        "avg_monthly_credits": str(monthly_inflows),
+                        "avg_monthly_debits": str(monthly_outflows),
+                    },
+                    "invoice_metrics": {
+                        "eligible_amount": str(turnover * Decimal("0.30"))
+                    },
+                    "authoritative_evidence_ids": [f"EVID-MFG-{i}"],
                 },
-                "invoice_metrics": {"eligible_amount": str(turnover * Decimal("0.30"))},
-                "authoritative_evidence_ids": [f"EVID-MFG-{i}"],
-            },
-            "scores": {"evidence_confidence_score": 85.0 + i},
-            "requested_amount": Decimal("5000000"),
-            "requested_product": "WORKING_CAPITAL_LINE",
-            "expected_decisions": [
-                SystemRecommendation.READY_FOR_REVIEW.value,
-                SystemRecommendation.CONDITIONAL_OFFER.value,
-            ],
-            "expect_limit_gt": Decimal("4000000"),
-        })
+                "scores": {"evidence_confidence_score": 85.0 + i},
+                "requested_amount": Decimal("5000000"),
+                "requested_product": "WORKING_CAPITAL_LINE",
+                "expected_decisions": [
+                    SystemRecommendation.READY_FOR_REVIEW.value,
+                    SystemRecommendation.CONDITIONAL_OFFER.value,
+                ],
+                "expect_limit_gt": Decimal("4000000"),
+            }
+        )
 
     # Segment 2: Seasonal Agri-Processing / Textiles (Tier 2)
     for i in range(1, 5):
         turnover = Decimal("25000000") + Decimal(i * 2000000)
         monthly_inflows = turnover / Decimal("12")
         monthly_outflows = monthly_inflows * Decimal("0.89")  # 11% margin
-        scenarios.append({
-            "scenario_id": f"SEG2_AGRI_T2_{i}",
-            "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
-            "features": {
-                "consent_status": "VALID",
-                "integrity_flag": False,
-                "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
-                "bank_metrics": {
-                    "dscr": "1.29",
-                    "avg_monthly_credits": str(monthly_inflows),
-                    "avg_monthly_debits": str(monthly_outflows),
+        scenarios.append(
+            {
+                "scenario_id": f"SEG2_AGRI_T2_{i}",
+                "segment": "Seasonal Agri-Processing & Textiles (Tier 2)",
+                "features": {
+                    "consent_status": "VALID",
+                    "integrity_flag": False,
+                    "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
+                    "bank_metrics": {
+                        "dscr": "1.29",
+                        "avg_monthly_credits": str(monthly_inflows),
+                        "avg_monthly_debits": str(monthly_outflows),
+                    },
+                    "invoice_metrics": {
+                        "eligible_amount": str(turnover * Decimal("0.25"))
+                    },
+                    "authoritative_evidence_ids": [f"EVID-AGRI-{i}"],
                 },
-                "invoice_metrics": {"eligible_amount": str(turnover * Decimal("0.25"))},
-                "authoritative_evidence_ids": [f"EVID-AGRI-{i}"],
-            },
-            "scores": {"evidence_confidence_score": 75.0 + i},
-            "requested_amount": Decimal("8000000"),  # Exceeds supportable -> CONDITIONAL_OFFER
-            "requested_product": "WORKING_CAPITAL_LINE",
-            "expected_decisions": [
-                SystemRecommendation.CONDITIONAL_OFFER.value,
-                SystemRecommendation.READY_FOR_REVIEW.value,
-            ],
-            "expect_limit_gt": Decimal("2000000"),
-        })
+                "scores": {"evidence_confidence_score": 75.0 + i},
+                "requested_amount": Decimal(
+                    "8000000"
+                ),  # Exceeds supportable -> CONDITIONAL_OFFER
+                "requested_product": "WORKING_CAPITAL_LINE",
+                "expected_decisions": [
+                    SystemRecommendation.CONDITIONAL_OFFER.value,
+                    SystemRecommendation.READY_FOR_REVIEW.value,
+                ],
+                "expect_limit_gt": Decimal("2000000"),
+            }
+        )
 
     # Segment 3: Emerging IT/Tech Services (Tier 1 - Asset Light)
     for i in range(1, 5):
         turnover = Decimal("18000000") + Decimal(i * 3000000)
         monthly_inflows = turnover / Decimal("12")
         monthly_outflows = monthly_inflows * Decimal("0.76")  # 24% margin
-        scenarios.append({
-            "scenario_id": f"SEG3_TECH_T1_{i}",
-            "segment": "Emerging Tech Services (Tier 1)",
-            "features": {
-                "consent_status": "VALID",
-                "integrity_flag": False,
-                "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
-                "bank_metrics": {
-                    "dscr": "2.05",
-                    "avg_monthly_credits": str(monthly_inflows),
-                    "avg_monthly_debits": str(monthly_outflows),
+        scenarios.append(
+            {
+                "scenario_id": f"SEG3_TECH_T1_{i}",
+                "segment": "Emerging Tech Services (Tier 1)",
+                "features": {
+                    "consent_status": "VALID",
+                    "integrity_flag": False,
+                    "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
+                    "bank_metrics": {
+                        "dscr": "2.05",
+                        "avg_monthly_credits": str(monthly_inflows),
+                        "avg_monthly_debits": str(monthly_outflows),
+                    },
+                    "invoice_metrics": {
+                        "eligible_amount": str(turnover * Decimal("0.40"))
+                    },
+                    "authoritative_evidence_ids": [f"EVID-TECH-{i}"],
                 },
-                "invoice_metrics": {"eligible_amount": str(turnover * Decimal("0.40"))},
-                "authoritative_evidence_ids": [f"EVID-TECH-{i}"],
-            },
-            "scores": {"evidence_confidence_score": 90.0 + i},
-            "requested_amount": Decimal("3000000"),
-            "requested_product": "TERM_LOAN",
-            "expected_decisions": [
-                SystemRecommendation.READY_FOR_REVIEW.value,
-                SystemRecommendation.CONDITIONAL_OFFER.value,
-            ],
-            "expect_limit_gt": Decimal("2500000"),
-        })
+                "scores": {"evidence_confidence_score": 90.0 + i},
+                "requested_amount": Decimal("3000000"),
+                "requested_product": "TERM_LOAN",
+                "expected_decisions": [
+                    SystemRecommendation.READY_FOR_REVIEW.value,
+                    SystemRecommendation.CONDITIONAL_OFFER.value,
+                ],
+                "expect_limit_gt": Decimal("2500000"),
+            }
+        )
 
     # Segment 4: Distressed Retail Trade (Tier 3 - Low DSCR / Distress)
     for i in range(1, 5):
         turnover = Decimal("12000000") - Decimal(i * 1000000)
         monthly_inflows = turnover / Decimal("12")
         monthly_outflows = monthly_inflows * Decimal("0.96")
-        scenarios.append({
-            "scenario_id": f"SEG4_RETAIL_T3_{i}",
-            "segment": "Distressed Retail Trade (Tier 3)",
-            "features": {
-                "consent_status": "VALID",
-                "integrity_flag": False,
-                "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
-                "bank_metrics": {
-                    "dscr": "0.95",  # Below 1.15 minimum -> DECLINE_RECOMMENDED
-                    "avg_monthly_credits": str(monthly_inflows),
-                    "avg_monthly_debits": str(monthly_outflows),
+        scenarios.append(
+            {
+                "scenario_id": f"SEG4_RETAIL_T3_{i}",
+                "segment": "Distressed Retail Trade (Tier 3)",
+                "features": {
+                    "consent_status": "VALID",
+                    "integrity_flag": False,
+                    "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
+                    "bank_metrics": {
+                        "dscr": "0.95",  # Below 1.15 minimum -> DECLINE_RECOMMENDED
+                        "avg_monthly_credits": str(monthly_inflows),
+                        "avg_monthly_debits": str(monthly_outflows),
+                    },
+                    "invoice_metrics": {"eligible_amount": "0"},
+                    "authoritative_evidence_ids": [f"EVID-RETAIL-{i}"],
                 },
-                "invoice_metrics": {"eligible_amount": "0"},
-                "authoritative_evidence_ids": [f"EVID-RETAIL-{i}"],
-            },
-            "scores": {"evidence_confidence_score": 60.0},
-            "requested_amount": Decimal("2500000"),
-            "requested_product": "WORKING_CAPITAL_LINE",
-            "expected_decisions": [SystemRecommendation.DECLINE_RECOMMENDED.value],
-            "expect_limit_eq": Decimal("0"),
-        })
+                "scores": {"evidence_confidence_score": 60.0},
+                "requested_amount": Decimal("2500000"),
+                "requested_product": "WORKING_CAPITAL_LINE",
+                "expected_decisions": [SystemRecommendation.DECLINE_RECOMMENDED.value],
+                "expect_limit_eq": Decimal("0"),
+            }
+        )
 
     # Segment 5: Micro-Enterprise Vendor (Low Evidence Confidence)
     for i in range(1, 5):
         turnover = Decimal("8000000") + Decimal(i * 500000)
         monthly_inflows = turnover / Decimal("12")
         monthly_outflows = monthly_inflows * Decimal("0.88")
-        scenarios.append({
-            "scenario_id": f"SEG5_MICRO_VENDOR_{i}",
-            "segment": "Micro-Enterprise Vendor (Semi-urban)",
-            "features": {
-                "consent_status": "VALID",
-                "integrity_flag": False,
-                "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
-                "bank_metrics": {
-                    "dscr": "1.33",
-                    "avg_monthly_credits": str(monthly_inflows),
-                    "avg_monthly_debits": str(monthly_outflows),
+        scenarios.append(
+            {
+                "scenario_id": f"SEG5_MICRO_VENDOR_{i}",
+                "segment": "Micro-Enterprise Vendor (Semi-urban)",
+                "features": {
+                    "consent_status": "VALID",
+                    "integrity_flag": False,
+                    "gst_metrics": {"avg_monthly_revenue": str(monthly_inflows)},
+                    "bank_metrics": {
+                        "dscr": "1.33",
+                        "avg_monthly_credits": str(monthly_inflows),
+                        "avg_monthly_debits": str(monthly_outflows),
+                    },
+                    "invoice_metrics": {"eligible_amount": "1000000"},
+                    "authoritative_evidence_ids": [],
                 },
-                "invoice_metrics": {"eligible_amount": "1000000"},
-                "authoritative_evidence_ids": [],
-            },
-            # Evidence score below 40 -> ADDITIONAL_EVIDENCE_REQUIRED
-            "scores": {"evidence_confidence_score": 32.0 + i},
-            "requested_amount": Decimal("1500000"),
-            "requested_product": "RECEIVABLES_FINANCE",
-            "expected_decisions": [SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value],
-            "expect_limit_eq": Decimal("0"),
-        })
+                # Evidence score below 40 -> ADDITIONAL_EVIDENCE_REQUIRED
+                "scores": {"evidence_confidence_score": 32.0 + i},
+                "requested_amount": Decimal("1500000"),
+                "requested_product": "RECEIVABLES_FINANCE",
+                "expected_decisions": [
+                    SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value
+                ],
+                "expect_limit_eq": Decimal("0"),
+            }
+        )
 
     return scenarios
 
@@ -227,66 +247,78 @@ def run_harness() -> Dict[str, Any]:
         total_assertions += 1
         if out["decision"] in sc["expected_decisions"]:
             passed_assertions += 1
-            assertion_details.append({
-                "scenario_id": sid,
-                "segment": seg,
-                "assertion": "Decision Bounds Check",
-                "status": "PASS",
-                "detail": f"Decision {out['decision']} in {sc['expected_decisions']}",
-            })
+            assertion_details.append(
+                {
+                    "scenario_id": sid,
+                    "segment": seg,
+                    "assertion": "Decision Bounds Check",
+                    "status": "PASS",
+                    "detail": f"Decision {out['decision']} in {sc['expected_decisions']}",
+                }
+            )
         else:
             failed_assertions += 1
             scenario_passed = False
-            assertion_details.append({
-                "scenario_id": sid,
-                "segment": seg,
-                "assertion": "Decision Bounds Check",
-                "status": "FAIL",
-                "detail": f"Decision {out['decision']} NOT in {sc['expected_decisions']}",
-            })
+            assertion_details.append(
+                {
+                    "scenario_id": sid,
+                    "segment": seg,
+                    "assertion": "Decision Bounds Check",
+                    "status": "FAIL",
+                    "detail": f"Decision {out['decision']} NOT in {sc['expected_decisions']}",
+                }
+            )
 
         # Assertion 2: Binding Limit Verification
         total_assertions += 1
         if "expect_limit_gt" in sc:
             if out["binding_limit"] >= sc["expect_limit_gt"]:
                 passed_assertions += 1
-                assertion_details.append({
-                    "scenario_id": sid,
-                    "segment": seg,
-                    "assertion": "Supportable Limit Bounds Check",
-                    "status": "PASS",
-                    "detail": f"Limit {float(out['binding_limit'])} >= {float(sc['expect_limit_gt'])}",
-                })
+                assertion_details.append(
+                    {
+                        "scenario_id": sid,
+                        "segment": seg,
+                        "assertion": "Supportable Limit Bounds Check",
+                        "status": "PASS",
+                        "detail": f"Limit {float(out['binding_limit'])} >= {float(sc['expect_limit_gt'])}",
+                    }
+                )
             else:
                 failed_assertions += 1
                 scenario_passed = False
-                assertion_details.append({
-                    "scenario_id": sid,
-                    "segment": seg,
-                    "assertion": "Supportable Limit Bounds Check",
-                    "status": "FAIL",
-                    "detail": f"Limit {float(out['binding_limit'])} < {float(sc['expect_limit_gt'])}",
-                })
+                assertion_details.append(
+                    {
+                        "scenario_id": sid,
+                        "segment": seg,
+                        "assertion": "Supportable Limit Bounds Check",
+                        "status": "FAIL",
+                        "detail": f"Limit {float(out['binding_limit'])} < {float(sc['expect_limit_gt'])}",
+                    }
+                )
         elif "expect_limit_eq" in sc:
             if out["binding_limit"] == sc["expect_limit_eq"]:
                 passed_assertions += 1
-                assertion_details.append({
-                    "scenario_id": sid,
-                    "segment": seg,
-                    "assertion": "Zero/Decline Supportable Limit Check",
-                    "status": "PASS",
-                    "detail": f"Limit {float(out['binding_limit'])} == {float(sc['expect_limit_eq'])}",
-                })
+                assertion_details.append(
+                    {
+                        "scenario_id": sid,
+                        "segment": seg,
+                        "assertion": "Zero/Decline Supportable Limit Check",
+                        "status": "PASS",
+                        "detail": f"Limit {float(out['binding_limit'])} == {float(sc['expect_limit_eq'])}",
+                    }
+                )
             else:
                 failed_assertions += 1
                 scenario_passed = False
-                assertion_details.append({
-                    "scenario_id": sid,
-                    "segment": seg,
-                    "assertion": "Zero/Decline Supportable Limit Check",
-                    "status": "FAIL",
-                    "detail": f"Limit {float(out['binding_limit'])} != {float(sc['expect_limit_eq'])}",
-                })
+                assertion_details.append(
+                    {
+                        "scenario_id": sid,
+                        "segment": seg,
+                        "assertion": "Zero/Decline Supportable Limit Check",
+                        "status": "FAIL",
+                        "detail": f"Limit {float(out['binding_limit'])} != {float(sc['expect_limit_eq'])}",
+                    }
+                )
 
         # Assertion 3: Reasons Non-empty and Deterministic
         total_assertions += 1
@@ -300,7 +332,11 @@ def run_harness() -> Dict[str, Any]:
         total_assertions += 1
         offers = out.get("offers", [])
         if out["binding_limit"] > 0:
-            if len(offers) > 0 and all("calculation_version" in o and o["calculation_version"] == CALCULATION_VERSION for o in offers):
+            if len(offers) > 0 and all(
+                "calculation_version" in o
+                and o["calculation_version"] == CALCULATION_VERSION
+                for o in offers
+            ):
                 passed_assertions += 1
             else:
                 failed_assertions += 1
@@ -314,7 +350,9 @@ def run_harness() -> Dict[str, Any]:
 
         # Assertion 5: Monotonicity sanity check (limit should not exceed turnover significantly)
         total_assertions += 1
-        turnover = Decimal(sc["features"]["gst_metrics"]["avg_monthly_revenue"]) * Decimal("12")
+        turnover = Decimal(
+            sc["features"]["gst_metrics"]["avg_monthly_revenue"]
+        ) * Decimal("12")
         if out["binding_limit"] <= turnover * Decimal("1.5"):
             passed_assertions += 1
         else:
@@ -325,10 +363,12 @@ def run_harness() -> Dict[str, Any]:
             segment_stats[seg]["passed_scenarios"] += 1
         else:
             segment_stats[seg]["failed_scenarios"] += 1
-        
+
         segment_stats[seg]["total_supportable_exposure"] += float(out["binding_limit"])
 
-    pass_rate = (passed_assertions / total_assertions * 100.0) if total_assertions > 0 else 0.0
+    pass_rate = (
+        (passed_assertions / total_assertions * 100.0) if total_assertions > 0 else 0.0
+    )
     overall_result = "PASS" if failed_assertions == 0 else "FAIL"
 
     report = {
@@ -352,11 +392,13 @@ def run_harness() -> Dict[str, Any]:
     artifacts_dir = os.path.join(root_dir, "artifacts")
     os.makedirs(artifacts_dir, exist_ok=True)
     report_path = os.path.join(artifacts_dir, "synthetic_validation_report.json")
-    
+
     with open(report_path, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
 
-    log(f"✅ Quantitative Synthetic Validation Harness Completed: {passed_assertions}/{total_assertions} assertions passed ({pass_rate:.2f}%).")
+    log(
+        f"✅ Quantitative Synthetic Validation Harness Completed: {passed_assertions}/{total_assertions} assertions passed ({pass_rate:.2f}%)."
+    )
     log(f"📁 Report generated at: {report_path}")
 
     return report
