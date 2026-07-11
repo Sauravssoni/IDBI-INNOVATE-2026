@@ -1,6 +1,6 @@
 from decimal import Decimal
 import pytest
-from app.domain.bankability.path import compute_bankability_path
+from app.domain.bankability.path import compute_bankability_path, simulate_bankability_variable
 
 
 def test_compute_bankability_path_deterministic_milestones():
@@ -87,3 +87,52 @@ def test_compute_bankability_path_already_approved():
     # When already approved/ready for review without gaps, should generate MIL-OPT
     assert len(path["milestones"]) >= 1
     assert any(m["milestone_id"] == "MIL-OPT" for m in path["milestones"])
+
+
+def test_simulate_bankability_variable():
+    features = {
+        "consent_status": "PENDING",
+        "bank_metrics": {
+            "months_filed": 6,
+            "dscr": "1.10",
+            "operating_inflows_monthly": "300000",
+            "operating_outflows_monthly": "250000"
+        },
+        "gst_metrics": {
+            "months_filed": 6,
+            "trend": "STABLE",
+            "avg_monthly_revenue": "320000"
+        },
+        "reconciliation_metrics": {
+            "gst_bank_ratio": "0.85"
+        }
+    }
+    scores = {
+        "evidence_confidence_score": Decimal("60.0"),
+        "financial_health_score": Decimal("65.0"),
+        "financial_health_index": Decimal("65.0"),
+        "vyapar_credit_health_score": 690,
+        "resilience_score": Decimal("70.0")
+    }
+    
+    overrides = {
+        "dscr": "2.10",
+        "operating_inflows_monthly": "800000",
+        "gst_bank_ratio": "1.00",
+        "consent_status": "VALID"
+    }
+    
+    result = simulate_bankability_variable(features, scores, Decimal("5000000"), "WORKING_CAPITAL_LINE", overrides)
+    assert "before_simulation" in result
+    assert "after_simulation" in result
+    assert "uplift_summary" in result
+    assert result["engine_version"] == "2.0-BANKABILITY-SIMULATION"
+    
+    before = result["before_simulation"]
+    after = result["after_simulation"]
+    uplift = result["uplift_summary"]
+    
+    assert after["binding_limit_inr"] >= before["binding_limit_inr"]
+    assert after["verified_dscr"] >= before["verified_dscr"]
+    assert after["financial_health_score"] >= before["financial_health_score"]
+

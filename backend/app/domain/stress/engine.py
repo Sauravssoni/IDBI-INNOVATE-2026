@@ -21,9 +21,19 @@ def run_case_stress_lab(
     base_decision = base_policy.evaluate()
     base_limit = base_decision.get("binding_limit", Decimal("0.00"))
 
+    # Helper to obtain post-facility DSCR with fallback to current_dscr
+    def get_effective_dscr(cap: Dict[str, Any]) -> Decimal:
+        post_dscr = cap.get("post_loan_dscr")
+        if post_dscr is not None and Decimal(str(post_dscr)) > Decimal("0.00"):
+            return Decimal(str(post_dscr))
+        curr_dscr = cap.get("current_dscr")
+        if curr_dscr is not None and Decimal(str(curr_dscr)) > Decimal("0.00"):
+            return Decimal(str(curr_dscr))
+        return Decimal("0.00")
+
     # Base Financial Capacity
     base_cap = FinancialCapacityEngine.compute_capacity_from_features(features, requested_amount, requested_product)
-    base_dscr = base_cap.get("current_dscr") or Decimal("0.00")
+    base_dscr = get_effective_dscr(base_cap)
     base_inflows = base_cap["observed_operating_inflows_monthly"]
     base_outflows = base_cap["observed_operating_outflows_monthly"]
     base_existing_ds = base_cap["verified_existing_debt_service_monthly"]
@@ -61,9 +71,9 @@ def run_case_stress_lab(
         s1_features["monthly_revenue_inr"] = str(s1_inflows)
     
     s1_cap = FinancialCapacityEngine.compute_capacity_from_features(s1_features, requested_amount, requested_product)
-    s1_dscr = s1_cap.get("current_dscr") or Decimal("0.00")
+    s1_dscr = get_effective_dscr(s1_cap)
     s1_limit = s1_cap.get("binding_product_limit", Decimal("0.00"))
-    s1_status = get_status(s1_cap.get("current_dscr"), s1_inflows - base_outflows)
+    s1_status = get_status(s1_dscr, s1_inflows - base_outflows)
 
     scenarios.append({
         "scenario_id": "REVENUE_DROP_15",
@@ -80,16 +90,16 @@ def run_case_stress_lab(
         )
     })
 
-    # 2. Interest Rate Hike +200bps (+2%) on floating debt service
+    # 2. Interest Rate Hike +200bps (+2%) on floating debt service and re-amortized facility
     s2_features = features.copy()
     s2_existing_ds = (base_existing_ds * Decimal("1.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     s2_features["verified_existing_debt_service_monthly"] = str(s2_existing_ds)
     s2_features["obligation_verification_state"] = obligation_state
 
     s2_cap = FinancialCapacityEngine.compute_capacity_from_features(s2_features, requested_amount, requested_product, custom_annual_rate=Decimal("0.155"))
-    s2_dscr = s2_cap.get("current_dscr") or Decimal("0.00")
+    s2_dscr = get_effective_dscr(s2_cap)
     s2_limit = s2_cap.get("binding_product_limit", Decimal("0.00"))
-    s2_status = get_status(s2_cap.get("current_dscr"), base_inflows - base_outflows)
+    s2_status = get_status(s2_dscr, base_inflows - base_outflows)
 
     scenarios.append({
         "scenario_id": "RATE_HIKE_200BPS",
@@ -115,9 +125,9 @@ def run_case_stress_lab(
     s3_features["bank_metrics"] = s3_bank
 
     s3_cap = FinancialCapacityEngine.compute_capacity_from_features(s3_features, requested_amount, requested_product)
-    s3_dscr = s3_cap.get("current_dscr") or Decimal("0.00")
+    s3_dscr = get_effective_dscr(s3_cap)
     s3_limit = s3_cap.get("binding_product_limit", Decimal("0.00"))
-    s3_status = get_status(s3_cap.get("current_dscr"), base_inflows - s3_outflows)
+    s3_status = get_status(s3_dscr, base_inflows - s3_outflows)
 
     scenarios.append({
         "scenario_id": "COGS_INCREASE_10",
@@ -150,9 +160,9 @@ def run_case_stress_lab(
     s4_features["obligation_verification_state"] = obligation_state
 
     s4_cap = FinancialCapacityEngine.compute_capacity_from_features(s4_features, requested_amount, requested_product, custom_annual_rate=Decimal("0.155"))
-    s4_dscr = s4_cap.get("current_dscr") or Decimal("0.00")
+    s4_dscr = get_effective_dscr(s4_cap)
     s4_limit = s4_cap.get("binding_product_limit", Decimal("0.00"))
-    s4_status = get_status(s4_cap.get("current_dscr"), s4_inflows - s4_outflows)
+    s4_status = get_status(s4_dscr, s4_inflows - s4_outflows)
 
     scenarios.append({
         "scenario_id": "COMBINED_DOWNSIDE",
@@ -171,11 +181,13 @@ def run_case_stress_lab(
 
     overall_stress_status = "PASS" if all(s["status"] == "PASS" for s in scenarios) else ("FAIL" if any(s["status"] == "FAIL" for s in scenarios) else "MARGINAL")
 
-    # Interactive Custom Query Recomputation
+    # Interactive Custom Query Recomputation with Re-amortized Shocked Rate
     custom_rev_factor = Decimal("1") - (Decimal(str(revenue_drop_pct)) / Decimal("100"))
     custom_inflows = (base_inflows * custom_rev_factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    custom_rate_factor = Decimal("1") + (Decimal(str(interest_rate_hike_bps)) / Decimal("10000")) * Decimal("0.75")
+    rate_hike_dec = (Decimal(str(interest_rate_hike_bps)) / Decimal("10000"))
+    custom_rate_factor = Decimal("1") + rate_hike_dec * Decimal("0.75")
     custom_ds = (base_existing_ds * custom_rate_factor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    custom_annual_rate_dec = Decimal("0.135") + rate_hike_dec
 
     custom_features = features.copy()
     custom_bank = dict(features.get("bank_metrics", {}))
@@ -184,10 +196,15 @@ def run_case_stress_lab(
     custom_features["verified_existing_debt_service_monthly"] = str(custom_ds)
     custom_features["obligation_verification_state"] = obligation_state
 
-    custom_cap = FinancialCapacityEngine.compute_capacity_from_features(custom_features, requested_amount, requested_product)
-    custom_dscr = custom_cap.get("current_dscr") or Decimal("0.00")
+    custom_cap = FinancialCapacityEngine.compute_capacity_from_features(
+        custom_features,
+        requested_amount,
+        requested_product,
+        custom_annual_rate=custom_annual_rate_dec
+    )
+    custom_dscr = get_effective_dscr(custom_cap)
     custom_limit = custom_cap.get("binding_product_limit", Decimal("0.00"))
-    custom_status = get_custom_status(custom_cap.get("current_dscr"), custom_inflows - base_outflows)
+    custom_status = get_custom_status(custom_dscr, custom_inflows - base_outflows)
     baseline_status = get_custom_status(base_dscr, base_inflows - base_outflows)
 
     return {
