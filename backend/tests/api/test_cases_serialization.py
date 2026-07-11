@@ -5,8 +5,9 @@ from app.main import app
 from app.db.session import SessionLocal
 from app.db.orm.users import User, UserRole
 from app.db.orm.org import UserBranchScope, Region, Branch
-from app.db.orm.cases import Case, CaseStatus, Business, ProductType
+from app.db.orm.cases import Case, CaseStatus, Business, ProductType, DecisionPackage
 from app.api.auth import get_password_hash
+from app.domain.audit.verification import verify_audit_chain
 
 client = TestClient(app)
 
@@ -243,6 +244,39 @@ def test_decision_package_cd_fields(setup_data):
     assert data["package_hash"] is not None
     assert len(data["package_hash"]) == 64  # SHA-256 hex digest
     assert all(c in "0123456789abcdef" for c in data["package_hash"])
+
+
+def test_seal_rejects_incomplete_snapshot_without_persisting(setup_data, db_session):
+    user = setup_data["users"][UserRole.CREDIT_ANALYST]
+    res = login(user.email, "securepass123")
+    client.cookies.clear()
+    client.cookies.set("vyapar_session_token", res.cookies.get("vyapar_session_token"))
+    csrf_token = res.cookies.get("vyapar_csrf_token")
+
+    before_count = (
+        db_session.query(DecisionPackage)
+        .filter(DecisionPackage.case_id == setup_data["case_id"])
+        .count()
+    )
+    res = client.post(
+        f"/api/cases/{setup_data['case_id']}/decision-package",
+        headers={"x-csrf-token": csrf_token},
+    )
+    assert res.status_code == 409
+    assert res.json()["detail"]["code"] == "FEATURE_SNAPSHOT_INCOMPLETE"
+    after_count = (
+        db_session.query(DecisionPackage)
+        .filter(DecisionPackage.case_id == setup_data["case_id"])
+        .count()
+    )
+    assert after_count == before_count
+
+
+def test_audit_verifier_reports_actual_authorization_scope(setup_data, db_session):
+    system_admin = setup_data["users"][UserRole.SYSTEM_ADMIN]
+    result = verify_audit_chain(db_session, setup_data["case_id"], system_admin)
+    assert result["authorization_scope_valid"] is False
+    assert result["reason"] == "AUTHORIZATION_SCOPE_INVALID"
 
 
 def test_command_centre_and_monitoring(setup_data):
