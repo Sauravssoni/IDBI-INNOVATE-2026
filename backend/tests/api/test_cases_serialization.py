@@ -205,6 +205,19 @@ def test_decision_package_cd_fields(setup_data):
     assert "decision_label" in data["hindi_summary"]
     assert "reason_explanation" in data["hindi_summary"]
 
+    # Verify DPK-001: 6-pillar FHI, 300-900 Credit Health Score, and calculation evidence IDs
+    assert "financial_health_index" in data
+    assert data["financial_health_index"] is not None
+    assert "vyapar_credit_health_score" in data
+    assert 300 <= data["vyapar_credit_health_score"] <= 900
+    assert "fhi_breakdown" in data
+    assert isinstance(data["fhi_breakdown"], dict)
+    for pillar in ["liquidity", "solvency", "efficiency", "profitability", "compliance", "resilience"]:
+        assert pillar in data["fhi_breakdown"]
+    assert data.get("scoring_version") == "2.0-CANONICAL"
+    assert "calculation_evidence_ids" in data
+    assert isinstance(data["calculation_evidence_ids"], dict)
+
 
 def test_command_centre_and_monitoring(setup_data):
     user = setup_data["users"][UserRole.CREDIT_ANALYST]

@@ -81,6 +81,20 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
     }
   };
 
+  const handleExportPackage = () => {
+    if (!data) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `decision-package-${caseId}-v${data.case_version || 1}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -167,6 +181,25 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           </div>
         )}
 
+        {/* Scoring & Health Index (`DPK-001`) */}
+        <div className="space-y-2">
+          <h2 className="text-md font-bold uppercase border-b border-gray-300 pb-1">Vyapar Credit Health & Financial Health Index (`DPK-001`)</h2>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-gray-500">Credit Health Score:</span>{" "}
+              <strong className="text-black">{data.vyapar_credit_health_score ?? "N/A"} / 900</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Financial Health Index (FHI):</span>{" "}
+              <strong className="text-black">{data.financial_health_index !== undefined && data.financial_health_index !== null ? Number(data.financial_health_index).toFixed(2) : "N/A"} / 100</strong>
+            </div>
+            <div>
+              <span className="text-gray-500">Scoring Version:</span>{" "}
+              <strong className="text-black">{data.scoring_version || "2.0-CANONICAL"}</strong>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-2">
           <h2 className="text-md font-bold uppercase border-b border-gray-300 pb-1">Sanction Committee Sign-off</h2>
           <div className="grid grid-cols-2 gap-12 pt-8">
@@ -191,13 +224,22 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               <FileText className="w-6 h-6 text-emerald-400" />
               <h2 className="text-xl font-bold text-white">Decision Package</h2>
             </div>
-            <button
-              onClick={() => window.print()}
-              className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-4 py-2 rounded-xl text-sm font-medium border border-emerald-500/30 flex items-center gap-2 transition"
-            >
-              <Printer className="w-4 h-4" />
-              Print Committee Credit Paper
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportPackage}
+                className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-4 py-2 rounded-xl text-sm font-medium border border-purple-500/30 flex items-center gap-2 transition"
+              >
+                <FileText className="w-4 h-4" />
+                Export Package JSON
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-4 py-2 rounded-xl text-sm font-medium border border-emerald-500/30 flex items-center gap-2 transition"
+              >
+                <Printer className="w-4 h-4" />
+                Print Committee Credit Paper
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
@@ -219,6 +261,55 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Credit Health & FHI Card */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <ShieldCheck className="w-6 h-6 text-emerald-400" />
+              <h2 className="text-xl font-bold text-white">Credit Health & 6-Pillar FHI (`DPK-001`)</h2>
+            </div>
+            <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded border border-emerald-500/30">
+              {data.scoring_version || "2.0-CANONICAL"}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-black/20 rounded-xl p-4 border border-white/5 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400 mb-1">Vyapar Credit Health Score</p>
+                <p className="text-3xl font-bold text-emerald-400">{data.vyapar_credit_health_score ?? "N/A"}</p>
+                <p className="text-xs text-gray-500 mt-1">Range: 300 - 900</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-400 mb-1">Financial Health Index (FHI)</p>
+                <p className="text-2xl font-bold text-white">
+                  {data.financial_health_index !== undefined && data.financial_health_index !== null ? Number(data.financial_health_index).toFixed(2) : "N/A"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Range: 0 - 100</p>
+              </div>
+            </div>
+            <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+              <p className="text-sm text-gray-400 mb-2 font-semibold">6-Pillar FHI Breakdown</p>
+              {data.fhi_breakdown ? (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>Liquidity: <span className="font-semibold text-white">{data.fhi_breakdown.liquidity ?? "N/A"}</span></div>
+                  <div>Solvency: <span className="font-semibold text-white">{data.fhi_breakdown.solvency ?? "N/A"}</span></div>
+                  <div>Efficiency: <span className="font-semibold text-white">{data.fhi_breakdown.efficiency ?? "N/A"}</span></div>
+                  <div>Profitability: <span className="font-semibold text-white">{data.fhi_breakdown.profitability ?? "N/A"}</span></div>
+                  <div>Compliance: <span className="font-semibold text-white">{data.fhi_breakdown.compliance ?? "N/A"}</span></div>
+                  <div>Resilience: <span className="font-semibold text-white">{data.fhi_breakdown.resilience ?? "N/A"}</span></div>
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">Breakdown not available</p>
+              )}
+            </div>
+          </div>
+          {data.credit_score_disclaimer && (
+            <div className="text-xs text-gray-400 bg-black/40 p-3 rounded border border-white/5">
+              <strong>Note:</strong> {data.credit_score_disclaimer}
+            </div>
+          )}
         </div>
 
         {/* Sensitivity Lab */}
