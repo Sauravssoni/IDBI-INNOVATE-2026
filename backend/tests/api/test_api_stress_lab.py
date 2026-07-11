@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.db.session import SessionLocal, engine
 from app.seed.seed_shakti import seed_shakti
-from app.db.orm.cases import Case, Business
+from app.db.orm.cases import Business
+from app.domain.stress.engine import run_case_stress_lab
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -83,7 +84,7 @@ def test_stress_lab_success(client: TestClient, db):
     # Verify baseline vs stressed
     assert data["scenario"]["revenue_drop_pct"] == 10.0
     assert data["scenario"]["interest_rate_hike_bps"] == 200
-    assert data["stressed"]["status"] in ["SECURE", "VULNERABLE", "DISTRESSED"]
+    assert data["stressed"]["status"] in ["SECURE", "VULNERABLE", "DISTRESSED", "NOT_ASSESSABLE"]
     # Check bounds safety and exact formula behavior
     assert data["stressed"]["max_loan_amount"] <= data["baseline"]["max_loan_amount"]
 
@@ -105,3 +106,23 @@ def test_stress_lab_bola_denial(client: TestClient, db):
         **auth_kwargs,
     )
     assert response.status_code in (403, 404)
+
+
+def test_stress_lab_unknown_obligations_not_assessable():
+    result = run_case_stress_lab(
+        features={
+            "consent_status": "VALID",
+            "bank_metrics": {
+                "operating_inflows_monthly": "1000000",
+                "operating_outflows_monthly": "700000",
+            },
+            "obligation_verification_state": "UNKNOWN_OBLIGATIONS",
+        },
+        scores={"evidence_confidence_score": 85},
+        requested_amount=1000000,
+        requested_product="TERM_LOAN",
+    )
+
+    assert result["overall_stress_status"] == "NOT_ASSESSABLE"
+    assert result["baseline"]["status"] == "NOT_ASSESSABLE"
+    assert all(s["status"] == "NOT_ASSESSABLE" for s in result["scenarios"])

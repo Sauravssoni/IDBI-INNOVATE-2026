@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.policy import DecisionPolicy
 from app.core.scoring.scorer import ScoringEngine
@@ -15,7 +15,7 @@ def compute_bankability_path(
 ) -> Dict[str, Any]:
     """
     Authoritative step-by-step Bankability Path generation engine.
-    Execates real same-engine simulation (before/after recomputation across ScoringEngine,
+    Executes real same-engine simulation (before/after recomputation across ScoringEngine,
     DecisionPolicy, and FinancialCapacityEngine) for 30-day, 60-day, and 90-day milestones.
     """
     base_policy = DecisionPolicy(features, scores, requested_amount, requested_product)
@@ -25,194 +25,106 @@ def compute_bankability_path(
     if not isinstance(current_limit, Decimal):
         current_limit = Decimal(str(current_limit))
     
-    evidence_score = scores.get("evidence_confidence_score", Decimal("50.0"))
-    if not isinstance(evidence_score, Decimal):
-        evidence_score = Decimal(str(evidence_score))
-        
-    health_score = scores.get("financial_health_score", Decimal("50.0"))
-    if not isinstance(health_score, Decimal):
-        health_score = Decimal(str(health_score))
-        
-    consent_status = features.get("consent_status", "PENDING")
-    
-    # Base baseline DSCR (use stressed independent reamortization DSCR if available)
-    base_bank = features.get("bank_metrics", {})
-    try:
-        if "independent_reamortization_dscr" in base_bank and base_bank["independent_reamortization_dscr"] is not None:
-            base_dscr = Decimal(str(base_bank["independent_reamortization_dscr"]))
-        else:
-            base_dscr = Decimal(str(base_bank.get("dscr", "1.0")))
-    except Exception:
-        base_dscr = Decimal("1.0")
-
+    evidence_score = Decimal(str(scores.get("evidence_confidence_score") or 0))
+    health_score = scores.get("financial_health_index", scores.get("financial_health_score"))
+    health_score = Decimal(str(health_score)) if health_score is not None else None
+    base_cap = FinancialCapacityEngine.compute_capacity_from_features(features, requested_amount, requested_product)
+    base_dscr = base_cap.get("post_loan_dscr") or base_cap.get("current_dscr")
     milestones = []
-    
-    # MIL-001 (30-day Bankability Path: AA sync & bank statement verification)
-    sim_features_30 = copy.deepcopy(features)
-    sim_features_30["consent_status"] = "VALID"
-    bank_30 = sim_features_30.setdefault("bank_metrics", {})
-    bank_30["months_filed"] = max(12, int(bank_30.get("months_filed", 0)))
-    if "dscr" in bank_30 and str(bank_30["dscr"]).upper() == "UNKNOWN":
-        bank_30["dscr"] = "1.25"
-    if "operating_inflows_monthly" not in bank_30:
-        bank_30["operating_inflows_monthly"] = str(requested_amount / Decimal("10"))
 
-    sim_scorer_30 = ScoringEngine(sim_features_30)
-    sim_scores_30 = sim_scorer_30.compute_all_scores()
-    sim_policy_30 = DecisionPolicy(sim_features_30, sim_scores_30, requested_amount, requested_product)
-    sim_dec_30 = sim_policy_30.evaluate()
-    try:
-        sim_cap_30 = FinancialCapacityEngine.compute_capacity_from_features(
-            sim_features_30, requested_amount, requested_product
-        )
-    except Exception:
-        sim_cap_30 = {"supportable_limit_inr": str(sim_dec_30.get("binding_limit", 0)), "verified_dscr": "1.25"}
+    def numeric(value: Any) -> Optional[float]:
+        return None if value is None else float(Decimal(str(value)))
 
-    proj_lim_30 = sim_dec_30.get("binding_limit", Decimal("0"))
-    if not isinstance(proj_lim_30, Decimal):
-        proj_lim_30 = Decimal(str(proj_lim_30))
-    if proj_lim_30 == 0 and current_state not in ("APPROVE", "READY_FOR_REVIEW"):
-        proj_lim_30 = (requested_amount * Decimal("0.60")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-
-    after_ev_30 = Decimal(str(sim_scores_30.get("evidence_confidence_score", evidence_score)))
-    after_hl_30 = Decimal(str(sim_scores_30.get("financial_health_score", health_score)))
-    try:
-        after_dscr_30 = Decimal(str(sim_cap_30.get("verified_dscr", "1.25")))
-    except Exception:
-        after_dscr_30 = Decimal("1.25")
-
-    if consent_status != "VALID" or evidence_score < Decimal("75.0") or current_state in ("DECLINE", "DECLINE_RECOMMENDED", "BLOCK_PROCESSING", "ADDITIONAL_EVIDENCE_REQUIRED"):
-        milestones.append({
-            "milestone_id": "MIL-001",
-            "timeline_tier": "30_DAYS",
-            "action": "Complete live Account Aggregator (AA) sync for 12 months bank statement feed",
-            "hindi_action": "12 महीनों के बैंक विवरण फीड के लिए लाइव अकाउंट एग्रीगेटर (AA) सिंक पूरा करें",
-            "impact_on_score": f"+{max(Decimal('0'), after_ev_30 - evidence_score)} points on Evidence Confidence Score",
-            "expected_timeline_days": 30,
-            "target_state": sim_dec_30.get("decision", "CONDITIONAL_OFFER"),
-            "target_tier": "BALANCED" if proj_lim_30 > 0 else "CONSERVATIVE",
-            "projected_limit_inr": float(proj_lim_30),
-            "projected_rate_bps": 1350,
-            "prerequisites": ["Bank account aggregator verification"],
+    def run_sim(milestone_id: str, tier: str, action: str, hindi_action: str, changed_input: str, assumption: str, sim_features: Dict[str, Any], days: int) -> Dict[str, Any]:
+        sim_scores = ScoringEngine(sim_features).compute_all_scores()
+        sim_decision = DecisionPolicy(sim_features, sim_scores, requested_amount, requested_product).evaluate()
+        sim_cap = FinancialCapacityEngine.compute_capacity_from_features(sim_features, requested_amount, requested_product)
+        after_limit = Decimal(str(sim_decision.get("binding_limit", 0) or 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        after_health = sim_scores.get("financial_health_index")
+        after_dscr = sim_cap.get("post_loan_dscr") or sim_cap.get("current_dscr")
+        impact_known = after_health is not None and after_dscr is not None
+        return {
+            "milestone_id": milestone_id,
+            "timeline_tier": tier,
+            "action": action,
+            "hindi_action": hindi_action,
+            "changed_input": changed_input,
+            "assumption": assumption,
+            "impact_on_score": "IMPACT_NOT_QUANTIFIABLE" if not impact_known else f"FHI {health_score} -> {after_health}; Credit Health {scores.get('vyapar_credit_health_score')} -> {sim_scores.get('vyapar_credit_health_score')}",
+            "expected_timeline_days": days,
+            "target_state": sim_decision.get("decision", "ADDITIONAL_EVIDENCE_REQUIRED"),
+            "target_tier": "SCENARIO_ONLY",
+            "projected_limit_inr": float(after_limit),
+            "projected_rate_bps": None,
+            "prerequisites": [assumption],
+            "scenario_disclaimer": "Scenario only. Completion does not guarantee sanction.",
             "simulation_evidence": {
                 "before_evidence_score": float(evidence_score),
-                "after_evidence_score": float(after_ev_30),
-                "before_health_score": float(health_score),
-                "after_health_score": float(after_hl_30),
-                "before_dscr": float(base_dscr),
-                "after_dscr": float(after_dscr_30)
-            }
-        })
+                "after_evidence_score": numeric(sim_scores.get("evidence_confidence_score")),
+                "before_health_score": numeric(health_score),
+                "after_health_score": numeric(after_health),
+                "before_fhi": numeric(health_score),
+                "after_fhi": numeric(after_health),
+                "before_credit_health_score": scores.get("vyapar_credit_health_score"),
+                "after_credit_health_score": sim_scores.get("vyapar_credit_health_score"),
+                "before_dscr": numeric(base_dscr),
+                "after_dscr": numeric(after_dscr),
+                "before_supportable_amount": float(current_limit),
+                "after_supportable_amount": float(after_limit),
+                "before_policy_state": current_state,
+                "after_policy_state": sim_decision.get("decision"),
+            },
+        }
 
-    # MIL-002 (60-day Bankability Path: GST filing & reconciliation)
-    sim_features_60 = copy.deepcopy(sim_features_30)
-    gst_60 = sim_features_60.setdefault("gst_metrics", {})
-    gst_60["months_filed"] = max(12, int(gst_60.get("months_filed", 0)))
-    if "avg_monthly_revenue" not in gst_60:
-        gst_60["avg_monthly_revenue"] = str((requested_amount / Decimal("10")) * Decimal("1.2"))
-    recon_60 = sim_features_60.setdefault("reconciliation_metrics", {})
-    recon_60["gst_bank_ratio"] = "1.00"
+    if features.get("consent_status") != "VALID":
+        sim_features = copy.deepcopy(features)
+        sim_features["consent_status"] = "VALID"
+        milestones.append(run_sim(
+            "MIL-001", "30_DAYS",
+            "Obtain valid borrower consent and governed bank evidence before assessment",
+            "मूल्यांकन से पहले वैध सहमति और सत्यापित बैंक साक्ष्य प्राप्त करें",
+            "consent_status", "Consent is valid and evidence rails are refreshed; no financial values are fabricated.",
+            sim_features, 30,
+        ))
 
-    sim_scores_60 = ScoringEngine(sim_features_60).compute_all_scores()
-    sim_policy_60 = DecisionPolicy(sim_features_60, sim_scores_60, requested_amount, requested_product)
-    sim_dec_60 = sim_policy_60.evaluate()
-    try:
-        sim_cap_60 = FinancialCapacityEngine.compute_capacity_from_features(
-            sim_features_60, requested_amount, requested_product
-        )
-    except Exception:
-        sim_cap_60 = {"supportable_limit_inr": str(sim_dec_60.get("binding_limit", 0)), "verified_dscr": "1.45"}
+    if base_cap.get("obligation_verification_state") != "VERIFIED":
+        sim_features = copy.deepcopy(features)
+        sim_features["obligation_verification_state"] = "VERIFIED"
+        sim_features["verified_existing_debt_service_monthly"] = sim_features.get("verified_existing_debt_service_monthly", "0")
+        milestones.append(run_sim(
+            "MIL-002", "45_DAYS",
+            "Verify existing obligations through bureau report or authoritative debt-service evidence",
+            "ब्यूरो रिपोर्ट या अधिकृत ऋण-सेवा साक्ष्य से मौजूदा देनदारियां सत्यापित करें",
+            "obligation_verification_state", "Only the verification state changes; debt amount remains the recorded value.",
+            sim_features, 45,
+        ))
 
-    proj_lim_60 = sim_dec_60.get("binding_limit", Decimal("0"))
-    if not isinstance(proj_lim_60, Decimal):
-        proj_lim_60 = Decimal(str(proj_lim_60))
-    if proj_lim_60 == 0:
-        proj_lim_60 = (requested_amount * Decimal("0.80")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    elif proj_lim_60 < proj_lim_30:
-        proj_lim_60 = (proj_lim_30 * Decimal("1.20")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    bank = features.get("bank_metrics", {})
+    inflows = Decimal(str(bank.get("operating_inflows_monthly", "0") or 0))
+    outflows = Decimal(str(bank.get("operating_outflows_monthly", "0") or 0))
+    if current_state not in ("APPROVE", "READY_FOR_REVIEW") and inflows > 0 and outflows > 0:
+        sim_features = copy.deepcopy(features)
+        sim_bank = sim_features.setdefault("bank_metrics", {})
+        sim_bank["operating_outflows_monthly"] = str((outflows * Decimal("0.95")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        milestones.append(run_sim(
+            "MIL-003", "60_DAYS",
+            "Reduce verified operating expenses by 5% through supplier/payment discipline",
+            "सप्लायर और भुगतान अनुशासन से सत्यापित परिचालन खर्च 5% घटाएं",
+            "operating_outflows_monthly", "Scenario reduces only measured operating outflows by 5%.",
+            sim_features, 60,
+        ))
 
-    after_ev_60 = Decimal(str(sim_scores_60.get("evidence_confidence_score", after_ev_30)))
-    after_hl_60 = Decimal(str(sim_scores_60.get("financial_health_score", after_hl_30)))
-    try:
-        after_dscr_60 = Decimal(str(sim_cap_60.get("verified_dscr", "1.45")))
-    except Exception:
-        after_dscr_60 = Decimal("1.45")
-
-    if not features.get("gst_metrics", {}).get("avg_monthly_revenue") or evidence_score < Decimal("85.0") or current_state not in ("APPROVE", "READY_FOR_REVIEW"):
-        milestones.append({
-            "milestone_id": "MIL-002",
-            "timeline_tier": "60_DAYS",
-            "action": "File and reconcile past 4 quarters GST GSTR-1 and GSTR-3B returns",
-            "hindi_action": "पिछले 4 तिमाहियों के GST GSTR-1 और GSTR-3B रिटर्न दाखिल करें और उनका मिलान करें",
-            "impact_on_score": f"+{max(Decimal('0'), after_ev_60 - after_ev_30)} points on Evidence Confidence Score & +{max(Decimal('0'), after_hl_60 - after_hl_30)} points on Financial Health Score",
-            "expected_timeline_days": 60,
-            "target_state": sim_dec_60.get("decision", "APPROVE"),
-            "target_tier": "BALANCED",
-            "projected_limit_inr": float(proj_lim_60),
-            "projected_rate_bps": 1300,
-            "prerequisites": ["GSTIN credential sync"],
-            "simulation_evidence": {
-                "before_evidence_score": float(after_ev_30),
-                "after_evidence_score": float(after_ev_60),
-                "before_health_score": float(after_hl_30),
-                "after_health_score": float(after_hl_60),
-                "before_dscr": float(after_dscr_30),
-                "after_dscr": float(after_dscr_60)
-            }
-        })
-
-    # MIL-003 (90-day Bankability Path: Liquidity buffer & DSCR improvement)
-    sim_features_90 = copy.deepcopy(sim_features_60)
-    bank_90 = sim_features_90.setdefault("bank_metrics", {})
-    bank_90["dscr"] = "2.00"
-    bank_90["operating_inflows_monthly"] = str(requested_amount / Decimal("5"))
-    bank_90["operating_outflows_monthly"] = str((requested_amount / Decimal("5")) * Decimal("0.7"))
-
-    sim_scores_90 = ScoringEngine(sim_features_90).compute_all_scores()
-    sim_policy_90 = DecisionPolicy(sim_features_90, sim_scores_90, requested_amount, requested_product)
-    sim_dec_90 = sim_policy_90.evaluate()
-    try:
-        sim_cap_90 = FinancialCapacityEngine.compute_capacity_from_features(
-            sim_features_90, requested_amount, requested_product
-        )
-    except Exception:
-        sim_cap_90 = {"supportable_limit_inr": str(sim_dec_90.get("binding_limit", 0)), "verified_dscr": "2.00"}
-
-    proj_lim_90 = sim_dec_90.get("binding_limit", Decimal("0"))
-    if not isinstance(proj_lim_90, Decimal):
-        proj_lim_90 = Decimal(str(proj_lim_90))
-    if proj_lim_90 < requested_amount:
-        proj_lim_90 = requested_amount
-
-    after_ev_90 = Decimal(str(sim_scores_90.get("evidence_confidence_score", after_ev_60)))
-    after_hl_90 = Decimal(str(sim_scores_90.get("financial_health_score", after_hl_60)))
-    try:
-        after_dscr_90 = Decimal(str(sim_cap_90.get("verified_dscr", "2.00")))
-    except Exception:
-        after_dscr_90 = Decimal("2.00")
-
-    if health_score < Decimal("80.0") or current_state in ("DECLINE", "DECLINE_RECOMMENDED", "CONDITIONAL_OFFER") or len(milestones) > 0:
-        milestones.append({
-            "milestone_id": "MIL-003",
-            "timeline_tier": "90_DAYS",
-            "action": "Maintain average monthly bank account balance >= INR 3,000,000 and DSCR >= 2.00 for 90 consecutive days",
-            "hindi_action": "90 लगातार दिनों के लिए औसत मासिक बैंक खाता शेष ≥ ₹30,00,000 और DSCR ≥ 2.00 बनाए रखें",
-            "impact_on_score": f"+{max(Decimal('0'), after_hl_90 - after_hl_60)} points on Financial Health Score (Liquidity buffer expansion)",
-            "expected_timeline_days": 90,
-            "target_state": sim_dec_90.get("decision", "APPROVE"),
-            "target_tier": "GROWTH",
-            "projected_limit_inr": float(proj_lim_90),
-            "projected_rate_bps": 1250,
-            "prerequisites": ["MIL-001 completion", "MIL-002 completion"],
-            "simulation_evidence": {
-                "before_evidence_score": float(after_ev_60),
-                "after_evidence_score": float(after_ev_90),
-                "before_health_score": float(after_hl_60),
-                "after_health_score": float(after_hl_90),
-                "before_dscr": float(after_dscr_60),
-                "after_dscr": float(after_dscr_90)
-            }
-        })
+    current_cycle = features.get("working_capital_metrics", {}).get("operating_cycle_days", features.get("operating_cycle_days"))
+    if current_state not in ("APPROVE", "READY_FOR_REVIEW") and current_cycle is not None:
+        sim_features = copy.deepcopy(features)
+        sim_features.setdefault("working_capital_metrics", {})["operating_cycle_days"] = str(max(Decimal("30"), Decimal(str(current_cycle)) - Decimal("15")))
+        milestones.append(run_sim(
+            "MIL-004", "90_DAYS",
+            "Reduce operating cycle by 15 days through receivables collection discipline",
+            "प्राप्य वसूली अनुशासन से परिचालन चक्र 15 दिन घटाएं",
+            "operating_cycle_days", "Scenario reduces only the measured operating cycle, floored at 30 days.",
+            sim_features, 90,
+        ))
 
     if not milestones and current_state in ("APPROVE", "READY_FOR_REVIEW"):
         milestones.append({
@@ -220,20 +132,21 @@ def compute_bankability_path(
             "timeline_tier": "30_DAYS",
             "action": "Enable escrow account routing and quarterly automated credit twin monitoring",
             "hindi_action": "एस्क्रो खाता रूटिंग और त्रैमासिक स्वचालित क्रेडिट ट्विन निगरानी सक्षम करें",
-            "impact_on_score": "+5 points on Evidence Confidence Score",
+            "impact_on_score": "IMPACT_NOT_QUANTIFIABLE",
             "expected_timeline_days": 30,
-            "target_state": "APPROVE",
-            "target_tier": "GROWTH",
-            "projected_limit_inr": float((current_limit * Decimal("1.15")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)),
-            "projected_rate_bps": 1200,
+            "target_state": current_state,
+            "target_tier": "MONITORING",
+            "projected_limit_inr": float(current_limit),
+            "projected_rate_bps": None,
             "prerequisites": ["Institutional escrow mandates"],
+            "scenario_disclaimer": "Scenario only. Completion does not guarantee sanction.",
             "simulation_evidence": {
                 "before_evidence_score": float(evidence_score),
-                "after_evidence_score": float(min(Decimal("100.0"), evidence_score + Decimal("5.0"))),
-                "before_health_score": float(health_score),
-                "after_health_score": float(health_score),
-                "before_dscr": float(base_dscr),
-                "after_dscr": float(base_dscr)
+                "after_evidence_score": float(evidence_score),
+                "before_health_score": numeric(health_score),
+                "after_health_score": numeric(health_score),
+                "before_dscr": numeric(base_dscr),
+                "after_dscr": numeric(base_dscr)
             }
         })
 
@@ -256,7 +169,7 @@ def compute_bankability_path(
         "is_target_achievable_now": curr_lim_flt >= tgt_req,
         "max_achievable_limit": max_achievable,
         "current_evidence_score": float(evidence_score),
-        "current_health_score": float(health_score),
+        "current_health_score": numeric(health_score),
         "milestones": milestones,
         "hindi_bilingual_presentation": hindi_presentation,
         "engine_version": "2.0-BANKABILITY-CANONICAL"
@@ -321,23 +234,32 @@ def simulate_bankability_variable(
     before_limit = float(Decimal(str(base_decision.get("binding_limit", 0))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
     after_limit = float(Decimal(str(sim_decision.get("binding_limit", 0))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
-    before_health = float(Decimal(str(scores.get("financial_health_score", 0))))
-    after_health = float(Decimal(str(sim_scores.get("financial_health_score", 0))))
+    def dec_or_none(value: Any) -> Optional[Decimal]:
+        return None if value is None else Decimal(str(value))
 
-    before_fhi = float(Decimal(str(scores.get("financial_health_index", 0))))
-    after_fhi = float(Decimal(str(sim_scores.get("financial_health_index", 0))))
+    before_health_dec = dec_or_none(scores.get("financial_health_score"))
+    after_health_dec = dec_or_none(sim_scores.get("financial_health_score"))
+    before_fhi_dec = dec_or_none(scores.get("financial_health_index"))
+    after_fhi_dec = dec_or_none(sim_scores.get("financial_health_index"))
 
-    before_credit = int(scores.get("vyapar_credit_health_score", 300))
-    after_credit = int(sim_scores.get("vyapar_credit_health_score", 300))
+    before_health = float(before_health_dec) if before_health_dec is not None else None
+    after_health = float(after_health_dec) if after_health_dec is not None else None
+    before_fhi = float(before_fhi_dec) if before_fhi_dec is not None else None
+    after_fhi = float(after_fhi_dec) if after_fhi_dec is not None else None
+
+    before_credit = scores.get("vyapar_credit_health_score")
+    after_credit = sim_scores.get("vyapar_credit_health_score")
 
     try:
-        before_dscr = float(Decimal(str(base_cap.get("verified_dscr", features.get("bank_metrics", {}).get("dscr", "1.0")))))
+        base_dscr_value = base_cap.get("post_loan_dscr") or base_cap.get("current_dscr")
+        before_dscr = None if base_dscr_value is None else float(Decimal(str(base_dscr_value)))
     except Exception:
-        before_dscr = 1.0
+        before_dscr = None
     try:
-        after_dscr = float(Decimal(str(sim_cap.get("verified_dscr", bank_sim.get("dscr", "1.0")))))
+        sim_dscr_value = sim_cap.get("post_loan_dscr") or sim_cap.get("current_dscr")
+        after_dscr = None if sim_dscr_value is None else float(Decimal(str(sim_dscr_value)))
     except Exception:
-        after_dscr = 1.0
+        after_dscr = None
 
     return {
         "before_simulation": {
@@ -360,10 +282,10 @@ def simulate_bankability_variable(
         },
         "uplift_summary": {
             "limit_uplift_inr": max(0.0, after_limit - before_limit),
-            "health_score_uplift": after_health - before_health,
-            "fhi_uplift": after_fhi - before_fhi,
-            "credit_score_uplift": after_credit - before_credit,
-            "dscr_uplift": after_dscr - before_dscr
+            "health_score_uplift": None if after_health is None or before_health is None else after_health - before_health,
+            "fhi_uplift": None if after_fhi is None or before_fhi is None else after_fhi - before_fhi,
+            "credit_score_uplift": None if after_credit is None or before_credit is None else after_credit - before_credit,
+            "dscr_uplift": None if after_dscr is None or before_dscr is None else after_dscr - before_dscr
         },
         "simulated_overrides": overrides,
         "engine_version": "2.0-BANKABILITY-SIMULATION"

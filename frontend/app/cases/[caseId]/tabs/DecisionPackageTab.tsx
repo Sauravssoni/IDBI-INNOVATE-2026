@@ -317,11 +317,11 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               {data.fhi_breakdown ? (
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>Liquidity: <span className="font-semibold text-white">{data.fhi_breakdown.liquidity?.score ?? "N/A"}</span></div>
-                  <div>Solvency: <span className="font-semibold text-white">{data.fhi_breakdown.solvency?.score ?? "N/A"}</span></div>
-                  <div>Efficiency: <span className="font-semibold text-white">{data.fhi_breakdown.efficiency?.score ?? "N/A"}</span></div>
-                  <div>Profitability: <span className="font-semibold text-white">{data.fhi_breakdown.profitability?.score ?? "N/A"}</span></div>
-                  <div>Compliance: <span className="font-semibold text-white">{data.fhi_breakdown.compliance?.score ?? "N/A"}</span></div>
-                  <div>Resilience: <span className="font-semibold text-white">{data.fhi_breakdown.resilience?.score ?? "N/A"}</span></div>
+                  <div>Cash-flow: <span className="font-semibold text-white">{data.fhi_breakdown.cash_flow_capacity?.score ?? "N/A"}</span></div>
+                  <div>Revenue: <span className="font-semibold text-white">{data.fhi_breakdown.revenue_stability_momentum?.score ?? "N/A"}</span></div>
+                  <div>Repayment: <span className="font-semibold text-white">{data.fhi_breakdown.repayment_burden_discipline?.score ?? "N/A"}</span></div>
+                  <div>Compliance: <span className="font-semibold text-white">{data.fhi_breakdown.compliance_formalisation?.score ?? "N/A"}</span></div>
+                  <div>Concentration: <span className="font-semibold text-white">{data.fhi_breakdown.concentration_resilience?.score ?? "N/A"}</span></div>
                 </div>
               ) : (
                 <p className="text-xs text-gray-500">Breakdown not available</p>
