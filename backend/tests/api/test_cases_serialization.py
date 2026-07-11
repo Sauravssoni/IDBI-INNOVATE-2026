@@ -218,6 +218,18 @@ def test_decision_package_cd_fields(setup_data):
     assert "calculation_evidence_ids" in data
     assert isinstance(data["calculation_evidence_ids"], dict)
 
+    # Verify P3 / BNK-001 / BNK-002: Milestone-controlled conditional structure integration
+    assert "conditions" in data
+    assert isinstance(data["conditions"], list)
+    assert "bankability_path" in data
+    if data.get("bankability_path"):
+        bp = data["bankability_path"]
+        assert "milestones" in bp
+        for m in bp.get("milestones", []):
+            assert "simulation_evidence" in m
+            assert "impact_on_score" in m
+            assert "target_state" in m
+
 
 def test_command_centre_and_monitoring(setup_data):
     user = setup_data["users"][UserRole.CREDIT_ANALYST]
