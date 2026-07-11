@@ -38,17 +38,15 @@ class DemoResetConflict(Exception):
 def get_db_fingerprint(db: Session) -> str:
     row = db.execute(
         text(
-            "SELECT inet_server_addr()::text, inet_server_port()::text, current_database()::text, current_schema()::text;"
+            "SELECT current_user::text, current_database()::text, current_schema()::text;"
         )
     ).fetchone()
     if row is None:
         return hashlib.sha256(b"localhost:5432:postgres:public").hexdigest()[:8]
-    host = row[0] or "localhost"
-    port = row[1] or "5432"
-    db_name = row[2] or "postgres"
-    schema = row[3] or "public"
-    s = f"{host}:{port}:{db_name}:{schema}"
-    return hashlib.sha256(s.encode("utf-8")).hexdigest()[:8]
+    
+    user, db_name, schema = row
+    raw = f"{user}:{db_name}:{schema}".encode("utf-8")
+    return hashlib.sha256(raw).hexdigest()[:8]
 
 
 def validate_invariants(db: Session):
