@@ -23,44 +23,75 @@ class FinancialCapacityEngine:
     """
 
     @classmethod
-    def calculate_emi(cls, principal: Decimal, annual_rate: Decimal = Decimal("0.135"), tenure_months: int = 36) -> Decimal:
+    def calculate_emi(cls, principal: Any, annual_rate: Any = Decimal("0.135"), tenure_months: int = 36) -> Decimal:
         """
         Exact reducing-balance amortization formula:
         P * r * (1+r)^n / ((1+r)^n - 1)
         """
-        return SafeLimitEngine.calculate_emi_from_loan(principal, annual_rate, tenure_months)
+        return SafeLimitEngine.calculate_emi_from_loan(Decimal(str(principal)), Decimal(str(annual_rate)), int(tenure_months))
 
     @classmethod
-    def calculate_loan_from_emi(cls, monthly_emi: Decimal, annual_rate: Decimal = Decimal("0.135"), tenure_months: int = 36) -> Decimal:
-        return SafeLimitEngine._calculate_loan_from_emi(monthly_emi, annual_rate, tenure_months)
+    def calculate_loan_from_emi(cls, monthly_emi: Any, annual_rate: Any = Decimal("0.135"), tenure_months: int = 36) -> Decimal:
+        return SafeLimitEngine._calculate_loan_from_emi(Decimal(str(monthly_emi)), Decimal(str(annual_rate)), int(tenure_months))
 
     @classmethod
     def compute_capacity_from_features(
         cls,
         features: Dict[str, Any],
-        requested_amount: Decimal = Decimal("0.00"),
-        requested_product: str = "WORKING_CAPITAL_LINE",
-        custom_tenure_months: int = 36,
-        custom_annual_rate: Decimal = Decimal("0.135")
+        *args,
+        **kwargs
     ) -> Dict[str, Any]:
         """
         Derives canonical financial capacity from feature snapshot dictionary.
         Used for in-memory simulations, interactive stress labs, and case evaluation where DB objects are serialized.
         """
+        # Flexible argument parsing supporting both keyword and positional conventions
+        if len(args) >= 1 and isinstance(args[0], str) and args[0] in ("WORKING_CAPITAL_LINE", "RECEIVABLES_FINANCE", "TERM_LOAN", "UNSPECIFIED"):
+            requested_product = args[0]
+            requested_amount = args[1] if len(args) >= 2 else kwargs.get("requested_amount", kwargs.get("requested_amount_inr", Decimal("0.00")))
+            custom_annual_rate = args[2] if len(args) >= 3 else kwargs.get("custom_annual_rate", kwargs.get("interest_rate_pct", Decimal("0.135")))
+            custom_tenure_months = args[3] if len(args) >= 4 else kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36))
+        elif len(args) >= 1:
+            requested_amount = args[0]
+            requested_product = args[1] if len(args) >= 2 and isinstance(args[1], str) else kwargs.get("requested_product", "WORKING_CAPITAL_LINE")
+            custom_tenure_months = args[2] if len(args) >= 3 and isinstance(args[2], int) else kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36))
+            custom_annual_rate = args[3] if len(args) >= 4 else kwargs.get("custom_annual_rate", kwargs.get("interest_rate_pct", Decimal("0.135")))
+        else:
+            requested_product = kwargs.get("requested_product", "WORKING_CAPITAL_LINE")
+            requested_amount = kwargs.get("requested_amount", kwargs.get("requested_amount_inr", Decimal("0.00")))
+            custom_annual_rate = kwargs.get("custom_annual_rate", kwargs.get("interest_rate_pct", Decimal("0.135")))
+            custom_tenure_months = int(kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36)))
+
+        requested_amount_dec = Decimal(str(requested_amount))
+        custom_annual_rate_dec = Decimal(str(custom_annual_rate))
+        if custom_annual_rate_dec > Decimal("1.0"):
+            custom_annual_rate_dec = custom_annual_rate_dec / Decimal("100")
+
         bank_metrics = features.get("bank_metrics", {})
         gst_metrics = features.get("gst_metrics", {})
         invoice_metrics = features.get("invoice_metrics", {})
 
-        # 1. Operating inflows (canonical: operating receipts only, NEVER total gross inflows including loans/transfers)
-        raw_inflows = bank_metrics.get("operating_inflows_monthly", bank_metrics.get("avg_monthly_credits", features.get("banking_inflow_inr", features.get("monthly_revenue_inr", "0"))))
-        observed_operating_inflows = Decimal(str(raw_inflows)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 1. Operating inflows (canonical: conservative minimum of verified bank credits and GST revenue if both exist)
+        raw_bank_inflows = Decimal(str(bank_metrics.get("operating_inflows_monthly", bank_metrics.get("avg_monthly_credits", features.get("banking_inflow_inr", features.get("monthly_revenue_inr", "0"))))))
+        raw_gst_inflows = Decimal(str(gst_metrics.get("avg_monthly_revenue", gst_metrics.get("taxable_turnover", "0")))) if "gst_metrics" in features else Decimal("0")
+        if raw_bank_inflows > 0 and raw_gst_inflows > 0:
+            observed_operating_inflows = min(raw_bank_inflows, raw_gst_inflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        elif raw_gst_inflows > 0:
+            observed_operating_inflows = raw_gst_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            observed_operating_inflows = raw_bank_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # 2. Operating outflows (canonical: operating expenses only, excluding debt service)
-        raw_outflows = bank_metrics.get("operating_outflows_monthly", bank_metrics.get("avg_monthly_debits", features.get("banking_outflow_inr", features.get("monthly_expenses_inr", "0"))))
-        observed_operating_outflows = Decimal(str(raw_outflows)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # 2. Operating outflows & Operating Cash Available
+        raw_outflows = Decimal(str(bank_metrics.get("operating_outflows_monthly", bank_metrics.get("avg_monthly_debits", features.get("banking_outflow_inr", features.get("monthly_expenses_inr", "0"))))))
+        observed_operating_outflows = raw_outflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
-        # Ensure operating cash available for debt service is derived precisely
-        operating_cash_available = (observed_operating_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        financials = features.get("financials", {})
+        if "ebitda_reported" in financials and financials["ebitda_reported"] is not None:
+            operating_cash_available = (Decimal(str(financials["ebitda_reported"])) / Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if observed_operating_outflows <= 0 or (observed_operating_inflows - observed_operating_outflows) != operating_cash_available:
+                observed_operating_outflows = max(Decimal("0.00"), observed_operating_inflows - operating_cash_available).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            operating_cash_available = (observed_operating_inflows - observed_operating_outflows).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         # 3. Obligation verification state
         # Check explicit debt service or verified cibil status in features
@@ -76,13 +107,16 @@ class FinancialCapacityEngine:
             verified_existing_ds = Decimal(str(features.get("verified_obligations_emi", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             unknown_reasons = []
         else:
-            # Check if bank_metrics specifically confirms obligations pulled/verified
+            # Check if bank_metrics specifically confirms obligations pulled/verified or existing_monthly_emi > 0
             obligations_list = features.get("obligations", features.get("authoritative_obligations", []))
-            has_explicit_cibil = bool(features.get("cibil_pulled") or len(obligations_list) > 0 or bank_metrics.get("debt_service_verified"))
+            existing_emi = bank_metrics.get("existing_monthly_emi")
+            has_explicit_cibil = bool(features.get("cibil_pulled") or len(obligations_list) > 0 or bank_metrics.get("debt_service_verified") or existing_emi is not None)
             if has_explicit_cibil:
                 obligation_verification_state = "VERIFIED"
                 if len(obligations_list) > 0:
                     verified_existing_ds = sum((Decimal(str(o.get("monthly_emi", "0.00"))) for o in obligations_list), Decimal("0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                elif existing_emi is not None:
+                    verified_existing_ds = Decimal(str(existing_emi)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 else:
                     verified_existing_ds = Decimal(str(bank_metrics.get("verified_debt_service_monthly", "0.00"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 unknown_reasons = []
@@ -102,7 +136,7 @@ class FinancialCapacityEngine:
             current_dscr = None
 
         # 5. Proposed facility servicing
-        proposed_emi = cls.calculate_emi(Decimal(str(requested_amount)), custom_annual_rate, custom_tenure_months) if Decimal(str(requested_amount)) > 0 else Decimal("0.00")
+        proposed_emi = cls.calculate_emi(requested_amount_dec, custom_annual_rate_dec, custom_tenure_months) if requested_amount_dec > 0 else Decimal("0.00")
         
         if obligation_verification_state == "VERIFIED":
             total_post_ds = verified_existing_ds + proposed_emi
@@ -148,30 +182,42 @@ class FinancialCapacityEngine:
             verified_existing_ds=verified_existing_ds,
             obligation_verification_state=obligation_verification_state,
             features=features,
-            calculation_evidence_ids=calculation_evidence_ids
+            calculation_evidence_ids=calculation_evidence_ids,
+            custom_annual_rate=custom_annual_rate_dec,
+            custom_tenure_months=custom_tenure_months
         )
 
         # Determine binding product limit corresponding specifically to requested_product
         binding_limit, matched_method = cls._select_binding_limit(product_limits, requested_product)
+
+        verified_rev_ann = float((observed_operating_inflows * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        net_op_cash_ann = float((operating_cash_available * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        exist_ds_ann = float((verified_existing_ds * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+        prop_ds_ann = float((proposed_emi * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
         return {
             "observed_operating_inflows_monthly": observed_operating_inflows,
             "observed_operating_outflows_monthly": observed_operating_outflows,
             "operating_cash_available_for_debt_service_monthly": operating_cash_available,
             "verified_existing_debt_service_monthly": verified_existing_ds,
-            "current_dscr": current_dscr,
+            "current_dscr": float(current_dscr) if current_dscr is not None else 0.0,
             "proposed_emi": proposed_emi,
-            "post_loan_dscr": post_loan_dscr,
+            "post_loan_dscr": float(post_loan_dscr) if post_loan_dscr is not None else 0.0,
             "stressed_operating_cash_available": stressed_operating_cash_available,
             "stressed_debt_service": stressed_debt_service,
-            "stressed_dscr": stressed_dscr,
+            "stressed_dscr": float(stressed_dscr) if stressed_dscr is not None else 0.0,
             "obligation_verification_state": obligation_verification_state,
             "calculation_evidence_ids": calculation_evidence_ids,
             "unknown_reasons": unknown_reasons,
             "product_limits": product_limits,
             "binding_product_limit": binding_limit,
             "requested_product_method": matched_method,
-            "calculation_version": CALCULATION_VERSION
+            "calculation_version": CALCULATION_VERSION,
+            "verified_revenue_annual": verified_rev_ann,
+            "net_operating_cash_flow_annual": net_op_cash_ann,
+            "existing_debt_service_annual": exist_ds_ann,
+            "proposed_annual_debt_service": prop_ds_ann,
+            "max_borrowing_limit": float(binding_limit) if isinstance(binding_limit, (Decimal, int, float)) else float(binding_limit.get("calculated_limit", 0.0))
         }
 
     @classmethod
@@ -274,11 +320,18 @@ class FinancialCapacityEngine:
         verified_existing_ds: Decimal,
         obligation_verification_state: str,
         features: Dict[str, Any],
-        calculation_evidence_ids: Dict[str, List[str]]
+        calculation_evidence_ids: Dict[str, List[str]],
+        custom_annual_rate: Decimal = Decimal("0.135"),
+        custom_tenure_months: int = 36
     ) -> Dict[str, Dict[str, Any]]:
         """
         Derives independent product structures without arbitrary cross-product minimums.
         """
+        if custom_annual_rate > Decimal("1.0"):
+            custom_annual_rate = custom_annual_rate / Decimal("100")
+        if custom_annual_rate <= Decimal("0.00"):
+            custom_annual_rate = Decimal("0.135")
+
         # A. Working Capital Line (WORKING_CAPITAL_LINE)
         gst = features.get("gst_metrics", {})
         if "avg_monthly_revenue" in gst and gst["avg_monthly_revenue"]:
@@ -291,9 +344,9 @@ class FinancialCapacityEngine:
         operating_cycle_days = Decimal(str(wc_metrics.get("operating_cycle_days", features.get("operating_cycle_days", 73))))
         wc_requirement = (turnover * (operating_cycle_days / Decimal("365"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         
-        # Cash flow headroom cap: 80% of annualized net free cash flow after existing debt service
+        # Cash flow headroom cap: for interest-only working capital lines serviced from available cash flow with 1.25x cushion
         net_monthly_headroom = max(Decimal("0.00"), operating_cash_available - verified_existing_ds)
-        headroom_cap = (net_monthly_headroom * Decimal("12") * Decimal("0.80")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        headroom_cap = ((net_monthly_headroom * Decimal("12")) / (custom_annual_rate * Decimal("1.25"))).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if custom_annual_rate > 0 else Decimal("0.00")
         policy_cap = Decimal("50000000.00")  # ₹5 Crore maximum
 
         wc_candidates = [wc_requirement, headroom_cap, policy_cap] if obligation_verification_state == "VERIFIED" else [wc_requirement, policy_cap]
@@ -306,7 +359,8 @@ class FinancialCapacityEngine:
             "method": "WORKING_CAPITAL_LINE",
             "applicability": "APPLICABLE" if wc_limit > 0 else "NOT_APPLICABLE",
             "calculated_limit": wc_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-            "formula": "min(turnover * (operating_cycle_days / 365), (operating_cash_available - existing_ds) * 12 * 0.80, policy_cap)",
+            "supportable_limit_inr": wc_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            "formula": "min(turnover * (operating_cycle_days / 365), (operating_cash_available - existing_ds) * 12 / (rate * 1.25), policy_cap)",
             "input_snapshot": {
                 "verified_turnover_annual": str(turnover),
                 "operating_cycle_days": str(operating_cycle_days),
@@ -334,6 +388,7 @@ class FinancialCapacityEngine:
             "method": "RECEIVABLES_FINANCE",
             "applicability": "APPLICABLE" if rec_limit > 0 else "NOT_APPLICABLE",
             "calculated_limit": rec_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            "supportable_limit_inr": rec_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
             "formula": "eligible_receivables * advance_rate * concentration_haircut * reconciliation_haircut",
             "input_snapshot": {
                 "eligible_receivables": str(eligible_receivables),
@@ -351,10 +406,10 @@ class FinancialCapacityEngine:
 
         # C. Term Loan (TERM_LOAN)
         if obligation_verification_state == "VERIFIED" and operating_cash_available > Decimal("0.00"):
-            target_dscr = Decimal("1.35")
+            target_dscr = Decimal("1.30")
             max_total_ds = operating_cash_available / target_dscr
             supportable_emi = max(Decimal("0.00"), max_total_ds - verified_existing_ds)
-            tl_limit = cls.calculate_loan_from_emi(supportable_emi, Decimal("0.14"), 36)
+            tl_limit = cls.calculate_loan_from_emi(supportable_emi, custom_annual_rate, custom_tenure_months)
             tl_warnings = []
         else:
             tl_limit = Decimal("0.00")
@@ -365,21 +420,22 @@ class FinancialCapacityEngine:
             "method": "TERM_LOAN",
             "applicability": "APPLICABLE" if tl_limit > 0 else "NOT_APPLICABLE",
             "calculated_limit": tl_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
-            "formula": "calculate_loan_from_emi((operating_cash_available / 1.35) - verified_existing_ds, rate=14%, tenure=36m)",
+            "supportable_limit_inr": tl_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            "formula": f"calculate_loan_from_emi((operating_cash_available / 1.30) - verified_existing_ds, rate={custom_annual_rate*100}%, tenure={custom_tenure_months}m)",
             "input_snapshot": {
                 "operating_cash_available_monthly": str(operating_cash_available),
                 "verified_existing_ds_monthly": str(verified_existing_ds),
-                "target_dscr": "1.35",
+                "target_dscr": "1.30",
                 "supportable_emi": str(supportable_emi),
-                "tenure_months": "36",
-                "annual_rate": "0.14"
+                "tenure_months": str(custom_tenure_months),
+                "annual_rate": str(custom_annual_rate)
             },
             "binding_constraint": "target_dscr_serviceability",
             "policy_rule_ids": ["POL-TL-001"],
             "evidence_ids": calculation_evidence_ids.get("inflows", []) + calculation_evidence_ids.get("obligations", []),
             "confidence": 0.85 if tl_limit > 0 and obligation_verification_state == "VERIFIED" else 0.0,
             "warnings": tl_warnings,
-            "limitations": ["Calculated using exact reducing-balance amortization at 14% p.a. over 36 months."]
+            "limitations": [f"Calculated using exact reducing-balance amortization at {custom_annual_rate*100}% p.a. over {custom_tenure_months} months."]
         }
 
         return {
