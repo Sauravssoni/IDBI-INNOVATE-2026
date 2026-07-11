@@ -178,13 +178,17 @@ class FeatureEngine:
         operating_inflows = Decimal("0")
         operating_outflows = Decimal("0")
         debt_service = Decimal("0")
+        unresolved_credit_amount = Decimal("0")
+        unresolved_debit_amount = Decimal("0")
 
         included_inflow_ids = []
         excluded_inflow_ids = []
         unresolved_inflow_ids = []
+        unresolved_inflow_items = []
         included_outflow_ids = []
         excluded_outflow_ids = []
         unresolved_outflow_ids = []
+        unresolved_outflow_items = []
         debt_service_ids = []
 
         distinct_months = set()
@@ -207,6 +211,8 @@ class FeatureEngine:
                     excluded_inflow_ids.append(str(t.id))
                 else:
                     unresolved_inflow_ids.append(str(t.id))
+                    unresolved_inflow_items.append({"id": str(t.id), "amount": str(amt)})
+                    unresolved_credit_amount += amt
             elif t_type == "DEBIT":
                 total_debits += amt
                 if t_cat == "DEBT_SERVICE":
@@ -219,6 +225,8 @@ class FeatureEngine:
                     excluded_outflow_ids.append(str(t.id))
                 else:
                     unresolved_outflow_ids.append(str(t.id))
+                    unresolved_outflow_items.append({"id": str(t.id), "amount": str(amt)})
+                    unresolved_debit_amount += amt
 
         months = (
             Decimal(str(len(distinct_months))) if distinct_months else Decimal("1.0")
@@ -233,12 +241,20 @@ class FeatureEngine:
         )
         dscr = calculate_dscr_sandbox_v1(self.db, self.business_id, eval_date)
 
+        threshold = getattr(self, "materiality_threshold", Decimal("0.05"))
+        unresolved_credit_ratio = (unresolved_credit_amount / total_credits).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if total_credits > 0 else Decimal("0.0000")
+        unresolved_debit_ratio = (unresolved_debit_amount / total_debits).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) if total_debits > 0 else Decimal("0.0000")
+
         has_material_unresolved = (
-            len(unresolved_inflow_ids) + len(unresolved_outflow_ids) > 0
+            unresolved_credit_ratio > threshold
+            or unresolved_debit_ratio > threshold
+            or len(unresolved_inflow_ids) + len(unresolved_outflow_ids) > 0
         )
 
-        avg_monthly_inflows = (operating_inflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if operating_inflows > 0 else (total_credits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        avg_monthly_outflows = (operating_outflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if operating_outflows > 0 else (total_debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_monthly_inflows = (operating_inflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_monthly_outflows = (operating_outflows / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_monthly_credits = (total_credits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        avg_monthly_debits = (total_debits / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         verified_ds_monthly = (debt_service / months).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         return {
@@ -248,8 +264,8 @@ class FeatureEngine:
             "total_debits": str(
                 total_debits.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             ),
-            "avg_monthly_credits": str(avg_monthly_inflows),
-            "avg_monthly_debits": str(avg_monthly_outflows),
+            "avg_monthly_credits": str(avg_monthly_credits),
+            "avg_monthly_debits": str(avg_monthly_debits),
             "operating_inflows_monthly": str(avg_monthly_inflows),
             "operating_outflows_monthly": str(avg_monthly_outflows),
             "verified_debt_service_monthly": str(verified_ds_monthly),
@@ -260,9 +276,15 @@ class FeatureEngine:
                 "included_inflow_ids": included_inflow_ids,
                 "excluded_inflow_ids": excluded_inflow_ids,
                 "unresolved_inflow_ids": unresolved_inflow_ids,
+                "unresolved_inflow_items": unresolved_inflow_items,
+                "unresolved_credit_amount": str(unresolved_credit_amount),
+                "unresolved_credit_ratio": float(unresolved_credit_ratio),
                 "included_outflow_ids": included_outflow_ids,
                 "excluded_outflow_ids": excluded_outflow_ids,
                 "unresolved_outflow_ids": unresolved_outflow_ids,
+                "unresolved_outflow_items": unresolved_outflow_items,
+                "unresolved_debit_amount": str(unresolved_debit_amount),
+                "unresolved_debit_ratio": float(unresolved_debit_ratio),
                 "debt_service_ids": debt_service_ids,
                 "has_material_unresolved_activity": has_material_unresolved,
             },
