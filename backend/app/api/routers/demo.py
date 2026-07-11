@@ -21,19 +21,56 @@ def reset_demo(
             detail="Guided demo access is unavailable in this environment.",
         )
 
+    if not settings.DEMO_RESET_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail="Demo reset is disabled.",
+        )
 
-
+    client_token = request.headers.get("X-Demo-Reset-Token")
+    if not client_token or not settings.DEMO_RESET_TOKEN or client_token != settings.DEMO_RESET_TOKEN:
+        raise HTTPException(
+            status_code=403,
+            detail="Invalid or missing demo reset token.",
+        )
     if user.role != "CREDIT_ANALYST":
         raise HTTPException(
             status_code=403, detail="Only CREDIT_ANALYST can reset the demo."
         )
 
+    # Cooldown check
+    from app.db.orm.cases import IdempotencyRecord
+    from datetime import datetime, timezone, timedelta
+    
+    cooldown_key = "demo_reset_cooldown"
+    last_reset = db.query(IdempotencyRecord).filter(
+        IdempotencyRecord.idempotency_key == cooldown_key
+    ).first()
+    
+    now = datetime.now(timezone.utc)
+    if last_reset and (now - last_reset.created_at) < timedelta(minutes=1):
+        raise HTTPException(status_code=429, detail="Reset cooldown in effect. Please wait.")
+        
     from app.seed.reset_service import execute_bounded_reset, DemoResetConflict
 
     try:
         execute_bounded_reset(db, actor_email=user.email)
-    except DemoResetConflict:
-        raise HTTPException(status_code=409, detail="Reset already in progress.")
+        
+        # Update cooldown
+        if last_reset:
+            last_reset.created_at = now
+        else:
+            new_cooldown = IdempotencyRecord(
+                idempotency_key=cooldown_key,
+                user_id=user.id,
+                action="demo_reset",
+                request_hash="cooldown",
+                expires_at=now + timedelta(days=1)
+            )
+            db.add(new_cooldown)
+        db.commit()
+    except DemoResetConflict as e:
+        raise HTTPException(status_code=409, detail=str(e))
 
     return {"status": "success", "detail": "Demo reset complete."}
 
