@@ -10,29 +10,35 @@ class SafeLimitEngine:
     """
 
     @staticmethod
-    def _calculate_loan_from_emi(monthly_emi: Decimal, annual_rate: Decimal, tenure_months: int) -> Decimal:
-        if monthly_emi <= 0 or tenure_months <= 0:
+    def _calculate_loan_from_emi(monthly_emi: Any, annual_rate: Any, tenure_months: int) -> Decimal:
+        emi_dec = Decimal(str(monthly_emi))
+        rate_dec = Decimal(str(annual_rate))
+        if emi_dec <= 0 or tenure_months <= 0:
             return Decimal("0.00")
-        if annual_rate <= 0:
-            return (monthly_emi * Decimal(tenure_months)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        r = annual_rate / Decimal("12")
+        if rate_dec <= 0:
+            return (emi_dec * Decimal(tenure_months)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        rate = rate_dec / Decimal("100") if rate_dec > Decimal("1.0") else rate_dec
+        r = rate / Decimal("12")
         factor = (Decimal("1") + r) ** tenure_months
-        principal = monthly_emi * (factor - Decimal("1")) / (r * factor)
+        principal = emi_dec * (factor - Decimal("1")) / (r * factor)
         return principal.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     @staticmethod
-    def calculate_emi_from_loan(principal: Decimal, annual_rate: Decimal, tenure_months: int) -> Decimal:
+    def calculate_emi_from_loan(principal: Any, annual_rate: Any, tenure_months: int) -> Decimal:
         """
         Exact reducing-balance amortization formula:
         P * r * (1+r)^n / ((1+r)^n - 1)
         """
-        if principal <= 0 or tenure_months <= 0:
+        p_dec = Decimal(str(principal))
+        rate_dec = Decimal(str(annual_rate))
+        if p_dec <= 0 or tenure_months <= 0:
             return Decimal("0.00")
-        if annual_rate <= 0:
-            return (principal / Decimal(tenure_months)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        r = annual_rate / Decimal("12")
+        if rate_dec <= 0:
+            return (p_dec / Decimal(tenure_months)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        rate = rate_dec / Decimal("100") if rate_dec > Decimal("1.0") else rate_dec
+        r = rate / Decimal("12")
         factor = (Decimal("1") + r) ** tenure_months
-        emi = principal * r * factor / (factor - Decimal("1"))
+        emi = p_dec * r * factor / (factor - Decimal("1"))
         return emi.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     @staticmethod
