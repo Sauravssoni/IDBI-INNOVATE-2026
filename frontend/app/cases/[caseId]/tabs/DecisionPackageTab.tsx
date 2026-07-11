@@ -29,13 +29,13 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
       ]);
 
       if (resDecision.status === 200 && resDecision.data) {
-        setData(resDecision.data);
+        setData(resDecision.data as DecisionPackageResponse);
       } else {
         setError(resDecision.error || "Failed to load decision package");
       }
 
       if (resStress.status === 200 && resStress.data) {
-        setStressData(resStress.data);
+        setStressData(resStress.data as StressResult);
       }
 
       setLoading(false);
