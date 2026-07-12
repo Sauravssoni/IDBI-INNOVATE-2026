@@ -358,6 +358,7 @@ class AssessmentResultResponse(BaseModel):
     selected_product: str | None
     offers: Optional[List[Dict[str, Any]]] = None
     supportable_amount: Decimal | None
+    limit_bridge: Optional[Dict[str, Any]] = None
     binding_constraint: BindingConstraintResponse | None
 
     stress_results: List[StressScenarioResponse]

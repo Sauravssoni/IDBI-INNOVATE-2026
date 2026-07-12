@@ -17,13 +17,13 @@ export default function DecisionRoomPage() {
   const router = useRouter();
   
   const [data, setData] = useState<DecisionPackageResponse | null>(null);
+  const [stressData, setStressData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [currentStep, setCurrentStep] = useState(0);
   const [decision, setDecision] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [compareMode, setCompareMode] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -31,6 +31,12 @@ export default function DecisionRoomPage() {
         const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`);
         if (res.status === 200 && res.data) {
           setData(res.data);
+          // Fetch stress data concurrently
+          apiFetch(`/api/cases/${caseId}/stress-lab`).then(stressRes => {
+            if (stressRes.status === 200) {
+              setStressData(stressRes.data);
+            }
+          });
         } else {
           setError(res.error || "Failed to load decision package");
         }
@@ -44,32 +50,25 @@ export default function DecisionRoomPage() {
   }, [caseId]);
 
   const steps = [
-    { title: "Consent & KYC Validation", icon: Fingerprint, id: 0 },
-    { title: "Udyam & Bureau Retrieval", icon: Search, id: 1 },
-    { title: "GST Filing Extraction", icon: FileText, id: 2 },
-    { title: "Bank Statement Analytics", icon: Database, id: 3 },
-    { title: "Cash Flow & Buffer Assessment", icon: Activity, id: 4 },
-    { title: "Turnover & Volatility Profiling", icon: BarChart3, id: 5 },
-    { title: "Integrity & Fraud Graphing", icon: Lock, id: 6 },
-    { title: "Working Capital Cycle Computation", icon: RefreshCw, id: 7 },
-    { title: "Asset/LTV Validation", icon: Scale, id: 8 },
-    { title: "Existing Repayment Burden", icon: Clock, id: 9 },
-    { title: "Financial Health Index (FHI)", icon: ShieldCheck, id: 10 },
-    { title: "Baseline Capacity Sizing", icon: Briefcase, id: 11 },
-    { title: "Product Limit Engine", icon: Briefcase, id: 12 },
-    { title: "Governing Stress Scenarios", icon: AlertTriangle, id: 13 },
-    { title: "Reverse Stress Boundary Test", icon: PlayCircle, id: 14 },
-    { title: "Human Supervisory Sign-off", icon: UserCheck, id: 15 }
+    { title: "Passport", icon: Fingerprint, id: 0 },
+    { title: "Financial Health", icon: Activity, id: 1 },
+    { title: "Product Comparison", icon: BarChart3, id: 2 },
+    { title: "Limit Bridge", icon: Briefcase, id: 3 },
+    { title: "Stress & Reverse", icon: PlayCircle, id: 4 },
+    { title: "Bankability", icon: ShieldCheck, id: 5 },
+    { title: "Human Decision", icon: UserCheck, id: 6 },
+    { title: "Decision Package", icon: Database, id: 7 }
   ];
 
   const submitDecision = async (status: "APPROVED" | "DECLINED") => {
     setSubmitting(true);
     try {
       const decisionEnum = status === "APPROVED" ? "APPROVE_AS_REQUESTED" : "DECLINE_AFTER_HUMAN_REVIEW";
-      // Determine approved amount: Use requested amount, capped by limit
       let approvedAmount = data?.requested_amount;
       if (status === "APPROVED" && data?.assessment?.binding_limit) {
         approvedAmount = Math.min(data.requested_amount, Number(data.assessment.binding_limit));
+      } else if (status === "APPROVED" && data?.assessment?.supportable_amount) {
+        approvedAmount = Math.min(data.requested_amount, Number(data.assessment.supportable_amount));
       }
       
       const res = await apiFetch(`/api/cases/${caseId}/human-decision`, {
@@ -77,7 +76,6 @@ export default function DecisionRoomPage() {
         headers: {
           "Idempotency-Key": crypto.randomUUID(),
           "X-Expected-Version": (data?.case_version || 0).toString(),
-          "X-CSRF-Token": "" // For prototype
         },
         body: JSON.stringify({
           decision: decisionEnum,
@@ -118,153 +116,189 @@ export default function DecisionRoomPage() {
     );
   }
 
-  const renderGenericDataStep = (title: string, desc: string, dataKey: string) => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
-      <p className="text-gray-400 mb-6">{desc}</p>
-      <div className="bg-black/30 p-6 rounded-xl border border-white/5 font-mono text-sm text-gray-300 overflow-auto max-h-96">
-        <pre>{JSON.stringify(data.features?.[dataKey] || {}, null, 2)}</pre>
-      </div>
-    </div>
-  );
-
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">1. Consent & KYC Validation</h2>
-            <p className="text-gray-400 mb-6">Verify entity consent and core KYC parameters.</p>
-            <div className="bg-black/30 p-6 rounded-xl border border-white/5">
-              <p className="mb-2"><strong>Entity:</strong> {data.business_name}</p>
-                                        </div>
-          </div>
-        );
-      case 1: return renderGenericDataStep("2. Udyam & Bureau Retrieval", "View retrieved statutory entity data.", "bureau_metrics");
-      case 2: return renderGenericDataStep("3. GST Filing Extraction", "Analyzed GST filing frequency and revenue.", "gst_metrics");
-      case 3: return renderGenericDataStep("4. Bank Statement Analytics", "Operational credits and debits from bank rails.", "bank_metrics");
-      case 4:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">5. Cash Flow & Buffer Assessment</h2>
-            <p className="text-gray-400 mb-6">Evaluate operating cash generation against fixed outflows.</p>
+            <h2 className="text-2xl font-bold text-white mb-2">1. Borrower, Request and Evidence Passport</h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-black/30 p-4 rounded-xl border border-white/5">
-                <p className="text-sm text-gray-400">Monthly Inflows</p>
-                <p className="text-2xl font-bold text-white">{formatCurrency(Number(data.features?.bank_metrics?.operating_inflows_monthly || 0))}</p>
+                <p className="text-sm text-gray-400">Borrower</p>
+                <p className="text-xl font-bold text-white">{data.business_name}</p>
               </div>
               <div className="bg-black/30 p-4 rounded-xl border border-white/5">
-                <p className="text-sm text-gray-400">Monthly Outflows</p>
-                <p className="text-2xl font-bold text-white">{formatCurrency(Number(data.features?.bank_metrics?.operating_outflows_monthly || 0))}</p>
+                <p className="text-sm text-gray-400">Requested Facility</p>
+                <p className="text-xl font-bold text-white">{formatCurrency(data.requested_amount)} - {data.assessment?.requested_product}</p>
+              </div>
+              <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                <p className="text-sm text-gray-400">Evidence Tier</p>
+                <p className="text-xl font-bold text-emerald-400">{data.assessment?.evidence_passport?.evidence_tier || "N/A"}</p>
+                <p className="text-xs text-gray-500 mt-1">{data.assessment?.evidence_passport?.tier_description}</p>
+              </div>
+              <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                <p className="text-sm text-gray-400">Integrity State</p>
+                <p className="text-xl font-bold text-white">{data.assessment?.integrity_state || "INTACT"}</p>
               </div>
             </div>
-          </div>
-        );
-      case 5: return renderGenericDataStep("6. Turnover & Volatility Profiling", "Assess historical stability of turnover.", "gst_metrics");
-      case 6:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">7. Integrity & Fraud Graphing</h2>
-            <p className="text-gray-400 mb-6">Graph traversal results for conflict of interest and integrity markers.</p>
-            <IntegrityGraph caseId={caseId as string} entityName={data.business_name} />
-          </div>
-        );
-      case 7: return renderGenericDataStep("8. Working Capital Cycle Computation", "Evaluate receivable and payable days.", "receivable_metrics");
-      case 8: return renderGenericDataStep("9. Asset/LTV Validation", "Evaluate unencumbered collateral buffers if applicable.", "collateral_metrics");
-      case 9:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">10. Existing Repayment Burden</h2>
-            <p className="text-gray-400 mb-6">Aggregate verifiable debt service obligations.</p>
-            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
-              <p className="text-sm text-gray-400">Existing Monthly Debt Service</p>
-              <p className="text-2xl font-bold text-white">{formatCurrency(Number(data.features?.bank_metrics?.verified_existing_debt_service_monthly || 0))}</p>
+            <h3 className="text-lg font-bold text-white mt-8 mb-4">Integrity Graph</h3>
+            <div className="h-[400px]">
+              <IntegrityGraph caseId={caseId as string} entityName={data.business_name} />
             </div>
           </div>
         );
-      case 10:
+      case 1:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">11. Financial Health Index (FHI)</h2>
-            <p className="text-gray-400 mb-6">Evidence-conditioned conceptual scoring.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <h2 className="text-2xl font-bold text-white mb-2">2. Financial Health and Contribution Waterfall</h2>
+            <div className="grid grid-cols-2 gap-6">
               <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
-                <p className="text-sm text-gray-400 mb-2">Vyapar Credit Health Score</p>
-                <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
-                <p className="text-xs text-gray-500 mt-2">Range: 300 - 900</p>
+                <p className="text-sm text-gray-400 mb-2">Vyapar Credit Health</p>
+                <p className="text-4xl font-bold text-emerald-400 font-mono">{data.assessment?.vyapar_credit_health_score ?? "N/A"}</p>
               </div>
               <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
                 <p className="text-sm text-gray-400 mb-2">Financial Health Index (FHI)</p>
                 <p className="text-4xl font-bold text-white font-mono">
-                  {data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}
+                  {data.assessment?.financial_health_index !== undefined && data.assessment?.financial_health_index !== null ? Number(data.assessment.financial_health_index).toFixed(2) : "N/A"}
                 </p>
               </div>
             </div>
-          </div>
-        );
-      case 11:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">12. Baseline Capacity Sizing</h2>
-            <p className="text-gray-400 mb-6">Standard operational conditions Post-Loan DSCR and Limit sizing.</p>
-            <div className="bg-black/30 p-6 rounded-xl border border-white/5">
-              <p className="text-lg mb-2">Requested: {formatCurrency(data.requested_amount)}</p>
-              <p className="text-lg">Baseline Supportable: {formatCurrency(Number(data.assessment?.supportable_amount || 0))}</p>
-            </div>
-          </div>
-        );
-      case 12:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">13. Product Limit Engine</h2>
-            <p className="text-gray-400 mb-6">Product specific constraints applied.</p>
-            <div className="bg-black/30 p-6 rounded-xl border border-white/5">
-              <p className="text-lg mb-2 text-amber-400">Binding Constraint: {data.assessment?.binding_constraint?.constraint_type || "N/A"}</p>
-              <p className="text-lg text-emerald-400">Product Binding Limit: {formatCurrency(Number(data.assessment?.binding_limit || data.assessment?.supportable_amount || 0))}</p>
-            </div>
-          </div>
-        );
-      case 13:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">14. Governing Stress Scenarios</h2>
-            <p className="text-gray-400 mb-6">Review specific stress scenarios applied to capacity.</p>
-            <div className="space-y-3">
-              {data.assessment?.stress_results?.slice(0, 3).map((stress: any, idx: number) => (
-                <div key={idx} className="bg-black/20 p-4 rounded-lg border border-red-500/20">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-sm font-bold text-white mb-1">{stress.scenario_name}</p>
-                      <p className="text-sm text-gray-400">{stress.impact}</p>
-                    </div>
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-white mt-4">Six Pillars</h3>
+              {data.assessment?.six_pillars?.map((p: any, i: number) => (
+                <div key={i} className="flex justify-between items-center p-4 bg-black/20 rounded-lg border border-white/5">
+                  <div>
+                    <p className="font-bold text-white">{p.name}</p>
+                    <p className="text-sm text-gray-400">{p.health_status}</p>
                   </div>
+                  <div className="text-2xl font-mono text-emerald-400">{p.score}</div>
                 </div>
               ))}
             </div>
           </div>
         );
-      case 14:
+      case 2:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">15. Reverse Stress Boundary Test</h2>
-            <p className="text-gray-400 mb-6">Boundary conditions to breach policy floor.</p>
-            <div className="bg-black/30 p-6 rounded-xl border border-white/5 overflow-auto">
-              {data.assessment?.stress_results?.find((s:any) => s.scenario_id === "REVERSE_STRESS") ? (
-                <pre className="text-sm text-gray-300 font-mono">
-                  {JSON.stringify(data.assessment.stress_results.find((s:any) => s.scenario_id === "REVERSE_STRESS").reverse_stress_details, null, 2)}
-                </pre>
-              ) : (
-                <p className="text-gray-500 italic">No reverse stress details available.</p>
+            <h2 className="text-2xl font-bold text-white mb-2">3. Four-Product Comparison</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {data.assessment?.product_capacities?.map((pc: any, i: number) => (
+                <div key={i} className="bg-black/30 p-4 rounded-xl border border-white/5">
+                  <p className="text-sm text-gray-400">{pc.product_name}</p>
+                  <p className="text-2xl font-bold text-white">{formatCurrency(Number(pc.capacity))}</p>
+                </div>
+              ))}
+              {(!data.assessment?.product_capacities || data.assessment.product_capacities.length === 0) && (
+                <p className="text-gray-500">Product capacities missing.</p>
               )}
             </div>
           </div>
         );
-      case 15:
+      case 3:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">16. Final Sign-off</h2>
-            <p className="text-gray-400 mb-6">Provide your ultimate decision for Case #{(caseId as string)?.slice(0, 8)}.</p>
-            
+            <h2 className="text-2xl font-bold text-white mb-2">4. Limit Bridge</h2>
+            <p className="text-gray-400">Waterfall of caps bridging from requested amount to final supportable limit.</p>
+            <div className="bg-black/30 p-6 rounded-xl border border-white/5">
+              {data.assessment?.limit_bridge?.stages ? (
+                <div className="space-y-4">
+                  {data.assessment.limit_bridge.stages.map((stage: any, i: number) => (
+                    <div key={i} className={`flex justify-between items-center pb-2 border-b border-white/5 ${stage.applied ? 'opacity-100' : 'opacity-50'}`}>
+                      <div>
+                        <p className="text-white font-bold">{stage.stage_id}</p>
+                        <p className="text-xs text-gray-400">{stage.explanation}</p>
+                        <p className="text-xs text-emerald-500 mt-1 font-mono">{stage.formula}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-white">{formatCurrency(stage.calculated_value)}</p>
+                        {stage.applied && <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">APPLIED</span>}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-4 flex justify-between items-center bg-emerald-500/10 p-4 rounded-lg mt-4 border border-emerald-500/30">
+                     <div>
+                       <p className="text-emerald-400 font-bold text-lg">Final Supportable Amount</p>
+                       <p className="text-xs text-gray-400">Binding: {data.assessment.limit_bridge.binding_constraint}</p>
+                     </div>
+                     <p className="text-2xl font-bold text-emerald-400">{formatCurrency(data.assessment.limit_bridge.final_supportable_amount)}</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-gray-500">Limit bridge data not available.</p>
+              )}
+            </div>
+          </div>
+        );
+      case 4:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">5. Stress and Reverse Stress</h2>
+            <p className="text-gray-400">Authoritative down-side resilience checks.</p>
+            {!stressData ? (
+              <p className="text-gray-500">Loading stress scenarios...</p>
+            ) : (
+              <div className="space-y-6">
+                 <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                     <p className="text-sm text-gray-400">Overall Stress Status</p>
+                     <p className={`text-xl font-bold ${stressData.overall_stress_status === 'PASS' ? 'text-emerald-400' : stressData.overall_stress_status === 'FAIL' ? 'text-red-400' : 'text-amber-400'}`}>{stressData.overall_stress_status}</p>
+                   </div>
+                 </div>
+                 <h3 className="text-lg font-bold text-white mt-4">Scenarios</h3>
+                 <div className="space-y-3 max-h-[400px] overflow-auto pr-2">
+                   {stressData.scenarios?.map((scen: any, idx: number) => (
+                     <div key={idx} className="bg-black/20 p-4 rounded-lg border border-white/5">
+                       <div className="flex justify-between items-start">
+                         <div>
+                           <p className="text-md font-bold text-white">{scen.name || scen.scenario_name}</p>
+                           <p className="text-sm text-gray-400">{scen.description || scen.impact}</p>
+                         </div>
+                         <div className="text-right">
+                           <p className={`text-lg font-mono font-bold ${scen.status === 'PASS' || scen.status === 'SECURE' ? 'text-emerald-400' : scen.status === 'FAIL' || scen.status === 'DISTRESSED' ? 'text-red-400' : 'text-amber-400'}`}>{scen.status}</p>
+                           {scen.recomputed_dscr !== undefined && <p className="text-xs text-gray-500">DSCR: {Number(scen.recomputed_dscr).toFixed(2)}x</p>}
+                         </div>
+                       </div>
+                       {scen.scenario_id === "REVERSE_STRESS" && scen.reverse_stress_details && (
+                         <div className="mt-4 p-3 bg-red-500/10 rounded border border-red-500/20">
+                           <p className="text-sm text-white mb-2 font-bold">Reverse Stress Details</p>
+                           <pre className="text-xs text-red-300 font-mono overflow-auto">{JSON.stringify(scen.reverse_stress_details, null, 2)}</pre>
+                         </div>
+                       )}
+                     </div>
+                   ))}
+                 </div>
+              </div>
+            )}
+          </div>
+        );
+      case 5:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">6. Bankability and Analyst Recommendation</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-black/30 p-6 rounded-xl border border-white/5">
+                <p className="text-sm text-gray-400 mb-2">Analyst Recommendation</p>
+                <p className="text-xl font-bold text-white">{data.assessment?.analyst_recommendation || "PENDING"}</p>
+              </div>
+              <div className="bg-black/30 p-6 rounded-xl border border-white/5">
+                <p className="text-sm text-gray-400 mb-2">Policy Recommendation</p>
+                <p className="text-xl font-bold text-white">{data.assessment?.policy_recommendation || "N/A"}</p>
+              </div>
+            </div>
+            <h3 className="text-lg font-bold text-white mt-4">Bankability Interventions</h3>
+            {data.assessment?.bankability_interventions?.map((inv: any, i: number) => (
+              <div key={i} className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
+                <p className="text-blue-400 font-bold">{inv.intervention_type}</p>
+                <p className="text-sm text-gray-300 mt-1">{inv.description}</p>
+              </div>
+            ))}
+          </div>
+        );
+      case 6:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">7. SA Mandate and Human Decision</h2>
+            <p className="text-gray-400 mb-6">Final Sign-off.</p>
             {decision ? (
               <div className={`p-8 rounded-xl border flex flex-col items-center text-center ${decision === 'APPROVED' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
                 <CheckCircle2 className={`w-16 h-16 mb-4 ${decision === 'APPROVED' ? 'text-emerald-400' : 'text-red-400'}`} />
@@ -297,17 +331,26 @@ export default function DecisionRoomPage() {
             )}
           </div>
         );
+      case 7:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">8. Decision Package, Verification and Replay</h2>
+            <div className="bg-black/30 p-6 rounded-xl border border-white/5 font-mono text-xs text-gray-400 overflow-auto h-96">
+              <pre>{JSON.stringify(data.assessment || {}, null, 2)}</pre>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
   };
 
   return (
-    <div className="min-h-screen bg-black text-gray-200">
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-black text-gray-200 flex flex-col">
+      <div className="max-w-5xl mx-auto w-full px-4 py-8 flex-1 flex flex-col">
         
         {/* Header */}
-        <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-6">
+        <div className="flex justify-between items-end mb-8 border-b border-white/10 pb-6 shrink-0">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Credit Committee Decision Room</h1>
             <p className="text-gray-400">Guided evaluation journey for {data.business_name}</p>
@@ -318,33 +361,43 @@ export default function DecisionRoomPage() {
           </div>
         </div>
 
-        {/* 16-Step Stepper Header */}
-        <div className="flex flex-wrap gap-2 mb-8 items-center justify-center">
-            {steps.map((step, idx) => (
-                <button
-                    key={idx}
-                    onClick={() => setCurrentStep(idx)}
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition ${
-                        currentStep === idx 
-                        ? 'bg-blue-500 border-blue-500 text-white' 
-                        : currentStep > idx 
-                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
-                        : 'bg-white/5 border-white/10 text-gray-500'
-                    }`}
-                    title={step.title}
-                >
-                    {idx + 1}
-                </button>
-            ))}
+        {/* 8-Step Stepper Header */}
+        <div className="flex mb-8 shrink-0 relative px-4">
+            <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-white/10 -translate-y-1/2 z-0"></div>
+            {steps.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = currentStep === idx;
+              const isPast = currentStep > idx;
+              return (
+                <div key={idx} className="flex-1 flex flex-col items-center relative z-10">
+                  <button
+                      onClick={() => setCurrentStep(idx)}
+                      className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all ${
+                          isActive
+                          ? 'bg-blue-900 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.5)]' 
+                          : isPast
+                          ? 'bg-emerald-900/50 border-emerald-500/50 text-emerald-400' 
+                          : 'bg-black border-white/20 text-gray-600 hover:border-white/40'
+                      }`}
+                      title={step.title}
+                  >
+                      <Icon className="w-5 h-5" />
+                  </button>
+                  <p className={`mt-2 text-xs font-semibold whitespace-nowrap ${isActive ? 'text-blue-400' : isPast ? 'text-emerald-400/80' : 'text-gray-600'}`}>
+                    {step.title}
+                  </p>
+                </div>
+              );
+            })}
         </div>
 
         {/* Content */}
-        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8 min-h-[400px]">
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8 flex-1 flex flex-col min-h-[500px]">
           {renderStepContent()}
         </div>
 
         {/* Navigation */}
-        <div className="flex justify-between">
+        <div className="flex justify-between shrink-0">
           <button
             onClick={() => setCurrentStep(prev => Math.max(0, prev - 1))}
             disabled={currentStep === 0 || decision !== null}
@@ -359,7 +412,7 @@ export default function DecisionRoomPage() {
             disabled={currentStep === steps.length - 1 || decision !== null}
             className="px-6 py-3 bg-blue-600 rounded-xl text-white font-semibold hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Next Step
+            Next Section
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
