@@ -40,6 +40,7 @@ class OCENExportResponse(BaseModel):
     consent_artefact_reference: str
     product: str
     prototype_interoperability_payload: bool
+    interoperability_disclaimer: str
     limitations: str
     borrower: OCENBorrower
     credit_decision: OCENCreditDecision

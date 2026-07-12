@@ -63,8 +63,7 @@ def get_ocen_export(
     supportable = Decimal(str(assessment.get("supportable_amount", 0.0)))
     status_str = case_db.status.value if hasattr(case_db.status, "value") else str(case_db.status)
     sanctioned = Decimal(str(case_db.approved_amount)) if status_str == "SANCTIONED" and case_db.approved_amount else None
-    if status_str == "SANCTIONED" and not sanctioned:
-        sanctioned = supportable
+
         
     conditions = [c.get("condition_text") for c in assessment.get("conditions", [])] if assessment.get("conditions") else []
     covenants = [c.get("covenant_text") for c in assessment.get("covenants", [])] if assessment.get("covenants") else []
@@ -82,12 +81,13 @@ def get_ocen_export(
     return OCENExportResponse(
         schema_version="2.0-CANONICAL",
         timestamp=datetime.utcnow().isoformat() + "Z",
-        assessment_id=str(case_db.id),
+        assessment_id=str(pkg.assessment_id),
         package_id=str(pkg.id),
         case_version=str(case_db.version),
         consent_artefact_reference=f"CONSENT-ART-{business.business_id}",
         product=case_db.requested_product.value if hasattr(case_db.requested_product, "value") else str(case_db.requested_product),
         prototype_interoperability_payload=True,
+        interoperability_disclaimer="Not certified by OCEN or ULI. Hackathon interoperability prototype.",
         limitations="Indicative assessment only. Human sanction required. Synthetic validation.",
         borrower=OCENBorrower(
             entity_name=business.legal_name,
@@ -97,10 +97,10 @@ def get_ocen_export(
         credit_decision=OCENCreditDecision(
             status=status_str,
             indicative_supportable_amount=supportable,
-            sanctioned_amount=sanctioned,
+            sanctioned_amount=case_db.approved_amount if status_str == "SANCTIONED" else None,
             currency=case_db.currency,
-            tenure_months=36,
-            interest_rate=10.5,
+            tenure_months=getattr(case_db, 'proposed_tenor_months', 36) or 36,
+            interest_rate=float(getattr(case_db, 'proposed_annual_rate', 13.5) or 13.5),
             repayment="Monthly EMI",
             conditions=conditions,
             covenants=covenants,
@@ -114,8 +114,8 @@ def get_ocen_export(
             evidence_ids=ev_ids
         ),
         audit=OCENAudit(
-            audit_hash=pkg.package_hash or "PENDING",
-            package_hash=pkg.package_hash or "PENDING",
+            audit_hash=pkg.package_hash if pkg.package_hash else "UNSEALED_PROTOTYPE",
+            package_hash=pkg.package_hash if pkg.package_hash else "UNSEALED_PROTOTYPE",
             generated_by="system"
         ),
         engine_versions={
