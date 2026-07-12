@@ -191,13 +191,36 @@ class AssessmentService:
         credit_val = scores.get("vyapar_credit_health_score")
         credit_score = int(credit_val) if credit_val is not None else None
 
+        # Evidence Tiers
+        has_bank = "bank_metrics" in features and features["bank_metrics"].get("months_filed", 0) > 0
+        has_gst = "gst_metrics" in features and features["gst_metrics"].get("months_filed", 0) > 0
+        has_inv = "invoice_metrics" in features and features["invoice_metrics"].get("total_invoices", 0) > 0
+
+        if has_bank and has_gst and has_inv:
+            tier = "T3"
+            tier_desc = "Gold Standard: Bank, GST, and Invoices all present."
+        elif has_bank and has_gst:
+            tier = "T2"
+            tier_desc = "Strong: Bank and GST present."
+        elif has_bank:
+            tier = "T1"
+            tier_desc = "Standard: Bank only."
+        else:
+            tier = "T0"
+            tier_desc = "Insufficient: Missing Bank statements."
+
+        ep_dict = {
+            "evidence_tier": tier,
+            "tier_description": tier_desc
+        }
+
         return AssessmentResultResponse(
             assessment_id=uuid.uuid4(),
             case_id=case.id,
             case_version=case.version,
             generated_at=now,
             consent_state="VERIFIED",
-            evidence_passport=EvidencePassportResponse(),
+            evidence_passport=EvidencePassportResponse(**ep_dict),
             feature_snapshot=CanonicalFeatureSnapshotResponse(),
             financial_health_index=fhi,
             six_pillars=pillars,
