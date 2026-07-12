@@ -193,6 +193,31 @@ class DecisionPackage(Base):
     )
 
 
+class AssessmentSnapshot(Base):
+    __tablename__ = "assessment_snapshots"
+
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    assessment_id = mapped_column(UUID(as_uuid=True), unique=True, index=True, default=uuid.uuid4)
+    case_id = mapped_column(
+        UUID(as_uuid=True), ForeignKey("cases.id", ondelete="CASCADE"), nullable=False
+    )
+    case_version = mapped_column(Integer, nullable=False)
+    generated_at = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
+    
+    feature_snapshot = mapped_column(JSON, nullable=False, default=dict)
+    canonical_assessment_json = mapped_column(JSON, nullable=False, default=dict)
+    engine_versions = mapped_column(JSON, nullable=False, default=dict)
+    evidence_ids = mapped_column(JSON, nullable=False, default=list)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "case_id",
+            "case_version",
+            name="uq_assessment_case_version",
+        ),
+    )
+
+
 class IdempotencyRecord(Base):
     """Persistent records for tracking idempotent operations."""
 
