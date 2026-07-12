@@ -247,3 +247,26 @@ def get_case_evidence_passport(
     from app.domain.evidence.passport import generate_evidence_passport
 
     return generate_evidence_passport(db, str(case_id))
+
+from datetime import datetime
+
+@router.get("/{case_id}/evidence-envelope")
+def get_evidence_envelope(
+    case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    case = can_view_case(db, user, case_id)
+    rec = run_reconciliation(db, str(case_id))
+    unresolved_ratio = 0.0
+    reason_codes = []
+    if rec.get("total_discrepancies", 0) > 0:
+        unresolved = sum(1 for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED")
+        unresolved_ratio = unresolved / rec.get("total_discrepancies", 0)
+        reason_codes = [d.get("type") if isinstance(d, dict) else d.type for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED"]
+    
+    return {
+        "certainty": 0.95, 
+        "freshness": "T-1", 
+        "unresolved_ratio": unresolved_ratio,
+        "reason_codes": reason_codes,
+        "last_verified": datetime.utcnow().isoformat() + "Z"
+    }

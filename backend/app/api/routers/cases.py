@@ -1707,3 +1707,44 @@ def get_assessment_by_id(case_id: UUID, assessment_id: UUID, db: Session = Depen
     if str(assessment.case_id) != str(case_id):
         raise HTTPException(status_code=400, detail="Assessment does not belong to this case")
     return assessment
+from pydantic import BaseModel
+from typing import Optional
+
+class SimulationRequest(BaseModel):
+    product_type: str
+    amount: float
+    tenure_months: int
+    interest_rate: float
+
+@router.post("/{case_id}/simulate")
+def simulate_product_structure(
+    case_id: UUID, req: SimulationRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
+    case = can_view_case(db, user, case_id)
+    # Perform a basic financial simulation for prototype
+    # Dscr = Monthly Revenue / EMI
+    # EMI calculation: P * r * (1 + r)^n / ((1 + r)^n - 1)
+    if not case.monthly_revenue_inr:
+        return {"error": "Insufficient data for simulation"}
+        
+    p = req.amount
+    r = (req.interest_rate / 100.0) / 12.0
+    n = req.tenure_months
+    
+    if r > 0 and n > 0:
+        emi = p * r * ((1 + r) ** n) / (((1 + r) ** n) - 1)
+    else:
+        emi = p / (n if n > 0 else 1)
+        
+    revenue = float(case.monthly_revenue_inr)
+    dscr = revenue / emi if emi > 0 else 0
+    
+    # Policy checks
+    viable = dscr >= 1.25
+    
+    return {
+        "simulated_emi": emi,
+        "simulated_dscr": dscr,
+        "viable": viable,
+        "policy_breaches": ["DSCR below 1.25"] if not viable else []
+    }

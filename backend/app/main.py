@@ -7,7 +7,7 @@ import hashlib
 import secrets
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from app.api.routers import cases, audit, evidence, demo, stress, bankability
+from app.api.routers import cases, portfolio, audit, evidence, demo, stress, bankability, ocen
 from app.api import auth
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -102,12 +102,15 @@ async def csrf_middleware(request: Request, call_next):
 
 app.include_router(auth.router)
 app.include_router(cases.router)
+app.include_router(portfolio.router)
+
 app.include_router(audit.router)
 app.include_router(evidence.router)
 app.include_router(demo.router)
 app.include_router(stress.router)
 app.include_router(bankability.router)
 app.include_router(bankability.simulation_router)
+app.include_router(ocen.router)
 
 
 @app.get("/health")

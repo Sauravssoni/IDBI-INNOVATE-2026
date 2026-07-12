@@ -85,6 +85,7 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
       { label: "Dashboard", href: "/", icon: LayoutDashboard },
       { label: "Case Inventory", href: "/cases", icon: FolderKanban },
       { label: "Policy & Risk Engine", href: "/policy", icon: ShieldAlert, badge: "AI" },
+      { label: "Portfolio Assurance Lab", href: "/portfolio", icon: TrendingUp },
       { label: "Audit Log & CAS Trail", href: "/audit", icon: History },
       { label: "Validation Console", href: "/validation", icon: ShieldCheck, highlight: true },
     ];
