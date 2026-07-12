@@ -10,6 +10,7 @@ import EvidenceTab from "./tabs/EvidenceTab";
 import ReconciliationTab from "./tabs/ReconciliationTab";
 import AssessmentHistoryTab from "./tabs/AssessmentHistoryTab";
 import DecisionPackageTab from "./tabs/DecisionPackageTab";
+import SimulatorTab from "./tabs/SimulatorTab";
 import {
   Sparkles,
   Building2,
@@ -29,6 +30,7 @@ import {
   Scale,
   Database,
   ShieldCheck,
+  Calculator,
 } from "lucide-react";
 import { CaseListItem, EvaluateResponse, HumanDecisionResponse, AnalystRecommendationResponse } from "@/types";
 
@@ -419,6 +421,12 @@ export default function CaseEvaluationPage() {
               </p>
             </div>
           </div>
+          <div className="flex shrink-0">
+             <Link href="/demo" className="px-4 py-2.5 bg-brand-amber hover:bg-amber-600 text-white font-medium text-sm rounded-lg shadow-sm flex items-center gap-2 transition-all">
+                <Play className="w-4 h-4" />
+                Start 3-Minute Evaluator Walkthrough
+             </Link>
+          </div>
         </div>
       </div>
 
@@ -430,6 +438,7 @@ export default function CaseEvaluationPage() {
           { id: "reconciliation", label: "Reconciliation", icon: Scale },
           { id: "history", label: "Assessment History", icon: Clock },
           { id: "decision_package", label: "Sensitivity Lab", icon: FileText },
+          { id: "simulator", label: "Simulator", icon: Calculator },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -456,6 +465,7 @@ export default function CaseEvaluationPage() {
       )}
       {activeTab === "history" && <AssessmentHistoryTab caseId={caseData.id} />}
       {activeTab === "decision_package" && <DecisionPackageTab caseId={caseData.id} assessment={assessmentResult} decisionPackage={decisionPackage} />}
+      {activeTab === "simulator" && <SimulatorTab caseId={caseData.id} />}
 
       {activeTab === "overview" && (
         <div className="space-y-6">

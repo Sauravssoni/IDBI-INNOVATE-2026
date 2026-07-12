@@ -28,26 +28,60 @@ export default function EvidenceTab({ caseId, assessment }: { caseId: string, as
   const [employmentRecords, setEmploymentRecords] = useState<EmploymentEvidence[]>([]);
   const [obligationRecords, setObligationRecords] = useState<ObligationEvidence[]>([]);
   const [loading, setLoading] = useState(true);
+  const [envelope, setEnvelope] = useState<any>(null);
 
   useEffect(() => {
     async function fetchEvidence() {
       setLoading(true);
-      const [gstRes, bankRes, invoiceRes, empRes, obRes] = await Promise.all([
+      const [gstRes, bankRes, invoiceRes, empRes, obRes, envRes] = await Promise.all([
         apiFetch<GSTEvidence[]>(`/api/cases/${caseId}/evidence/gst`),
         apiFetch<BankEvidence[]>(`/api/cases/${caseId}/evidence/bank`),
         apiFetch<InvoiceEvidence[]>(`/api/cases/${caseId}/evidence/invoices`),
         apiFetch<EmploymentEvidence[]>(`/api/cases/${caseId}/evidence/employment`),
-        apiFetch<ObligationEvidence[]>(`/api/cases/${caseId}/evidence/obligations`)
+        apiFetch<ObligationEvidence[]>(`/api/cases/${caseId}/evidence/obligations`),
+        apiFetch<any>(`/api/cases/${caseId}/evidence-envelope`)
       ]);
       if (gstRes.status === 200) setGstRecords(gstRes.data || []);
       if (bankRes.status === 200) setBankRecords(bankRes.data || []);
       if (invoiceRes.status === 200) setInvoiceRecords(invoiceRes.data || []);
       if (empRes.status === 200) setEmploymentRecords(empRes.data || []);
       if (obRes.status === 200) setObligationRecords(obRes.data || []);
+      if (envRes.status === 200) setEnvelope(envRes.data);
       setLoading(false);
     }
     fetchEvidence();
   }, [caseId]);
+
+  
+      {/* Evidence Envelope */}
+      {envelope && (
+        <div className="glass-card p-6 border border-light-border shadow-sm mb-6 bg-gradient-to-r from-light-bg to-light-elevated">
+          <h3 className="text-lg font-bold text-light-text flex items-center gap-2 mb-4">
+            <ShieldAlert className="w-5 h-5 text-brand-teal" />
+            Evidence Confidence Envelope
+          </h3>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="p-4 bg-light-bg rounded-xl border border-light-border">
+              <div className="text-sm text-light-secondary mb-1">Certainty</div>
+              <div className="text-xl font-mono text-brand-teal">{(envelope.certainty * 100).toFixed(0)}%</div>
+            </div>
+            <div className="p-4 bg-light-bg rounded-xl border border-light-border">
+              <div className="text-sm text-light-secondary mb-1">Freshness</div>
+              <div className="text-xl font-mono text-light-text">{envelope.freshness}</div>
+            </div>
+            <div className="p-4 bg-light-bg rounded-xl border border-light-border">
+              <div className="text-sm text-light-secondary mb-1">Unresolved Ratio</div>
+              <div className="text-xl font-mono text-brand-red">{(envelope.unresolved_ratio * 100).toFixed(1)}%</div>
+            </div>
+            <div className="p-4 bg-light-bg rounded-xl border border-light-border">
+              <div className="text-sm text-light-secondary mb-1">Reason Codes</div>
+              <div className="text-xs font-mono text-light-text mt-1 space-y-1">
+                {envelope.reason_codes?.length ? envelope.reason_codes.map((c: string) => <div key={c}>{c}</div>) : "None"}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
   if (loading) {
     return <div className="text-center p-8 text-light-secondary font-mono text-sm">Loading Evidence Data...</div>;
