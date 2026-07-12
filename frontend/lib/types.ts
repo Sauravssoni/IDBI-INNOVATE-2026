@@ -159,7 +159,7 @@ export interface DecisionPackageResponse {
   assessment_certainty?: string | null;
   certainty_reasons?: string[] | null;
   peer_context?: PeerContext | null;
-  hindi_summary?: Record<string, unknown> | null;
+  hindi_summary?: Record<string, any> | null;
   policy_version: string;
   calculation_version: string;
   scoring_version?: string | null;

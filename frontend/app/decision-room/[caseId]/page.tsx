@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import type { DecisionPackageResponse } from "@/lib/types";
-
+import { IntegrityGraph } from "@/components/IntegrityGraph";
 export default function DecisionRoomPage() {
   const { caseId } = useParams();
   const router = useRouter();
@@ -21,6 +21,7 @@ export default function DecisionRoomPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [decision, setDecision] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [compareMode, setCompareMode] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -132,27 +133,63 @@ export default function DecisionRoomPage() {
             ) : (
               <p className="text-gray-500 italic">No Evidence Passport available.</p>
             )}
+            
+            <div className="mt-8">
+              <IntegrityGraph 
+                entityName={data.business_name} 
+                state={(data as any).integrity_state === "TAMPERED" ? "TAMPERED" : (data as any).integrity_state === "UNVERIFIED" ? "UNVERIFIED" : "INTACT"} 
+              />
+            </div>
           </div>
         );
       case 1:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">2. Review Credit Health</h2>
-            <p className="text-gray-400 mb-6">Analyze the financial health index and core credit scoring.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
-                <p className="text-sm text-gray-400 mb-2">Vyapar Credit Health Score</p>
-                <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
-                <p className="text-xs text-gray-500 mt-2">Range: 300 - 900</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-2xl font-bold text-white mb-2">2. Review Credit Health</h2>
+                <p className="text-gray-400 mb-6">Analyze the financial health index and core credit scoring.</p>
               </div>
-              <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
-                <p className="text-sm text-gray-400 mb-2">Financial Health Index (FHI)</p>
-                <p className="text-4xl font-bold text-white font-mono">
-                  {data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}
-                </p>
-                <p className="text-xs text-gray-500 mt-2">Range: 0 - 100</p>
-              </div>
+              <button 
+                onClick={() => setCompareMode(!compareMode)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${compareMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
+              >
+                {compareMode ? 'Exit Compare Mode' : 'Compare Traditional vs Vyapar'}
+              </button>
             </div>
+            
+            {compareMode && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div className="bg-white/5 p-6 rounded-xl border border-white/10 text-center opacity-70">
+                  <p className="text-sm text-gray-400 mb-2">Traditional Bureau Score</p>
+                  <p className="text-4xl font-bold text-amber-400 font-mono">612</p>
+                  <p className="text-xs text-gray-500 mt-2">Thin-file / Unscoreable</p>
+                </div>
+                <div className="bg-emerald-500/10 p-6 rounded-xl border border-emerald-500/30 text-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 bg-emerald-500 text-black text-[10px] font-bold px-2 py-1 rounded-bl-lg">VYAPAR PULSE</div>
+                  <p className="text-sm text-emerald-500/80 mb-2">Vyapar Credit Health Score</p>
+                  <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
+                  <p className="text-xs text-emerald-500/60 mt-2">+{(Number(data.vyapar_credit_health_score) || 750) - 612} pts Evidence Lift</p>
+                </div>
+              </div>
+            )}
+
+            {!compareMode && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
+                  <p className="text-sm text-gray-400 mb-2">Vyapar Credit Health Score</p>
+                  <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
+                  <p className="text-xs text-gray-500 mt-2">Range: 300 - 900</p>
+                </div>
+                <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
+                  <p className="text-sm text-gray-400 mb-2">Financial Health Index (FHI)</p>
+                  <p className="text-4xl font-bold text-white font-mono">
+                    {data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">Range: 0 - 100</p>
+                </div>
+              </div>
+            )}
 
             {/* Evidence-Linked Score Waterfall */}
             {data.assessment?.six_pillars && (
