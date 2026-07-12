@@ -21,7 +21,7 @@ const formatCurrency = (val: unknown) => {
   return `₹${num.toLocaleString("en-IN")}`;
 };
 
-export default function EvidenceTab({ caseId }: { caseId: string }) {
+export default function EvidenceTab({ caseId, assessment }: { caseId: string, assessment?: any }) {
   const [gstRecords, setGstRecords] = useState<GSTEvidence[]>([]);
   const [bankRecords, setBankRecords] = useState<BankEvidence[]>([]);
   const [invoiceRecords, setInvoiceRecords] = useState<InvoiceEvidence[]>([]);
