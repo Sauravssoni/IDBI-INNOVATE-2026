@@ -5,18 +5,18 @@ import { useParams } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/formatters";
 import { ShieldCheck, TrendingUp, AlertCircle, FileText, CheckCircle2 } from "lucide-react";
-import type { DecisionPackageResponse } from "@/lib/types";
+import type { ApplicantViewResponse } from "@/lib/types";
 
 export default function ApplicantViewPage() {
   const { caseId } = useParams();
-  const [data, setData] = useState<DecisionPackageResponse | null>(null);
+  const [data, setData] = useState<ApplicantViewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`);
+        const res = await apiFetch<ApplicantViewResponse>(`/api/cases/${caseId}/applicant-view`);
         if (res.status === 200 && res.data) {
           setData(res.data);
         } else {

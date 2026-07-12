@@ -433,3 +433,28 @@ class IntegrityGraphResult(BaseModel):
     synthetic_demonstration: bool
     nodes: List[IntegrityNode]
     edges: List[IntegrityEdge]
+
+
+class ApplicantViewOffer(BaseModel):
+    product_type: str
+    amount: Decimal
+    interest_rate_pct: float
+    tenure_months: int
+
+class ApplicantViewHindiSummary(BaseModel):
+    decision_label: str
+    reason_explanation: str
+    bankability_path_actions: List[str]
+
+class ApplicantViewResponse(BaseModel):
+    id: str
+    business_name: str
+    requested_amount: Optional[float] = None
+    requested_product: str
+    status: str
+    vyapar_credit_health_score: Optional[int] = None
+    binding_limit: Optional[Decimal] = None
+    recommendation: Optional[str] = None
+    hindi_summary: Optional[ApplicantViewHindiSummary] = None
+    offers: Optional[List[ApplicantViewOffer]] = None
+
