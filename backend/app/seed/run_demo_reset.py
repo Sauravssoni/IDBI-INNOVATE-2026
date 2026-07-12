@@ -14,8 +14,8 @@ def reset_demo():
     try:
         execute_bounded_reset(db, actor_email="cli@system")
         print("Demo reset complete! Precisely four personas are loaded.")
-    except DemoResetConflict:
-        print("Demo reset conflict: Reset already in progress.")
+    except DemoResetConflict as e:
+        print(f"Demo reset conflict: {e}")
         sys.exit(1)
     except Exception as e:
         print(f"Error during clean: {e}")

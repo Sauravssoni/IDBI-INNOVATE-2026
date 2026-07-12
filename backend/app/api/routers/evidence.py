@@ -18,7 +18,7 @@ from app.db.orm.evidence import (
     EmploymentPeriod,
     Obligation,
 )
-from app.db.orm.cases import AuditEvent
+from app.db.orm.cases import AuditEvent, AssessmentSnapshot
 from app.services.credit_twin import get_credit_twin
 from app.services.reconciliation import run_reconciliation
 
@@ -198,7 +198,26 @@ def get_assessment_history(
     res = []
     for e in events:
         meta = e.metadata_json or {}
+        
+        # New approach: check for assessment_id in metadata
+        assessment_id = meta.get("assessment_id")
         dec = meta.get("decision", {})
+        scores = meta.get("scores", {})
+        
+        recommendation = dec.get("recommendation", "UNKNOWN")
+        binding_limit = dec.get("binding_limit", None)
+        dscr = scores.get("dscr", None)
+        
+        if assessment_id:
+            # Query the snapshot
+            snapshot = db.query(AssessmentSnapshot).filter(AssessmentSnapshot.assessment_id == assessment_id).first()
+            if snapshot:
+                snap_json = snapshot.canonical_assessment_json
+                if snap_json:
+                    recommendation = snap_json.get("assessment_range", {}).get("recommendation", recommendation)
+                    binding_limit = snap_json.get("assessment_range", {}).get("supportable_limit", binding_limit)
+                    dscr = snap_json.get("current_dscr", dscr)
+
         res.append(
             {
                 "id": str(e.id),
@@ -208,9 +227,9 @@ def get_assessment_history(
                 "actor_role": meta.get("actor_role", "SYSTEM"),
                 "reason": meta.get("reason", dec.get("reason", "Automated Assessment")),
                 "created_at": e.created_at.isoformat(),
-                "recommendation": dec.get("recommendation", "UNKNOWN"),
-                "binding_limit": dec.get("binding_limit", None),
-                "dscr": meta.get("scores", {}).get("dscr", None),
+                "recommendation": recommendation,
+                "binding_limit": binding_limit,
+                "dscr": dscr,
                 "policy_version": meta.get("policy_version", "1.1"),
                 "calculation_version": meta.get(
                     "calculation_version", "DSCR_SANDBOX_V1"

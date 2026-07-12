@@ -22,7 +22,6 @@ async def debug_env():
 def reset_demo(
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
 ):
     settings = get_settings()
     if not settings.DEMO_ACCESS_ENABLED:
@@ -38,47 +37,40 @@ def reset_demo(
         )
 
     client_token = request.headers.get("X-Demo-Reset-Token")
-    if not client_token or not settings.DEMO_RESET_TOKEN or client_token != settings.DEMO_RESET_TOKEN:
-        raise HTTPException(
-            status_code=403,
-            detail="Invalid or missing demo reset token.",
-        )
-    if user.role != "CREDIT_ANALYST":
-        raise HTTPException(
-            status_code=403, detail="Only CREDIT_ANALYST can reset the demo."
-        )
+    actor_email = "system@demo.reset"
 
-    # Cooldown check
-    from app.db.orm.cases import IdempotencyRecord
-    from datetime import datetime, timezone, timedelta
-    
-    cooldown_key = "demo_reset_cooldown"
-    last_reset = db.query(IdempotencyRecord).filter(
-        IdempotencyRecord.idempotency_key == cooldown_key
-    ).first()
-    
-    now = datetime.now(timezone.utc)
-    if last_reset and (now - last_reset.created_at) < timedelta(minutes=1):
-        raise HTTPException(status_code=429, detail="Reset cooldown in effect. Please wait.")
-        
+    # Check if authorized via token
+    token_authorized = False
+    if client_token:
+        if not settings.DEMO_RESET_TOKEN or client_token != settings.DEMO_RESET_TOKEN:
+            raise HTTPException(
+                status_code=403, detail="Invalid demo reset token."
+            )
+        token_authorized = True
+
+    if not token_authorized:
+        # Check if authorized via session
+        from app.api.dependencies import get_current_user, verify_csrf
+        try:
+            user = get_current_user(request, db)
+            verify_csrf(request, db)
+            if user.role != "CREDIT_ANALYST":
+                raise HTTPException(
+                    status_code=403, detail="Only CREDIT_ANALYST can reset the demo."
+                )
+            actor_email = user.email
+        except HTTPException as e:
+            if "CSRF" in str(e.detail) or "CREDIT_ANALYST" in str(e.detail):
+                raise e
+            raise HTTPException(
+                status_code=403,
+                detail="Invalid or missing demo reset token / session.",
+            )
+
     from app.seed.reset_service import execute_bounded_reset, DemoResetConflict
 
     try:
-        execute_bounded_reset(db, actor_email=user.email)
-        
-        # Update cooldown
-        if last_reset:
-            last_reset.created_at = now
-        else:
-            new_cooldown = IdempotencyRecord(
-                idempotency_key=cooldown_key,
-                user_id=user.id,
-                action="demo_reset",
-                request_hash="cooldown",
-                expires_at=now + timedelta(days=1)
-            )
-            db.add(new_cooldown)
-        db.commit()
+        execute_bounded_reset(db, actor_email=actor_email)
     except DemoResetConflict as e:
         raise HTTPException(status_code=409, detail=str(e))
 
