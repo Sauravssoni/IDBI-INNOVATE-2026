@@ -355,7 +355,7 @@ class FinancialCapacityEngine:
             features_dict["gst_metrics"] = gst_metrics
 
         features_dict.update({
-            "authoritative_evidence_ids": inflow_ids + outflow_ids + obligation_ids + gst_metrics.get("gst_evidence_ids", []),
+            "authoritative_evidence_ids": inflow_ids + outflow_ids + obligation_ids + list(gst_metrics.get("gst_evidence_ids", [])),
             "inflow_evidence_ids": inflow_ids,
             "outflow_evidence_ids": outflow_ids,
             "obligation_evidence_ids": obligation_ids,

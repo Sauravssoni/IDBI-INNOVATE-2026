@@ -127,9 +127,12 @@ class ScoringEngine:
             dscr_for_score = post_loan_dscr or current_dscr
             if dscr_for_score is None and existing_ds == 0 and obligation_state == VERIFIED_ZERO_DEBT:
                 dscr_for_score = Decimal("2.00")
-            cashflow_score = Decimal("100") if dscr_for_score >= Decimal("1.75") else Decimal("80") if dscr_for_score >= Decimal("1.40") else Decimal("60") if dscr_for_score >= Decimal("1.15") else Decimal("30") if dscr_for_score >= Decimal("1.00") else Decimal("0")
-            cashflow_status = "VERIFIED"
-            cashflow_missing = []
+            if dscr_for_score is not None:
+                cashflow_score = Decimal("100") if dscr_for_score >= Decimal("1.75") else Decimal("80") if dscr_for_score >= Decimal("1.40") else Decimal("60") if dscr_for_score >= Decimal("1.15") else Decimal("30") if dscr_for_score >= Decimal("1.00") else Decimal("0")
+                cashflow_status = "VERIFIED"
+                cashflow_missing = []
+            else:
+                cashflow_score, cashflow_status, cashflow_missing = None, "MISSING_DATA", ["canonical_capacity_dscr", "verified_obligations"]
         else:
             cashflow_score, cashflow_status, cashflow_missing = None, "MISSING_DATA", ["canonical_capacity_dscr", "verified_obligations"]
 
@@ -196,7 +199,7 @@ class ScoringEngine:
         )
 
         if assessable:
-            fhi_dec = q2(sum(Decimal(str(item["contribution"])) for item in pillar_items.values() if item["contribution"] is not None))
+            fhi_dec = q2(sum((Decimal(str(item["contribution"])) for item in pillar_items.values() if item["contribution"] is not None), Decimal("0")))
             vyapar_credit_health_score = int(min(Decimal("900"), max(Decimal("300"), Decimal("300") + Decimal("6") * fhi_dec)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
             missing_count = sum(1 for item in pillar_items.values() if item["status"] == "MISSING_DATA")
             assessment_certainty = "HIGH_CERTAINTY" if missing_count == 0 else "MODERATE_CERTAINTY" if missing_count <= 1 else "LIMITED_CERTAINTY"
