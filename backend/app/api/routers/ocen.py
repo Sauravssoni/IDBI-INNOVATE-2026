@@ -8,7 +8,7 @@ import logging
 from app.db.session import get_db
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User
-from app.db.orm.cases import Case, DecisionPackage
+from app.db.orm.cases import Case, DecisionPackage, AssessmentSnapshot
 from app.schemas.ocen import OCENExportResponse, OCENBorrower, OCENCreditDecision, OCENEvidence, OCENAudit
 
 router = APIRouter(prefix="/api/cases", tags=["ocen"])
@@ -48,14 +48,34 @@ def get_ocen_export(
     if not pkg:
         raise HTTPException(status_code=404, detail="No decision package found. Cannot export.")
 
-    # Try to parse the payload to get real metrics
-    data = pkg.canonical_json
-    data.get("fhi_score")
-    data.get("current_dscr")
-    binding = data.get("binding_constraint")
-    supportable = data.get("binding_limit", 0.0) # wait, it was supportable_amount but test creates binding_limit
+    snapshot = (
+        db.query(AssessmentSnapshot)
+        .filter(AssessmentSnapshot.assessment_id == pkg.assessment_id)
+        .first()
+    )
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Assessment snapshot not found")
 
-    # Real values from the case
+    features = snapshot.feature_snapshot
+    assessment = snapshot.canonical_assessment_json
+    
+    # Extract values
+    supportable = Decimal(str(assessment.get("supportable_amount", 0.0)))
+    status_str = case_db.status.value if hasattr(case_db.status, "value") else str(case_db.status)
+    sanctioned = Decimal(str(case_db.approved_amount)) if status_str == "SANCTIONED" and case_db.approved_amount else None
+    if status_str == "SANCTIONED" and not sanctioned:
+        sanctioned = supportable
+        
+    conditions = [c.get("condition_text") for c in assessment.get("conditions", [])] if assessment.get("conditions") else []
+    covenants = [c.get("covenant_text") for c in assessment.get("covenants", [])] if assessment.get("covenants") else []
+    reason_codes = assessment.get("policy_reason_codes", ["NO_CONSTRAINT_FLAGGED"])
+
+    gstr1_revenue = Decimal(str(features.get("total_revenue", 0.0)))
+    bank_inflows = Decimal(str(features.get("total_bank_credits", 0.0)))
+    variance = Decimal(str(features.get("reconciliation_match_percent", 0.0)))
+    integrity = assessment.get("integrity_state", "FAILED")
+    ev_ids = [str(x) for x in assessment.get("evidence_ids", [])]
+
     business = case_db.business
 
     # Generate the OCEN export
@@ -71,27 +91,27 @@ def get_ocen_export(
         limitations="Indicative assessment only. Human sanction required. Synthetic validation.",
         borrower=OCENBorrower(
             entity_name=business.legal_name,
-            gstin="UNAVAILABLE",
-            pan="UNAVAILABLE"
+            gstin=getattr(business, "gstin", "UNAVAILABLE") or "UNAVAILABLE",
+            pan=getattr(business, "pan", "UNAVAILABLE") or "UNAVAILABLE"
         ),
         credit_decision=OCENCreditDecision(
-            status=case_db.status.value,
-            indicative_supportable_amount=Decimal(supportable),
-            sanctioned_amount=Decimal(supportable) if case_db.status.value == "SANCTIONED" else None,
-            currency="INR",
+            status=status_str,
+            indicative_supportable_amount=supportable,
+            sanctioned_amount=sanctioned,
+            currency=case_db.currency,
             tenure_months=36,
             interest_rate=10.5,
             repayment="Monthly EMI",
-            conditions=["Submit final bank statement before disbursal"] if case_db.status.value in ("SANCTIONED", "APPROVED") else [],
-            covenants=[],
-            reason_codes=[binding] if binding else ["NO_CONSTRAINT_FLAGGED"]
+            conditions=conditions,
+            covenants=covenants,
+            reason_codes=reason_codes
         ),
         evidence=OCENEvidence(
-            gstr1_revenue=Decimal(1000000),
-            bank_inflows=Decimal(1000000),
-            variance_percentage=Decimal(0),
-            integrity_status="VERIFIED" if case_db.status.value not in ("RECONCILIATION_REQUIRED", "DECLINED") else "FAILED",
-            evidence_ids=[]
+            gstr1_revenue=gstr1_revenue,
+            bank_inflows=bank_inflows,
+            variance_percentage=variance,
+            integrity_status=integrity,
+            evidence_ids=ev_ids
         ),
         audit=OCENAudit(
             audit_hash=pkg.package_hash or "PENDING",

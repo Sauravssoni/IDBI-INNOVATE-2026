@@ -173,6 +173,7 @@ export interface DecisionPackageResponse {
   case_version: number;
   audit_chain: DecisionPackageAuditItem[];
   bankability_path?: BankabilityPath | null;
+  assessment?: AssessmentResultResponse | null;
 }
 
 export interface ScenarioResult {
@@ -196,4 +197,25 @@ export interface StressResult {
     max_loan_amount: number;
     status: string;
   };
+}
+
+export interface FinancialHealthPillarResponse {
+  name: string;
+  score: number;
+  health_status: string;
+}
+
+export interface BindingConstraintResponse {
+  constraint_type: string;
+  reason: string;
+}
+
+export interface AssessmentResultResponse {
+  current_dscr?: number | null;
+  proposed_debt_service?: number | null;
+  post_loan_dscr?: number | null;
+  stressed_dscr?: number | null;
+  supportable_amount?: number | null;
+  binding_constraint?: BindingConstraintResponse | null;
+  six_pillars?: FinancialHealthPillarResponse[] | null;
 }
