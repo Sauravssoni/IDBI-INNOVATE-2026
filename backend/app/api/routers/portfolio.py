@@ -17,37 +17,74 @@ def get_db():
 
 @router.get("/metrics")
 def get_portfolio_metrics(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    # Mock data for Portfolio Assurance Lab for the prototype
-    total_exposure = 150000000.00
+    from app.db.orm.cases import AssessmentSnapshot
+    from sqlalchemy import func
+    
     active_cases = db.query(Case).count()
     approved_cases = db.query(Case).filter(Case.status == CaseStatus.HUMAN_APPROVED).count()
     
-    # Portfolio composition
-    composition = [
-        {"segment": "Manufacturing", "exposure": 80000000, "pd": 1.2, "lgd": 45},
-        {"segment": "Retail", "exposure": 40000000, "pd": 2.5, "lgd": 50},
-        {"segment": "Services", "exposure": 30000000, "pd": 1.8, "lgd": 40}
-    ]
+    # Retrieve all latest assessments per case
+    subq = db.query(
+        AssessmentSnapshot.case_id_fk,
+        func.max(AssessmentSnapshot.created_at).label('max_date')
+    ).group_by(AssessmentSnapshot.case_id_fk).subquery()
     
-    # ECL (Expected Credit Loss) Simulation
+    latest_assessments = db.query(AssessmentSnapshot).join(
+        subq,
+        (AssessmentSnapshot.case_id_fk == subq.c.case_id_fk) & 
+        (AssessmentSnapshot.created_at == subq.c.max_date)
+    ).all()
+    
+    total_exposure = sum(
+        (a.canonical_assessment_json.get("assessment_range", {}).get("supportable_limit", 0) or 0)
+        for a in latest_assessments
+    ) if latest_assessments else 0.0
+    
+    # Simple derivation of PD and LGD based on FHI and DSCR from the snapshots
+    # If not present, default to safe 0.0 values.
+    avg_pd = 0.0
+    avg_lgd = 0.0
+    ecl_base = 0.0
+    if latest_assessments:
+        pds = []
+        lgds = []
+        for a in latest_assessments:
+            dscr = a.canonical_assessment_json.get("current_dscr", 1.0) or 1.0
+            pd = max(0.5, 5.0 - float(dscr))
+            lgd = 45.0 # Fixed for simplicity or derived
+            pds.append(pd)
+            lgds.append(lgd)
+            limit = a.canonical_assessment_json.get("assessment_range", {}).get("supportable_limit", 0) or 0
+            ecl_base += float(limit) * (pd / 100) * (lgd / 100)
+        avg_pd = sum(pds) / len(pds) if pds else 0.0
+        avg_lgd = sum(lgds) / len(lgds) if lgds else 0.0
+    
     ecl_scenarios = {
-        "base": {"ecl": 2500000, "provision_ratio": 1.6},
-        "adverse": {"ecl": 4200000, "provision_ratio": 2.8},
-        "severe": {"ecl": 6500000, "provision_ratio": 4.3}
+        "base": {"ecl": ecl_base, "provision_ratio": (ecl_base / total_exposure * 100) if total_exposure else 0},
+        "adverse": {"ecl": ecl_base * 1.5, "provision_ratio": (ecl_base * 1.5 / total_exposure * 100) if total_exposure else 0},
+        "severe": {"ecl": ecl_base * 2.5, "provision_ratio": (ecl_base * 2.5 / total_exposure * 100) if total_exposure else 0}
     }
     
+    composition = [
+        {"segment": "Aggregate", "exposure": total_exposure, "pd": avg_pd, "lgd": avg_lgd},
+    ]
+    
+    # Deriving alerts
+    alerts = []
+    if avg_pd > 2.0:
+         alerts.append({"severity": "high", "message": f"Portfolio average PD is {avg_pd:.2f}%, exceeding 2.0% threshold."})
+    if total_exposure > 500000000:
+         alerts.append({"severity": "medium", "message": "Total exposure is approaching limits."})
+         
     return {
         "overview": {
-            "total_exposure": total_exposure,
-            "active_facilities": approved_cases * 10,
-            "weighted_average_pd": 1.7,
-            "weighted_average_lgd": 46.2,
-            "var_99": 8500000
+            "total_exposure": float(total_exposure),
+            "active_facilities": approved_cases,
+            "weighted_average_pd": float(avg_pd),
+            "weighted_average_lgd": float(avg_lgd),
+            "var_99": float(ecl_base * 3.0) # Deriving VaR dynamically
         },
         "composition": composition,
         "ecl_scenarios": ecl_scenarios,
-        "alerts": [
-            {"severity": "high", "message": "Textiles segment showing 15% increase in PD over last 30 days."},
-            {"severity": "medium", "message": "3 accounts breached DSCR covenants this week."}
-        ]
+        "alerts": alerts
     }

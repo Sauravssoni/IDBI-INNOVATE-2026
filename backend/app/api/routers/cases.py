@@ -1721,11 +1721,55 @@ def simulate_product_structure(
     case_id: UUID, req: SimulationRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     case = can_view_case(db, user, case_id)
-    # Perform a basic financial simulation for prototype
-    # Dscr = Monthly Revenue / EMI
-    # EMI calculation: P * r * (1 + r)^n / ((1 + r)^n - 1)
-    if not case.monthly_revenue_inr:
-        return {"error": "Insufficient data for simulation"}
+    from app.services.assessment_service import AssessmentService
+    assessment = AssessmentService.get_latest_assessment(db, case_id)
+    if not assessment:
+        return {"error": "No assessment exists to simulate against."}
+        
+    features = assessment.feature_snapshot.model_dump(mode="json") if hasattr(assessment.feature_snapshot, "model_dump") else assessment.feature_snapshot
+    if isinstance(features, dict) and features.get("obligation_verification_state") in ["UNKNOWN_OBLIGATIONS", "UNVERIFIED"]:
+        return {"error": "NOT_ASSESSABLE", "decision": "ADDITIONAL_EVIDENCE_REQUIRED"}
+        
+    try:
+        from app.domain.financial.engine import FinancialCapacityEngine
+        from decimal import Decimal
+        cap = FinancialCapacityEngine.compute_capacity_from_features(
+            features=features,
+            requested_amount=Decimal(str(req.amount)),
+            requested_product=req.product_type,
+            custom_tenure_months=req.tenure_months,
+            custom_annual_rate=Decimal(str(req.interest_rate))
+        )
+        
+        limit_dict = cap.get("product_limits", {}).get(cap.get("requested_product_method", ""), {})
+        
+        return {
+            "assessment_id": str(assessment.assessment_id),
+            "case_version": assessment.case_version,
+            "product": cap.get("requested_product_method", req.product_type),
+            "requested_amount": req.amount,
+            "supportable_amount": float(cap.get("binding_product_limit", 0)),
+            "rate": req.interest_rate,
+            "tenor": req.tenure_months,
+            "proposed_emi": float(cap.get("proposed_emi", 0) or 0),
+            "operating_cash_available": float(cap.get("operating_cash_available_for_debt_service_monthly", 0) or 0),
+            "existing_debt_service": float(cap.get("verified_existing_debt_service_monthly", 0) or 0),
+            "current_dscr": cap.get("current_dscr"),
+            "post_loan_dscr": cap.get("post_loan_dscr"),
+            "stressed_dscr": cap.get("stressed_dscr"),
+            "policy_floor": 1.25,
+            "binding_constraint": limit_dict.get("binding_constraint"),
+            "conditions": limit_dict.get("warnings", []),
+            "covenants": limit_dict.get("limitations", []),
+            "assumptions": limit_dict.get("formula"),
+            "limitations": limit_dict.get("limitations", []),
+            "engine_versions": {
+                "calculation": cap.get("calculation_version")
+            }
+        }
+    except Exception as e:
+        return {"error": f"Engine failed: {str(e)}"}
+
         
     p = req.amount
     r = (req.interest_rate / 100.0) / 12.0
