@@ -154,26 +154,60 @@ export default function DecisionRoomPage() {
               </div>
             </div>
 
-            {/* Score Waterfall */}
+            {/* Evidence-Linked Score Waterfall */}
             {data.assessment?.six_pillars && (
               <div className="mt-8">
                 <h3 className="text-lg font-bold text-white mb-4">Evidence-Linked Score Waterfall</h3>
                 <div className="space-y-3">
                   {data.assessment.six_pillars.map((pillar, idx) => (
-                    <div key={idx} className="bg-black/20 p-4 rounded-lg border border-white/5 flex justify-between items-center">
-                      <span className="text-sm text-gray-300 font-medium">{pillar.name}</span>
-                      <div className="flex items-center gap-4">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          pillar.health_status === 'HEALTHY' ? 'bg-emerald-500/20 text-emerald-400' :
-                          pillar.health_status === 'WARNING' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-red-500/20 text-red-400'
-                        }`}>
-                          {pillar.health_status}
-                        </span>
-                        <span className="text-lg font-mono font-bold text-white w-12 text-right">
-                          {pillar.score}
-                        </span>
+                    <div key={idx} className="bg-black/20 p-4 rounded-lg border border-white/5 flex flex-col">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm text-gray-300 font-medium">{pillar.name}</span>
+                        <div className="flex items-center gap-4">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            pillar.health_status === 'HEALTHY' ? 'bg-emerald-500/20 text-emerald-400' :
+                            pillar.health_status === 'WARNING' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-red-500/20 text-red-400'
+                          }`}>
+                            {pillar.health_status}
+                          </span>
+                          <span className="text-lg font-mono font-bold text-white w-12 text-right">
+                            {pillar.score}
+                          </span>
+                        </div>
                       </div>
+                      
+                      {/* Evidence Linkage Details */}
+                      {((pillar as any).positive_reason_codes?.length > 0 || (pillar as any).adverse_reason_codes?.length > 0) && (
+                        <div className="mt-2 text-xs border-t border-white/5 pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {((pillar as any).positive_reason_codes?.length > 0) && (
+                            <div>
+                              <p className="text-emerald-400/80 mb-1 font-semibold">Positive Drivers:</p>
+                              <ul className="list-disc list-inside text-gray-400">
+                                {(pillar as any).positive_reason_codes.map((code: string, i: number) => (
+                                  <li key={i}>{code}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {((pillar as any).adverse_reason_codes?.length > 0) && (
+                            <div>
+                              <p className="text-amber-400/80 mb-1 font-semibold">Adverse Drivers:</p>
+                              <ul className="list-disc list-inside text-gray-400">
+                                {(pillar as any).adverse_reason_codes.map((code: string, i: number) => (
+                                  <li key={i}>{code}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {((pillar as any).evidence_ids?.length > 0) && (
+                        <div className="mt-2 text-[10px] text-gray-500">
+                          Evidence: {(pillar as any).evidence_ids.join(", ")}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -187,11 +221,16 @@ export default function DecisionRoomPage() {
             <h2 className="text-2xl font-bold text-white mb-2">3. Capacity & Limits</h2>
             <p className="text-gray-400 mb-6">Review calculated product limits and engine recommendation.</p>
 
-            {/* Facility Waterfall */}
+            {/* Score-to-Limit Bridge */}
             {data.assessment?.supportable_amount !== undefined && data.assessment?.supportable_amount !== null && (
               <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
-                <h3 className="text-lg font-bold text-white mb-4">Facility Waterfall</h3>
+                <h3 className="text-lg font-bold text-white mb-4">Score-to-Limit Bridge</h3>
                 <div className="space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <span className="text-sm text-gray-400">Financial Health Index (Score)</span>
+                    <span className="text-lg font-mono text-white">{data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}</span>
+                  </div>
+
                   <div className="flex justify-between items-center border-b border-white/5 pb-2">
                     <span className="text-sm text-gray-400">Requested Amount</span>
                     <span className="text-lg font-mono text-white">{formatCurrency(data.requested_amount)}</span>
@@ -225,6 +264,28 @@ export default function DecisionRoomPage() {
                     <span className="text-md font-bold text-blue-400">Supportable Amount</span>
                     <span className="text-2xl font-bold font-mono text-blue-400">{formatCurrency(Number(data.assessment.supportable_amount))}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Stress Testing Results */}
+            {data.assessment?.stress_results && data.assessment.stress_results.length > 0 && (
+              <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
+                <h3 className="text-lg font-bold text-white mb-4">Stress Testing Results</h3>
+                <div className="space-y-3">
+                  {data.assessment.stress_results.map((stress: any, idx: number) => (
+                    <div key={idx} className="bg-black/20 p-4 rounded-lg border border-red-500/20">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-sm font-bold text-white mb-1">{stress.scenario_name}</p>
+                          <p className="text-sm text-gray-400">{stress.impact}</p>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-red-500/10 text-red-400 rounded">
+                          Simulated
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import List, Optional, Any, Dict
 from datetime import datetime
 from decimal import Decimal
@@ -290,6 +290,9 @@ class FinancialHealthPillarResponse(BaseModel):
     name: str
     score: int
     health_status: str
+    positive_reason_codes: List[str] = Field(default_factory=list)
+    adverse_reason_codes: List[str] = Field(default_factory=list)
+    evidence_ids: List[str] = Field(default_factory=list)
 
 class AssessmentRangeResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
