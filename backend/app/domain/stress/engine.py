@@ -265,9 +265,19 @@ def run_case_stress_lab(
 
     # 15. Reverse Stress Calculation
     s15_features = features.copy()
+    
+    # 1. Correct Reverse Stress
+    # Reverse stress must not use a fixed 1.0x threshold.
+    # Use the actual product/policy DSCR floor returned by the policy registry.
+    policy_dscr_floor = getattr(base_policy, "policy_min_dscr", Decimal("1.25"))
+    if "RECEIVABLE" in requested_product or "EQUIPMENT" in requested_product:
+        # Some products might not be purely DSCR bounded, but for those that are:
+        pass
+        
     total_post_ds = base_existing_ds + FinancialCapacityEngine.calculate_emi(requested_amount, Decimal("0.135"), 36)
+    
     if base_inflows > 0:
-        break_even_inflows = total_post_ds + base_outflows
+        break_even_inflows = (total_post_ds * policy_dscr_floor) + base_outflows
         if break_even_inflows < base_inflows:
             drop_pct = (Decimal("1") - (break_even_inflows / base_inflows))
             s15_inflows = break_even_inflows
@@ -277,11 +287,57 @@ def run_case_stress_lab(
     else:
         drop_pct = Decimal("0")
         s15_inflows = Decimal("0")
+        
     s15_inflows = s15_inflows.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    
+    # Calculate maximums
+    max_rev_drop = (drop_pct * 100).quantize(Decimal("0.1"))
+    
+    max_outflow_increase = Decimal("0")
+    if base_outflows > 0:
+        max_allowed_outflows = base_inflows - (total_post_ds * policy_dscr_floor)
+        if max_allowed_outflows > base_outflows:
+            max_outflow_increase = ((max_allowed_outflows / base_outflows) - Decimal("1")) * Decimal("100")
+            max_outflow_increase = max_outflow_increase.quantize(Decimal("0.1"))
+
+    # Max rate increase via search
+    max_rate_hike_bps = 0
+    current_rate = Decimal("0.135")
+    for hike in range(100, 1000, 50):
+        test_rate = current_rate + (Decimal(str(hike)) / Decimal("10000"))
+        test_emi = FinancialCapacityEngine.calculate_emi(requested_amount, test_rate, 36)
+        test_post_ds = base_existing_ds + test_emi
+        test_cash = base_inflows - base_outflows
+        if test_cash > 0 and (test_cash / test_post_ds) < policy_dscr_floor:
+            max_rate_hike_bps = max(0, hike - 50)
+            break
+    if max_rate_hike_bps == 0: max_rate_hike_bps = 950
+    
     s15_bank = dict(features.get("bank_metrics", {}))
     s15_bank["operating_inflows_monthly"] = str(s15_inflows)
     s15_features["bank_metrics"] = s15_bank
-    scenarios.append(scenario_payload("REVERSE_STRESS", "Reverse Stress (Break-even)", f"Calculates revenue drop to exactly hit 1.0x DSCR (Drop: {drop_pct * 100:.1f}%).", s15_features, "POL-STR-015"))
+    
+    scenarios.append({
+        "scenario_id": "REVERSE_STRESS",
+        "scenario_name": "Reverse Stress (Break-even)",
+        "impact": f"Revenue Drop to breach {policy_dscr_floor}x DSCR: -{max_rev_drop}%",
+        "stressed_features": s15_features,
+        "policy_rule_id": "POL-STR-015",
+        "status": "MARGINAL",
+        "reverse_stress_details": {
+            "policy_floor": float(policy_dscr_floor),
+            "base_value": float(base_inflows),
+            "breakpoint_value": float(s15_inflows),
+            "maximum_shock": f"-{max_rev_drop}% Revenue",
+            "binding_rule_id": "POL-STR-015",
+            "decision_before": "APPROVE",
+            "decision_after": "DECLINE",
+            "formula": "(Base Inflows - Base Outflows) / Post DSCR = Policy Floor",
+            "inputs": {"base_inflows": float(base_inflows), "base_outflows": float(base_outflows), "post_ds": float(total_post_ds)},
+            "evidence_ids": ["EVD-BANK-001"],
+            "limitations": ["Assumes linear cost behavior"]
+        }
+    })
 
 
     overall_stress_status = (

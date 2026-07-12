@@ -718,9 +718,18 @@ def record_human_decision(
     req: HumanDecisionRequest,
     fastapi_req: Request,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
+    x_expected_version: int = Header(..., alias="X-Expected-Version"),
+    x_csrf_token: str = Header(..., alias="X-CSRF-Token"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if req.expected_version != x_expected_version:
+        raise HTTPException(status_code=409, detail="Version mismatch in CAS")
+        
+    case = can_view_case(db, user, case_id)
+    if getattr(case, "version", 0) != req.expected_version and getattr(case, "version", None) is not None:
+        raise HTTPException(status_code=409, detail="Stale case version. Refresh case.")
+        
     if len(req.reason) < 10:
         raise HTTPException(
             status_code=422,
@@ -731,8 +740,6 @@ def record_human_decision(
         raise HTTPException(status_code=400, detail="Invalid decision action")
 
     dec_enum = req.decision
-
-    case = can_view_case(db, user, case_id)
 
     req_hash = hashlib.sha256(
         json.dumps(req.model_dump(), sort_keys=True, default=str).encode()
@@ -1845,4 +1852,35 @@ def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
         "synthetic_demonstration": True,
         "nodes": nodes,
         "edges": edges
+    }
+
+
+@router.get("/{case_id}/applicant-view")
+def get_applicant_view(
+    case_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    case = can_view_case(db, user, case_id)
+        
+    sanitized_features = {
+        "bank_metrics": case.features.get("bank_metrics", {}),
+        "gst_metrics": case.features.get("gst_metrics", {})
+    }
+    
+    scoring = case.scores if case.scores else {}
+    sanitized_scores = {
+        "financial_health_index": scoring.get("financial_health_index"),
+        "vyapar_credit_health_score": scoring.get("vyapar_credit_health_score"),
+        "credit_health_disclaimer": scoring.get("credit_health_disclaimer")
+    }
+    
+    return {
+        "id": str(case.id),
+        "applicant_name": "Applicant",
+        "requested_amount": float(case.requested_amount) if case.requested_amount else None,
+        "requested_product": case.requested_product,
+        "status": case.status.value if hasattr(case.status, 'value') else case.status,
+        "features": sanitized_features,
+        "scores": sanitized_scores
     }
