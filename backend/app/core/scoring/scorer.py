@@ -59,7 +59,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if liq_pts > 40 else "NEGATIVE",
                 "reason_code": "LIQ_MARGIN", "technical_explanation": "Operating margin points",
                 "applicant_explanation_en": "Healthy cash buffer.", "applicant_explanation_hi": "स्वस्थ नकदी बफर।",
-                "evidence_ids": ["EVD-BANK-001"], "running_score": float(running)
+                "evidence_ids": [self.features.get("bank_metrics", {}).get("evidence_id", "MISSING_BANK_EVD")], "running_score": float(running)
             })
             liq_status, liq_missing = "VERIFIED", []
         else:
@@ -68,7 +68,7 @@ class ScoringEngine:
         # 3. Cash Flow Capacity (Max 150 pts)
         post_loan_dscr = None
         if obligation_state in ASSESSABLE_OBLIGATION_STATES and operating_cash > 0:
-            total_ds = existing_ds + Decimal("50000") # Assume typical EMI for score context if unknown
+            total_ds = existing_ds
             post_loan_dscr = operating_cash / max(Decimal("1"), total_ds)
             cf_pts = Decimal("150") if post_loan_dscr >= Decimal("2.0") else Decimal("100") if post_loan_dscr >= Decimal("1.5") else Decimal("50") if post_loan_dscr >= Decimal("1.1") else Decimal("0")
             running += cf_pts
@@ -79,7 +79,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if cf_pts > 50 else "NEGATIVE",
                 "reason_code": "CF_DSCR", "technical_explanation": "DSCR points",
                 "applicant_explanation_en": "Strong debt coverage.", "applicant_explanation_hi": "मजबूत ऋण कवरेज।",
-                "evidence_ids": ["EVD-BANK-001", "EVD-BUREAU-001"], "running_score": float(running)
+                "evidence_ids": [self.features.get("bank_metrics", {}).get("evidence_id", "MISSING_BANK_EVD"), self.features.get("bureau_metrics", {}).get("evidence_id", "MISSING_BUREAU_EVD")], "running_score": float(running)
             })
             cf_status, cf_missing = "VERIFIED", []
         else:
@@ -100,7 +100,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if rev_pts > 20 else "NEGATIVE",
                 "reason_code": "REV_STAB", "technical_explanation": "Revenue CV points",
                 "applicant_explanation_en": "Stable revenue.", "applicant_explanation_hi": "स्थिर राजस्व।",
-                "evidence_ids": ["EVD-GST-001"], "running_score": float(running)
+                "evidence_ids": [self.features.get("gst_metrics", {}).get("evidence_id", "MISSING_GST_EVD")], "running_score": float(running)
             })
             rev_status, rev_missing = "VERIFIED", []
         else:
@@ -118,7 +118,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if rep_pts > 30 else "NEGATIVE",
                 "reason_code": "REP_BURD", "technical_explanation": "Repayment burden points",
                 "applicant_explanation_en": "Low existing debt.", "applicant_explanation_hi": "कम मौजूदा कर्ज।",
-                "evidence_ids": ["EVD-BUREAU-001"], "running_score": float(running)
+                "evidence_ids": [self.features.get("bureau_metrics", {}).get("evidence_id", "MISSING_BUREAU_EVD")], "running_score": float(running)
             })
             rep_status, rep_missing = "VERIFIED", []
         else:
@@ -138,7 +138,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if comp_pts > 0 else "NEGATIVE",
                 "reason_code": "COMP_RECON", "technical_explanation": "GST vs Bank reconciliation",
                 "applicant_explanation_en": "Strong compliance.", "applicant_explanation_hi": "मजबूत अनुपालन।",
-                "evidence_ids": ["EVD-GST-001", "EVD-BANK-001"], "running_score": float(running)
+                "evidence_ids": [self.features.get("gst_metrics", {}).get("evidence_id", "MISSING_GST_EVD"), self.features.get("bank_metrics", {}).get("evidence_id", "MISSING_BANK_EVD")], "running_score": float(running)
             })
             comp_status, comp_missing = "VERIFIED", []
         else:
@@ -158,7 +158,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if res_pts > 0 else "NEGATIVE",
                 "reason_code": "RES_CONC", "technical_explanation": "Buyer concentration points",
                 "applicant_explanation_en": "Diversified buyers.", "applicant_explanation_hi": "विविध खरीदार।",
-                "evidence_ids": ["EVD-GST-001"], "running_score": float(running)
+                "evidence_ids": [self.features.get("gst_metrics", {}).get("evidence_id", "MISSING_GST_EVD")], "running_score": float(running)
             })
             res_status, res_missing = "VERIFIED", []
         else:

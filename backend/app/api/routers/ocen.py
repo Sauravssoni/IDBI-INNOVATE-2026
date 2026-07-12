@@ -114,8 +114,8 @@ def get_ocen_export(
             evidence_ids=ev_ids
         ),
         audit=OCENAudit(
-            audit_hash=pkg.package_hash if pkg.package_hash else "UNSEALED_PROTOTYPE",
-            package_hash=pkg.package_hash if pkg.package_hash else "UNSEALED_PROTOTYPE",
+            audit_hash=pkg.package_hash if pkg.package_hash else "",
+            package_hash=pkg.package_hash if pkg.package_hash else "",
             generated_by="system"
         ),
         engine_versions={
