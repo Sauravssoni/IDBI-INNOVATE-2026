@@ -408,3 +408,27 @@ class ExportLinksResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     json_url: str
     pdf_url: str
+
+class IntegrityNode(BaseModel):
+    id: str
+    label: str
+    type: str
+
+class IntegrityEdge(BaseModel):
+    source: str
+    target: str
+    relationship: str
+    matched_identifiers: List[str]
+
+class IntegrityGraphResult(BaseModel):
+    status: str
+    reason_code: str
+    severity: str
+    relationship_path: List[str]
+    matched_identifiers: List[str]
+    technical_explanation: str
+    analyst_explanation: str
+    evidence_ids: List[str]
+    synthetic_demonstration: bool
+    nodes: List[IntegrityNode]
+    edges: List[IntegrityEdge]

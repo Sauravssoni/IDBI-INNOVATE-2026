@@ -4,6 +4,7 @@ from app.schemas.responses import (
     DecisionPackageReconciliation,
     DecisionPackageAuditItem,
     AuditVerificationResponse,
+    IntegrityGraphResult,
 )
 from app.core.versions import (
     POLICY_VERSION,
@@ -1802,4 +1803,46 @@ def simulate_product_structure(
         "simulated_dscr": dscr,
         "viable": viable,
         "policy_breaches": ["DSCR below 1.25"] if not viable else []
+    }
+
+
+@router.get("/{case_id}/integrity-graph", response_model=IntegrityGraphResult)
+def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
+    # Check if case exists
+    case = db.query(ApplicationCase).filter(ApplicationCase.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    # Generate synthetic response per requirements
+    business_id = f"BIZ-{str(case_id)[:8]}"
+    promoter_id = "PRM-991A"
+    related_biz_id = "BIZ-882B"
+    bank_acc_id = "ACC-001X"
+    
+    nodes = [
+        {"id": business_id, "label": case.business_name, "type": "BUSINESS"},
+        {"id": promoter_id, "label": "Main Promoter", "type": "PERSON"},
+        {"id": related_biz_id, "label": "Supplier Corp", "type": "BUSINESS"},
+        {"id": bank_acc_id, "label": "Shared Bank Acct", "type": "BANK_ACCOUNT"},
+    ]
+    
+    edges = [
+        {"source": promoter_id, "target": business_id, "relationship": "PROMOTER_OF", "matched_identifiers": ["PAN", "Name"]},
+        {"source": related_biz_id, "target": business_id, "relationship": "SUPPLIER_OF", "matched_identifiers": ["GSTIN"]},
+        {"source": business_id, "target": bank_acc_id, "relationship": "SHARES_BANK_ACCOUNT", "matched_identifiers": ["Bank Account No"]},
+        {"source": related_biz_id, "target": bank_acc_id, "relationship": "SHARES_BANK_ACCOUNT", "matched_identifiers": ["Bank Account No"]},
+    ]
+    
+    return {
+        "status": "REVIEW",
+        "reason_code": "SHARED_BANK_ACCOUNT_WITH_SUPPLIER",
+        "severity": "HIGH",
+        "relationship_path": [business_id, bank_acc_id, related_biz_id],
+        "matched_identifiers": ["Bank Account No"],
+        "technical_explanation": "A direct match was found on the primary operating bank account between the applicant business and a declared supplier.",
+        "analyst_explanation": "The business shares its bank account with a supplier, indicating potential circular cash flows or non-arm's length transactions.",
+        "evidence_ids": ["EVID-BANK-001", "EVID-GST-002"],
+        "synthetic_demonstration": True,
+        "nodes": nodes,
+        "edges": edges
     }

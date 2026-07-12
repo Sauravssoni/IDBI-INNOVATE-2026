@@ -136,8 +136,8 @@ export default function DecisionRoomPage() {
             
             <div className="mt-8">
               <IntegrityGraph 
+                caseId={caseId as string}
                 entityName={data.business_name} 
-                state={(data as any).integrity_state === "TAMPERED" ? "TAMPERED" : (data as any).integrity_state === "UNVERIFIED" ? "UNVERIFIED" : "INTACT"} 
               />
             </div>
           </div>
@@ -154,22 +154,24 @@ export default function DecisionRoomPage() {
                 onClick={() => setCompareMode(!compareMode)}
                 className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${compareMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
               >
-                {compareMode ? 'Exit Compare Mode' : 'Compare Traditional vs Vyapar'}
+                {compareMode ? 'Exit Compare Mode' : 'Compare Baseline vs Stress'}
               </button>
             </div>
             
             {compareMode && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div className="bg-white/5 p-6 rounded-xl border border-white/10 text-center opacity-70">
-                  <p className="text-sm text-gray-400 mb-2">Traditional Bureau Score</p>
-                  <p className="text-4xl font-bold text-amber-400 font-mono">612</p>
-                  <p className="text-xs text-gray-500 mt-2">Thin-file / Unscoreable</p>
+                  <p className="text-sm text-gray-400 mb-2">Baseline Scenario (Post-Loan DSCR)</p>
+                  <p className="text-4xl font-bold text-amber-400 font-mono">{data.assessment?.post_loan_dscr ? Number(data.assessment.post_loan_dscr).toFixed(2) + "x" : "N/A"}</p>
+                  <p className="text-xs text-gray-500 mt-2">Standard Operating Conditions</p>
                 </div>
                 <div className="bg-emerald-500/10 p-6 rounded-xl border border-emerald-500/30 text-center relative overflow-hidden">
                   <div className="absolute top-0 right-0 bg-emerald-500 text-black text-[10px] font-bold px-2 py-1 rounded-bl-lg">VYAPAR PULSE</div>
-                  <p className="text-sm text-emerald-500/80 mb-2">Vyapar Credit Health Score</p>
-                  <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
-                  <p className="text-xs text-emerald-500/60 mt-2">+{(Number(data.vyapar_credit_health_score) || 750) - 612} pts Evidence Lift</p>
+                  <p className="text-sm text-emerald-500/80 mb-2">Governed Stress Scenario (Stressed DSCR)</p>
+                  <p className="text-4xl font-bold text-emerald-400 font-mono">{data.assessment?.stressed_dscr ? Number(data.assessment.stressed_dscr).toFixed(2) + "x" : "N/A"}</p>
+                  <p className="text-xs text-emerald-500/60 mt-2">
+                    {data.assessment?.binding_constraint?.constraint_type || "Stress Test Assessment"}
+                  </p>
                 </div>
               </div>
             )}
