@@ -1,4 +1,0 @@
-replace_with_32_byte_hex_secret==>a_mock_jwt_secret_for_example_only
-shakti-eval-12345==>mock-eval-key
-shakti-rec-12345==>mock-rec-key
-shakti-dec-12345==>mock-dec-key
