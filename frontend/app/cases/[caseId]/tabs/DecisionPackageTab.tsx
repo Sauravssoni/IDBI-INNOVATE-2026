@@ -6,7 +6,7 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 import type { DecisionPackageResponse, StressResult, AuditVerification } from "@/lib/types";
 
-export default function DecisionPackageTab({ caseId }: { caseId: string }) {
+export default function DecisionPackageTab({ caseId, assessment, decisionPackage }: { caseId: string, assessment?: any, decisionPackage?: any }) {
   const [data, setData] = useState<DecisionPackageResponse | null>(null);
   const [stressData, setStressData] = useState<StressResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -20,29 +20,39 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
   const [replayResult, setReplayResult] = useState<string | null>(null);
 
   useEffect(() => {
+    if (decisionPackage) {
+      setData(decisionPackage);
+    }
+  }, [decisionPackage]);
+
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       setError(null);
       
-      const [resDecision, resStress] = await Promise.all([
-        apiFetch(`/api/cases/${caseId}/decision-package`),
-        apiFetch(`/api/cases/${caseId}/stress-lab`),
-      ]);
-
-      if (resDecision.status === 200 && resDecision.data) {
-        setData(resDecision.data as DecisionPackageResponse);
-      } else {
-        setError(resDecision.error || "Failed to load decision package");
+      const promises = [apiFetch(`/api/cases/${caseId}/stress-lab`)];
+      if (!decisionPackage) {
+        promises.push(apiFetch(`/api/cases/${caseId}/decision-package`));
       }
+      
+      const results = await Promise.all(promises);
+      const resStress = results[0];
+      const resPackage = results[1];
 
       if (resStress.status === 200 && resStress.data) {
         setStressData(resStress.data as StressResult);
+      }
+      
+      if (!decisionPackage && resPackage && resPackage.status === 200 && resPackage.data) {
+        setData(resPackage.data as DecisionPackageResponse);
+      } else if (!decisionPackage && resPackage && resPackage.status !== 200) {
+        setError(resPackage.error || "Failed to load decision package.");
       }
 
       setLoading(false);
     };
     fetchData();
-  }, [caseId]);
+  }, [caseId, decisionPackage]);
 
   const handleSimulateReplay = async () => {
     if (!data) return;
@@ -156,16 +166,16 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
         <div className="grid grid-cols-3 gap-4 border border-gray-300 p-4 rounded bg-gray-50">
           <div>
             <span className="text-xs text-gray-500 block uppercase font-bold">Requested Amount</span>
-            <span className="text-lg font-bold">{formatCurrency(data.requested_amount)}</span>
+            <span className="text-lg font-bold">{formatCurrency((assessment?.requested_amount || data?.requested_amount))}</span>
           </div>
           <div>
             <span className="text-xs text-gray-500 block uppercase font-bold">Facility Product</span>
-            <span className="text-lg font-bold">{data.requested_product || "N/A"}</span>
+            <span className="text-lg font-bold">{(assessment?.requested_product || data?.requested_product) || "N/A"}</span>
           </div>
           <div>
             <span className="text-xs text-gray-500 block uppercase font-bold">Recommended Limit</span>
             <span className="text-lg font-bold text-emerald-800">
-              {data.binding_limit ? formatCurrency(data.binding_limit) : formatCurrency(data.requested_amount)}
+              {data.binding_limit ? formatCurrency(data.binding_limit) : formatCurrency((assessment?.requested_amount || data?.requested_amount))}
             </span>
           </div>
         </div>
@@ -175,11 +185,11 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Pre-Loan DSCR:</span>{" "}
-              <strong className="text-black">{data.dscr !== null ? Number(data.dscr).toFixed(2) : "N/A"}</strong>
+              <strong className="text-black">{(assessment?.current_dscr || data?.dscr) !== null ? Number((assessment?.current_dscr || data?.dscr)).toFixed(2) : "N/A"}</strong>
             </div>
             <div>
               <span className="text-gray-500">Post-Loan DSCR:</span>{" "}
-              <strong className="text-black">{data.post_loan_dscr !== undefined && data.post_loan_dscr !== null ? Number(data.post_loan_dscr).toFixed(2) : "N/A"}</strong>
+              <strong className="text-black">{(assessment?.post_loan_dscr || data?.post_loan_dscr) !== undefined && (assessment?.post_loan_dscr || data?.post_loan_dscr) !== null ? Number((assessment?.post_loan_dscr || data?.post_loan_dscr)).toFixed(2) : "N/A"}</strong>
             </div>
             <div>
               <span className="text-gray-500">Assessed ROI / Tenure:</span>{" "}
@@ -210,15 +220,15 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-gray-500">Credit Health Score:</span>{" "}
-              <strong className="text-black">{data.vyapar_credit_health_score ?? "N/A"} / 900</strong>
+              <strong className="text-black">{(assessment?.vyapar_credit_health_score || data?.vyapar_credit_health_score) ?? "N/A"} / 900</strong>
             </div>
             <div>
               <span className="text-gray-500">Financial Health Index (FHI):</span>{" "}
-              <strong className="text-black">{data.financial_health_index !== undefined && data.financial_health_index !== null ? typeof data.financial_health_index === 'number' ? data.financial_health_index.toFixed(2) : data.financial_health_index : "N/A"} / 100</strong>
+              <strong className="text-black">{(assessment?.financial_health_index || data?.financial_health_index) !== undefined && (assessment?.financial_health_index || data?.financial_health_index) !== null ? typeof (assessment?.financial_health_index || data?.financial_health_index) === 'number' ? (assessment?.financial_health_index || data?.financial_health_index).toFixed(2) : (assessment?.financial_health_index || data?.financial_health_index) : "N/A"} / 100</strong>
             </div>
             <div>
               <span className="text-gray-500">Scoring Version:</span>{" "}
-              <strong className="text-black">{data.scoring_version || "2.0-CANONICAL"}</strong>
+              <strong className="text-black">{(assessment?.scoring_version || data?.scoring_version) || "2.0-CANONICAL"}</strong>
             </div>
           </div>
         </div>
@@ -268,19 +278,19 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
               <p className="text-sm text-gray-400 mb-1">Requested Amount</p>
               <p className="text-xl font-bold text-white">
-                {formatCurrency(data.requested_amount)}
+                {formatCurrency((assessment?.requested_amount || data?.requested_amount))}
               </p>
             </div>
             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
               <p className="text-sm text-gray-400 mb-1">Product</p>
               <p className="text-xl font-bold text-white">
-                {data.requested_product || "N/A"}
+                {(assessment?.requested_product || data?.requested_product) || "N/A"}
               </p>
             </div>
             <div className="bg-black/20 rounded-xl p-4 border border-white/5">
               <p className="text-sm text-gray-400 mb-1">DSCR</p>
               <p className="text-xl font-bold text-white">
-                {data.dscr !== null ? Number(data.dscr).toFixed(2) : "N/A"}
+                {(assessment?.current_dscr || data?.dscr) !== null ? Number((assessment?.current_dscr || data?.dscr)).toFixed(2) : "N/A"}
               </p>
             </div>
           </div>
@@ -294,20 +304,20 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               <h2 className="text-xl font-bold text-white">Credit Health & 6-Pillar FHI (`DPK-001`)</h2>
             </div>
             <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2 py-1 rounded border border-emerald-500/30">
-              {data.scoring_version || "2.0-CANONICAL"}
+              {(assessment?.scoring_version || data?.scoring_version) || "2.0-CANONICAL"}
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="bg-black/20 rounded-xl p-4 border border-white/5 flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400 mb-1">Vyapar Credit Health Score</p>
-                <p className="text-3xl font-bold text-emerald-400">{data.vyapar_credit_health_score ?? "N/A"}</p>
+                <p className="text-3xl font-bold text-emerald-400">{(assessment?.vyapar_credit_health_score || data?.vyapar_credit_health_score) ?? "N/A"}</p>
                 <p className="text-xs text-gray-500 mt-1">Range: 300 - 900</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-400 mb-1">Financial Health Index (FHI)</p>
                 <p className="text-2xl font-bold text-white">
-                  {data.financial_health_index !== undefined && data.financial_health_index !== null ? typeof data.financial_health_index === 'number' ? data.financial_health_index.toFixed(2) : data.financial_health_index : "N/A"}
+                  {(assessment?.financial_health_index || data?.financial_health_index) !== undefined && (assessment?.financial_health_index || data?.financial_health_index) !== null ? typeof (assessment?.financial_health_index || data?.financial_health_index) === 'number' ? (assessment?.financial_health_index || data?.financial_health_index).toFixed(2) : (assessment?.financial_health_index || data?.financial_health_index) : "N/A"}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Range: 0 - 100</p>
               </div>
@@ -316,12 +326,12 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
               <p className="text-sm text-gray-400 mb-2 font-semibold">6-Pillar FHI Breakdown</p>
               {data.fhi_breakdown ? (
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>Liquidity: <span className="font-semibold text-white">{data.fhi_breakdown.liquidity?.score ?? "N/A"}</span></div>
-                  <div>Cash-flow: <span className="font-semibold text-white">{data.fhi_breakdown.cash_flow_capacity?.score ?? "N/A"}</span></div>
-                  <div>Revenue: <span className="font-semibold text-white">{data.fhi_breakdown.revenue_stability_momentum?.score ?? "N/A"}</span></div>
-                  <div>Repayment: <span className="font-semibold text-white">{data.fhi_breakdown.repayment_burden_discipline?.score ?? "N/A"}</span></div>
-                  <div>Compliance: <span className="font-semibold text-white">{data.fhi_breakdown.compliance_formalisation?.score ?? "N/A"}</span></div>
-                  <div>Concentration: <span className="font-semibold text-white">{data.fhi_breakdown.concentration_resilience?.score ?? "N/A"}</span></div>
+                  <div>Liquidity: <span className="font-semibold text-white">{(assessment?.six_pillars ? null : data?.fhi_breakdown)?.liquidity?.score ?? "N/A"}</span></div>
+                  <div>Cash-flow: <span className="font-semibold text-white">{(assessment?.six_pillars ? null : data?.fhi_breakdown)?.cash_flow_capacity?.score ?? "N/A"}</span></div>
+                  <div>Revenue: <span className="font-semibold text-white">{(assessment?.six_pillars ? null : data?.fhi_breakdown)?.revenue_stability_momentum?.score ?? "N/A"}</span></div>
+                  <div>Repayment: <span className="font-semibold text-white">{(assessment?.six_pillars ? null : data?.fhi_breakdown)?.repayment_burden_discipline?.score ?? "N/A"}</span></div>
+                  <div>Compliance: <span className="font-semibold text-white">{(assessment?.six_pillars ? null : data?.fhi_breakdown)?.compliance_formalisation?.score ?? "N/A"}</span></div>
+                  <div>Concentration: <span className="font-semibold text-white">{(assessment?.six_pillars ? null : data?.fhi_breakdown)?.concentration_resilience?.score ?? "N/A"}</span></div>
                 </div>
               ) : (
                 <p className="text-xs text-gray-500">Breakdown not available</p>
@@ -421,7 +431,7 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
                 <h2 className="text-xl font-bold text-white">Evidence Sufficiency Passport</h2>
               </div>
               <span className="bg-teal-500/20 text-teal-300 text-xs px-2 py-1 rounded border border-teal-500/30 font-mono">
-                {data.assessment_certainty || "UNKNOWN"}
+                {(assessment?.evidence_certainty || data?.assessment_certainty) || "UNKNOWN"}
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -537,7 +547,13 @@ export default function DecisionPackageTab({ caseId }: { caseId: string }) {
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-400">Policy Stress Tests (Engine Evaluated)</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-400">Policy Stress Tests (Engine Evaluated)</h3>
+              <div className="text-xs text-brand-teal font-mono">
+                {assessment?.assessment_id && `Assessment ID: ${assessment.assessment_id.slice(0, 8)}`} | 
+                {assessment?.case_version && ` Version: ${assessment.case_version}`}
+              </div>
+            </div>
             <div className="bg-black/20 rounded-xl p-4 border border-white/5 space-y-3">
               {stressData?.scenarios && stressData.scenarios.length > 0 ? (
                 <>
