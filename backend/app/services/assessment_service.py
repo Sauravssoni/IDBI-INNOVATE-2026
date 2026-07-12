@@ -108,6 +108,16 @@ class AssessmentService:
             except Exception:
                 cap = {}
 
+        try:
+            from app.core.decision.limits import SafeLimitEngine
+            limit_bridge = SafeLimitEngine.build_limit_bridge(
+                features,
+                req_product_str,
+                Decimal(str(case.requested_amount))
+            )
+        except Exception:
+            limit_bridge = None
+
         dscr_val = cap.get("current_dscr")
         if dscr_val is not None:
             dscr_val = Decimal(str(dscr_val))
@@ -266,7 +276,8 @@ class AssessmentService:
             passport_version="1.0",
             feature_schema_version="3.1",
             evidence_ids=[],
-            limitations=[]
+            limitations=[],
+            limit_bridge=limit_bridge
         )
 
     @classmethod
