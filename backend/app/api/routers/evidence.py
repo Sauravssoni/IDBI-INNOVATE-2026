@@ -256,17 +256,43 @@ def get_evidence_envelope(
 ):
     case = can_view_case(db, user, case_id)
     rec = run_reconciliation(db, str(case_id))
+    
     unresolved_ratio = 0.0
-    reason_codes = []
+    adverse_codes = []
     if rec.get("total_discrepancies", 0) > 0:
         unresolved = sum(1 for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED")
         unresolved_ratio = unresolved / rec.get("total_discrepancies", 0)
-        reason_codes = [d.get("type") if isinstance(d, dict) else d.type for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED"]
+        adverse_codes = [d.get("type") if isinstance(d, dict) else d.type for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED"]
+    
+    from app.services.assessment_service import AssessmentService
+    from app.domain.evidence.passport import generate_evidence_passport
+    
+    assessment = AssessmentService.get_latest_assessment(db, case_id)
+    passport = generate_evidence_passport(db, str(case_id))
+    
+    sufficiency = passport.get("metrics", {}).get("evidence_sufficiency_score", "NOT_AVAILABLE_NOT_USED")
+    certainty = assessment.evidence_certainty if assessment else "NOT_AVAILABLE_NOT_USED"
+    asmnt_range = assessment.assessment_range.model_dump() if assessment and hasattr(assessment, "assessment_range") else "NOT_AVAILABLE_NOT_USED"
+    integrity = assessment.integrity_state if assessment else "NOT_AVAILABLE_NOT_USED"
+    coverage = passport.get("metrics", {}).get("coverage_ratio", "NOT_AVAILABLE_NOT_USED")
+    freshness = passport.get("metrics", {}).get("freshness_score", "NOT_AVAILABLE_NOT_USED")
+    missing = passport.get("missing_evidence_categories", [])
+    ev_ids = passport.get("evidence_records", [])
+    ev_id_list = [r.get("id") for r in ev_ids] if isinstance(ev_ids, list) else "NOT_AVAILABLE_NOT_USED"
     
     return {
-        "certainty": 0.95, 
-        "freshness": "T-1", 
-        "unresolved_ratio": unresolved_ratio,
-        "reason_codes": reason_codes,
+        "evidence_sufficiency_score": sufficiency,
+        "evidence_certainty": certainty,
+        "assessment_range": asmnt_range,
+        "integrity_state": integrity,
+        "coverage_ratio": coverage,
+        "freshness_score": freshness,
+        "unresolved_transaction_ratio": unresolved_ratio,
+        "missing_evidence": missing,
+        "positive_reason_codes": ["EVIDENCE_VERIFIED"] if unresolved_ratio < 0.1 else [],
+        "adverse_reason_codes": adverse_codes,
+        "evidence_ids": ev_id_list,
+        "passport_version": passport.get("version", "NOT_AVAILABLE_NOT_USED"),
         "last_verified": datetime.utcnow().isoformat() + "Z"
     }
+
