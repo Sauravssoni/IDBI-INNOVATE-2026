@@ -7,7 +7,7 @@ import hashlib
 import secrets
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from app.api.routers import cases, portfolio, audit, evidence, demo, stress, bankability, ocen
+from app.api.routers import cases, portfolio, audit, evidence, demo, stress, bankability, ocen, validation
 from app.api import auth
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -111,6 +111,7 @@ app.include_router(stress.router)
 app.include_router(bankability.router)
 app.include_router(bankability.simulation_router)
 app.include_router(ocen.router)
+app.include_router(validation.router)
 
 
 @app.get("/health")
