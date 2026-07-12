@@ -1,5 +1,4 @@
 import uuid
-from decimal import Decimal
 
 
 def run_evaluations(db_session=None):
@@ -12,9 +11,6 @@ def run_evaluations(db_session=None):
 
     from app.db.orm.cases import Case, Business, CaseStatus, AuditEvent
     from app.db.orm.users import User
-    from app.core.features.engine import FeatureEngine
-    from app.core.scoring.scorer import ScoringEngine
-    from app.core.decision.policy import DecisionPolicy
     from app.core.audit import calculate_audit_hash
     from app.db.orm.cases import utc_now
     from fastapi.encoders import jsonable_encoder
@@ -36,41 +32,27 @@ def run_evaluations(db_session=None):
         print(f"Evaluating {b.legal_name}...")
 
         try:
-            # 1. Derive Features
-            feature_engine = FeatureEngine(db, str(case.business_id_fk))
-            features = feature_engine.derive_all_features()
+            from app.services.assessment_service import AssessmentService
+            assessment_result = AssessmentService.evaluate_case(db, case)
 
-            # 2. Score
-            scorer = ScoringEngine(features)
-            scores = scorer.compute_all_scores()
-
-            # 3. Decision
-            policy = DecisionPolicy(
-                features,
-                scores,
-                Decimal(str(case.requested_amount)),
-                case.requested_product.value,
-            )
-            decision = policy.evaluate()
+            dscr_val = assessment_result.current_dscr
 
             result_payload = {
                 "case_id": str(case.id),
                 "business_name": case.business.legal_name,
-                "features": features,
-                "scores": scores,
-                "decision": decision,
+                "assessment_id": str(assessment_result.assessment_id),
+                "decision": {
+                    "recommendation": assessment_result.policy_recommendation,
+                    "reason_codes": assessment_result.policy_reason_codes,
+                    "binding_limit": assessment_result.supportable_amount,
+                },
+                "features": {
+                    "dscr": dscr_val,
+                },
             }
 
-            dscr_val = None
-            if (
-                "bank_metrics" in features
-                and "dscr" in features["bank_metrics"]
-                and features["bank_metrics"]["dscr"] is not None
-            ):
-                dscr_val = Decimal(str(features["bank_metrics"]["dscr"]))
-
             # Update case
-            case.recommendation = decision["decision"]
+            case.recommendation = assessment_result.policy_recommendation
             case.status = CaseStatus.ASSESSMENT_COMPLETED
             case.dscr = dscr_val
             prior_version = case.version

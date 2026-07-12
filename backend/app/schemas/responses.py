@@ -210,6 +210,10 @@ class DecisionPackageAuditItem(BaseModel):
 
 
 class DecisionPackageResponse(BaseModel):
+    """
+    DEPRECATED: Do not use for calculations or rendering components.
+    Use AssessmentResultResponse for all authoritative data.
+    """
     model_config = ConfigDict(extra="allow")
     case_id: str
     business_name: str
@@ -217,7 +221,10 @@ class DecisionPackageResponse(BaseModel):
     requested_product: Optional[str] = None
     reconciliation: DecisionPackageReconciliation
     dscr: Optional[Decimal] = None
+    current_dscr: Optional[Decimal] = None
+    proposed_emi: Optional[Decimal] = None
     post_loan_dscr: Optional[Decimal] = None
+    stressed_dscr: Optional[Decimal] = None
     binding_limit: Optional[Decimal] = None
     recommendation: Optional[str] = None
     reason_codes: List[str]
@@ -234,6 +241,7 @@ class DecisionPackageResponse(BaseModel):
     scoring_version: Optional[str] = "2.0-CANONICAL"
     financial_health_index: Optional[Decimal] = None
     vyapar_credit_health_score: Optional[int] = None
+    score_range: Optional[Dict[str, Any]] = None
 
     fhi_breakdown: Optional[Dict[str, Any]] = None
     credit_score_disclaimer: Optional[str] = None
@@ -245,16 +253,148 @@ class DecisionPackageResponse(BaseModel):
     bankability_path: Optional[Dict[str, Any]] = None
     package_hash: Optional[str] = None
 
+    # ADDED: Embed authoritative assessment
+    assessment: Optional["AssessmentResultResponse"] = None
+
 class AuditVerificationResponse(BaseModel):
     bola_verification_status: str
     cas_verification_status: str
     audit_chain_valid: bool
     analyst_event_status: str
-    human_decision_event_status: str
-    package_hash_valid: bool
-    authorization_scope_valid: bool
-    package_hash: str
-    audit_tip_hash: str
-    verified_at: str
-    verification_version: str
-    reason: Optional[str] = None
+    feature_event_status: str
+    recommendation_event_status: str
+    decision_event_status: str
+    verified_at: datetime
+    error_message: Optional[str] = None
+
+class AuditChainResponse(BaseModel):
+    items: List[DecisionPackageAuditItem]
+    total_events: int
+    verified: bool
+
+class EvidencePassportResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+class CanonicalFeatureSnapshotResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+class FinancialHealthPillarResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    name: str
+    score: int
+    health_status: str
+
+class AssessmentRangeResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    min_amount: Decimal
+    max_amount: Decimal
+
+class ProductCapacityResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    product_name: str
+    capacity: Decimal
+
+class BindingConstraintResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    constraint_type: str
+    reason: str
+
+class StressScenarioResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    scenario_name: str
+    impact: str
+
+class BankabilityInterventionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    intervention_type: str
+    description: str
+
+class ConditionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    condition_text: str
+
+class CovenantResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    covenant_text: str
+
+class AssessmentResultResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    assessment_id: UUID
+    case_id: UUID
+    case_version: int
+    generated_at: datetime
+
+    consent_state: str
+    evidence_passport: EvidencePassportResponse
+    feature_snapshot: CanonicalFeatureSnapshotResponse
+
+    financial_health_index: Decimal | None
+    six_pillars: List[FinancialHealthPillarResponse]
+    vyapar_credit_health_score: int | None
+    assessment_range: AssessmentRangeResponse | None
+    evidence_certainty: str
+    integrity_state: str
+
+    current_dscr: Decimal | None
+    existing_debt_service: Decimal | None
+    proposed_debt_service: Decimal | None
+    proposed_emi: Decimal | None
+    post_loan_dscr: Decimal | None
+    stressed_dscr: Decimal | None
+
+    requested_product: str
+    requested_amount: Decimal
+    product_capacities: List[ProductCapacityResponse]
+    selected_product: str | None
+    offers: Optional[List[Dict[str, Any]]] = None
+    supportable_amount: Decimal | None
+    binding_constraint: BindingConstraintResponse | None
+
+    stress_results: List[StressScenarioResponse]
+    bankability_interventions: List[BankabilityInterventionResponse]
+
+    policy_recommendation: str
+    policy_reason_codes: List[str]
+    conditions: List[ConditionResponse]
+    covenants: List[CovenantResponse]
+
+    analyst_recommendation: str | None
+    analyst_reason: str | None
+    human_decision: str | None
+    approved_amount: Decimal | None
+
+    scoring_version: str
+    calculation_version: str
+    policy_version: str
+    passport_version: str
+    feature_schema_version: str
+
+    evidence_ids: List[UUID]
+    limitations: List[str]
+
+class AnalystActionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    action: str
+    reason: str
+    timestamp: datetime
+
+class HumanDecisionResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    decision: str
+    reason: str
+    timestamp: datetime
+
+class AuditSummaryResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    events: int
+    last_event: str
+
+class BilingualSummaryResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    english: str
+    hindi: str
+
+class ExportLinksResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    json_url: str
+    pdf_url: str
