@@ -37,6 +37,7 @@ from app.db.orm.cases import (
     IdempotencyRecord,
     IdempotencyStatus,
     utc_now,
+    AssessmentSnapshot,
 )
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
@@ -815,7 +816,9 @@ def record_human_decision(
         return result_payload
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
         db.rollback()
 
         with SessionLocal() as tx_db:

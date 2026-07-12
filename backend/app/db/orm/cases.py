@@ -80,6 +80,7 @@ class Case(Base):
     )
     currency = mapped_column(String, default="INR", nullable=False)
     requested_amount = mapped_column(Numeric(20, 2, asdecimal=True), nullable=False)
+    approved_amount = mapped_column(Numeric(20, 2, asdecimal=True), nullable=True)
     status: Mapped[CaseStatus] = mapped_column(
         Enum(CaseStatus), default=CaseStatus.INITIATED, nullable=False
     )
