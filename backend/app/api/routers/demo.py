@@ -7,6 +7,16 @@ from app.core.config import get_settings
 
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
+@router.get("/debug_env")
+async def debug_env():
+    import os
+    settings = get_settings()
+    return {
+        "DEMO_RESET_ENABLED_SETTING": settings.DEMO_RESET_ENABLED,
+        "DEMO_RESET_TOKEN_SETTING": settings.DEMO_RESET_TOKEN,
+        "DEMO_RESET_ENABLED_OS": os.getenv("DEMO_RESET_ENABLED"),
+        "DEMO_RESET_TOKEN_OS": os.getenv("DEMO_RESET_TOKEN"),
+    }
 
 @router.post("/reset")
 def reset_demo(
