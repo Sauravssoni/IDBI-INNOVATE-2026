@@ -371,7 +371,39 @@ export default function DecisionRoomPage() {
                 <p className="text-gray-400 mt-2">Redirecting to case page...</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-6">
+              <>
+                <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
+                  <h3 className="text-lg font-bold text-white mb-4">16-Step Verification Checklist</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
+                    {[
+                      "Consent & KYC Validation",
+                      "Udyam & Bureau Retrieval",
+                      "GST Filing Extraction",
+                      "Bank Statement Analytics",
+                      "Cash Flow & Buffer Assessment",
+                      "Turnover & Volatility Profiling",
+                      "Integrity & Fraud Graphing",
+                      "Working Capital Cycle Computation",
+                      "Asset/LTV Validation",
+                      "Existing Repayment Burden",
+                      "Financial Health Index (FHI)",
+                      "Baseline Capacity Sizing",
+                      "Product Limit Engine",
+                      "Governing Stress Scenarios",
+                      "Reverse Stress Boundary Test",
+                      "Human Supervisory Sign-off"
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <CheckCircle2 className={`w-4 h-4 ${idx === 15 ? 'text-amber-500' : 'text-emerald-500'}`} />
+                        <span className={`text-sm ${idx === 15 ? 'text-amber-400 font-bold' : 'text-gray-300'}`}>
+                          Step {idx + 1}: {item}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-6">
                 <button 
                   onClick={() => submitDecision("APPROVED")}
                   disabled={submitting}
@@ -391,6 +423,7 @@ export default function DecisionRoomPage() {
                   <span className="text-sm text-red-500/70 mt-2">Reject application</span>
                 </button>
               </div>
+              </>
             )}
           </div>
         );

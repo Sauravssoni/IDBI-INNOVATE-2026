@@ -151,4 +151,4 @@ Or execute our local verification harness directly:
 - Evaluator scope restricted to the 4 canonical MSME working capital scenarios.
 
 ---
-*Authored for the IDBI Innovate 2026 Track 03 Competition Dominance Submission (`v1.0.1-idbi-submission-final`).*
+*Authored for the IDBI Innovate 2026 Track 03 Competition Dominance Submission (`v1.3.0-idbi-winning-candidate`).*
