@@ -66,15 +66,15 @@ class ScoringEngine:
             liq_pts, liq_status, liq_missing = None, "MISSING_DATA", ["operating_inflows_monthly"]
             
         # 3. Cash Flow Capacity (Max 150 pts)
-        post_loan_dscr = None
+        existing_dscr = None
         if obligation_state in ASSESSABLE_OBLIGATION_STATES and operating_cash > 0:
-            total_ds = existing_ds
-            post_loan_dscr = operating_cash / max(Decimal("1"), total_ds)
-            cf_pts = Decimal("150") if post_loan_dscr >= Decimal("2.0") else Decimal("100") if post_loan_dscr >= Decimal("1.5") else Decimal("50") if post_loan_dscr >= Decimal("1.1") else Decimal("0")
+            
+            existing_dscr = operating_cash / max(Decimal("1"), existing_ds)
+            cf_pts = Decimal("150") if existing_dscr >= Decimal("2.0") else Decimal("100") if existing_dscr >= Decimal("1.5") else Decimal("50") if existing_dscr >= Decimal("1.1") else Decimal("0")
             running += cf_pts
             ledger.append({
                 "rule_id": "SC-003", "pillar": "Cash Flow Capacity", "input_name": "DSCR",
-                "input_value": f"{post_loan_dscr:.2f}x", "threshold_or_band": ">1.5x",
+                "input_value": f"{existing_dscr:.2f}x", "threshold_or_band": ">1.5x",
                 "raw_points": float(cf_pts), "weighted_points": float(cf_pts),
                 "direction": "POSITIVE" if cf_pts > 50 else "NEGATIVE",
                 "reason_code": "CF_DSCR", "technical_explanation": "DSCR points",
