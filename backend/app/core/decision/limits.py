@@ -92,6 +92,56 @@ class SafeLimitEngine:
         return cap["product_limits"]["TERM_LOAN"]
 
     @classmethod
+    def equipment_finance(cls, features: Dict[str, Any]) -> Dict[str, Any]:
+        """Equipment finance based on DSCR and LTV"""
+        from app.domain.financial.engine import FinancialCapacityEngine
+
+        cap = FinancialCapacityEngine.compute_capacity_from_features(features)
+        return cap["product_limits"]["EQUIPMENT_FINANCE"]
+
+    @classmethod
+    def limit_bridge(
+        cls,
+        features: Dict[str, Any],
+        requested_product: str,
+        operating_cycle_days: int = 73,
+        equipment_tenure_months: int = 84,
+        term_loan_tenure_months: int = 60
+    ) -> Dict[str, Any]:
+        """
+        Canonical limit_bridge bridging to FinancialCapacityEngine with correct maximum tenures.
+        """
+        from app.domain.financial.engine import FinancialCapacityEngine
+
+        # Cap standard tenures
+        safe_wc_days = min(operating_cycle_days, 180)
+        safe_eq_months = min(equipment_tenure_months, 84)
+        safe_tl_months = min(term_loan_tenure_months, 60)
+
+        # Apply safe inputs to features for computation
+        features_copy = features.copy()
+        if "working_capital_metrics" not in features_copy:
+            features_copy["working_capital_metrics"] = {}
+        features_copy["working_capital_metrics"]["operating_cycle_days"] = safe_wc_days
+        features_copy["operating_cycle_days"] = safe_wc_days
+
+        if requested_product == "WORKING_CAPITAL_LINE":
+            tenure = 12
+        elif requested_product == "EQUIPMENT_FINANCE":
+            tenure = safe_eq_months
+        elif requested_product == "TERM_LOAN":
+            tenure = safe_tl_months
+        else:
+            tenure = 36
+            
+        cap = FinancialCapacityEngine.compute_capacity_from_features(
+            features_copy,
+            requested_product=requested_product,
+            custom_tenure_months=tenure
+        )
+        return cap["product_limits"].get(requested_product, cap["product_limits"].get("WORKING_CAPITAL_LINE"))
+
+    @classmethod
     def calculate_all_limits(cls, features: Dict[str, Any]) -> List[Dict[str, Any]]:
         from app.domain.financial.engine import FinancialCapacityEngine
 
@@ -100,5 +150,6 @@ class SafeLimitEngine:
             cap["product_limits"]["RECEIVABLES_FINANCE"],
             cap["product_limits"]["WORKING_CAPITAL_LINE"],
             cap["product_limits"]["TERM_LOAN"],
+            cap["product_limits"]["EQUIPMENT_FINANCE"],
         ]
         return [limit for limit in limits if limit["applicability"] == "APPLICABLE"]
