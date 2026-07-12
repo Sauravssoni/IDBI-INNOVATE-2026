@@ -57,9 +57,13 @@ export default function CaseEvaluationPage() {
   const [approvedAmount, setApprovedAmount] = useState<number>(0);
   const [sanctionNotes, setSanctionNotes] = useState("");
   const [submittingDecision, setSubmittingDecision] = useState(false);
-  const [creditTwin, setCreditTwin] = useState<any | null>(null);
-  const [twinLoading, setTwinLoading] = useState(true);
-  const [twinError, setTwinError] = useState<string | null>(null);
+  const [assessmentResult, setAssessmentResult] = useState<any | null>(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(true);
+  const [assessmentError, setAssessmentError] = useState<string | null>(null);
+  
+  const [decisionPackage, setDecisionPackage] = useState<any | null>(null);
+  const [dpLoading, setDpLoading] = useState(true);
+  const [dpError, setDpError] = useState<string | null>(null);
 
   
 
@@ -144,19 +148,31 @@ export default function CaseEvaluationPage() {
       let saDefaultAction = foundCase.allowed_actions?.record_human_decision?.suggested_human_action || "APPROVE_AS_REQUESTED";
       setDecisionAction(saDefaultAction);
       
-      // Fetch credit twin
-      setTwinLoading(true);
-      const { data: twinData, status: twinStatus, error: twinErr } = await apiFetch(`/api/cases/${foundCase.id}/credit-twin`);
-      if (twinStatus === 200) {
-        setCreditTwin(twinData);
-        setTwinError(null);
+      // Fetch assessment result
+      setAssessmentLoading(true);
+      const { data: assessmentData, status: assessmentStatus, error: assessmentErr } = await apiFetch(`/api/cases/${foundCase.id}/assessment-result`);
+      if (assessmentStatus === 200) {
+        setAssessmentResult(assessmentData);
+        setAssessmentError(null);
       } else {
-        setCreditTwin(null);
-        setTwinError(twinErr || "Failed to load credit twin");
+        setAssessmentResult(null);
+        setAssessmentError(assessmentErr || "Failed to load assessment result");
       }
-      setTwinLoading(false);
+      setAssessmentLoading(false);
+
+      // Fetch decision package
+      setDpLoading(true);
+      const { data: dpData, status: dpStatus, error: dpErr } = await apiFetch(`/api/cases/${foundCase.id}/decision-package`);
+      if (dpStatus === 200) {
+        setDecisionPackage(dpData);
+        setDpError(null);
+      } else {
+        setDecisionPackage(null);
+        setDpError(dpErr || "Failed to load decision package");
+      }
+      setDpLoading(false);
     } else {
-      setTwinLoading(false);
+      setAssessmentLoading(false);
     }
 
     setLoading(false);
@@ -184,12 +200,12 @@ export default function CaseEvaluationPage() {
 
     if (status === 200 || status === 201) {
       setEvalResult(data);
-      const decision = data?.decision?.recommendation ?? "-";
+      const decision = (data as any)?.policy_recommendation ?? data?.decision?.recommendation ?? "-";
       setActionSuccess(
         `AI-assisted credit assessment completed successfully! Recommendation: ${humaniseEnum(decision)}`,
       );
-      if (data?.decision?.binding_limit) {
-        setApprovedAmount(data.decision.binding_limit);
+      if ((data as any)?.supportable_amount || data?.decision?.binding_limit) {
+        setApprovedAmount((data as any)?.supportable_amount || data?.decision?.binding_limit);
       }
       loadCase();
     } else {
@@ -208,7 +224,7 @@ export default function CaseEvaluationPage() {
 
     const idempotencyKey = `rec-${caseData.id}-${crypto.randomUUID()}`;
     const recAction = caseData.allowed_actions?.submit_analyst_recommendation?.suggested_analyst_action || "RECOMMEND_AS_REQUESTED";
-    const limit = evalResult?.decision?.binding_limit || creditTwin?.binding_limit || caseData.requested_amount || 0;
+    const limit = evalResult?.decision?.binding_limit || decisionPackage?.decision?.binding_limit || caseData.requested_amount || 0;
     
     if ((recAction === "RECOMMEND_AS_REQUESTED" || recAction === "RECOMMEND_ALTERNATIVE_STRUCTURE") && limit <= 0) {
        setActionError("Recommendation limit must be greater than ₹0.");
@@ -348,10 +364,15 @@ export default function CaseEvaluationPage() {
   const canSubmitHumanDecision = allowedActions.record_human_decision?.allowed === true;
 
   const reqAmount = caseData.requested_amount || 0;
-  const isEvaluated = creditTwin && creditTwin.evaluated_at;
-  const recVal = creditTwin?.recommendation ? humaniseEnum(creditTwin.recommendation) : "-";
-  const supportLimit = creditTwin?.binding_limit ?? "-";
-  const dscrVal = creditTwin?.dscr ?? "-";
+  const isEvaluated = Boolean(
+    (assessmentResult && (assessmentResult.generated_at || assessmentResult.evaluated_at || assessmentResult.policy_recommendation || assessmentResult.recommendation)) ||
+    (decisionPackage && (decisionPackage.recommendation || decisionPackage.binding_limit || decisionPackage?.decision?.recommendation)) ||
+    (caseData && (caseData.status === "ASSESSMENT_COMPLETED" || caseData.status === "DECISION_PENDING" || caseData.status === "SANCTIONED" || caseData.status === "DISBURSED"))
+  );
+  const rawRec = decisionPackage?.recommendation || decisionPackage?.decision?.recommendation || assessmentResult?.policy_recommendation || assessmentResult?.recommendation || evalResult?.decision?.recommendation || evalResult?.policy_recommendation || caseData?.recommendation;
+  const recVal = rawRec ? humaniseEnum(rawRec) : "-";
+  const supportLimit = decisionPackage?.binding_limit ?? decisionPackage?.decision?.binding_limit ?? assessmentResult?.supportable_amount ?? evalResult?.decision?.binding_limit ?? evalResult?.supportable_amount ?? "-";
+  const dscrVal = decisionPackage?.dscr ?? decisionPackage?.financial_metrics?.dscr ?? assessmentResult?.current_dscr ?? evalResult?.current_dscr ?? "-";
 
 
 
@@ -429,12 +450,12 @@ export default function CaseEvaluationPage() {
         })}
       </div>
 
-      {activeTab === "evidence" && <EvidenceTab caseId={caseData.id} />}
+      {activeTab === "evidence" && <EvidenceTab caseId={caseData.id} assessment={assessmentResult} />}
       {activeTab === "reconciliation" && (
         <ReconciliationTab caseId={caseData.id} />
       )}
       {activeTab === "history" && <AssessmentHistoryTab caseId={caseData.id} />}
-      {activeTab === "decision_package" && <DecisionPackageTab caseId={caseData.id} />}
+      {activeTab === "decision_package" && <DecisionPackageTab caseId={caseData.id} assessment={assessmentResult} decisionPackage={decisionPackage} />}
 
       {activeTab === "overview" && (
         <div className="space-y-6">
@@ -482,7 +503,7 @@ export default function CaseEvaluationPage() {
               </div>
               <div className="glass-card p-4">
                 <span className="text-xs text-light-secondary uppercase font-medium">Evidence Confidence</span>
-                <div className="font-bold text-light-text mt-1 text-lg">{creditTwin?.evidence_confidence ?? "-"}%</div>
+                <div className="font-bold text-light-text mt-1 text-lg">{assessmentResult?.evidence_certainty ?? "-"}%</div>
               </div>
             </div>
           ) : (
@@ -523,14 +544,14 @@ export default function CaseEvaluationPage() {
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
                       <span className="text-light-secondary font-medium">Source Coverage</span>
                       <div className="text-right">
-                        {creditTwin?.source_coverage !== undefined && creditTwin?.source_coverage !== null ? `${creditTwin.source_coverage}%` : "-"}
+                        {assessmentResult?.source_coverage !== undefined && assessmentResult?.source_coverage !== null ? `${assessmentResult.source_coverage}%` : "-"}
                       </div>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-brand-teal h-full"
                         style={{
-                          width: `${creditTwin?.source_coverage || 0}%`,
+                          width: `${assessmentResult?.source_coverage || 0}%`,
                         }}
                       />
                     </div>
@@ -538,14 +559,14 @@ export default function CaseEvaluationPage() {
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
                       <span className="text-light-secondary font-medium">Evidence Confidence</span>
                       <span className="font-bold text-light-text">
-                        {creditTwin?.evidence_confidence !== undefined && creditTwin?.evidence_confidence !== null ? `${creditTwin.evidence_confidence}%` : "-"}
+                        {assessmentResult?.evidence_certainty !== undefined && assessmentResult?.evidence_certainty !== null ? `${assessmentResult.evidence_certainty}%` : "-"}
                       </span>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-blue-500 h-full"
                         style={{
-                          width: `${creditTwin?.evidence_confidence || 0}%`,
+                          width: `${assessmentResult?.evidence_certainty || 0}%`,
                         }}
                       />
                     </div>
@@ -553,14 +574,14 @@ export default function CaseEvaluationPage() {
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
                       <span className="text-light-secondary font-medium">Reconciliation Quality</span>
                       <span className="font-bold text-light-text">
-                        {creditTwin?.reconciliation_quality !== undefined && creditTwin?.reconciliation_quality !== null ? `${creditTwin.reconciliation_quality}%` : "-"}
+                        {assessmentResult?.integrity_state !== undefined && assessmentResult?.integrity_state !== null ? `${assessmentResult.integrity_state}%` : "-"}
                       </span>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
                       <div
                         className="bg-purple-500 h-full"
                         style={{
-                          width: `${creditTwin?.reconciliation_quality || 0}%`,
+                          width: `${assessmentResult?.integrity_state || 0}%`,
                         }}
                       />
                     </div>
@@ -568,9 +589,9 @@ export default function CaseEvaluationPage() {
                 </div>
 
                 <div className="mt-6 pt-4 border-t border-light-border text-xs text-light-secondary flex items-center justify-between">
-                  <span>Model: {creditTwin?.calculation_version || "-"}</span>
+                  <span>Model: {assessmentResult?.calculation_version || "-"}</span>
                   <span className="text-light-text">
-                    Evaluated: {creditTwin?.evaluated_at ? new Date(creditTwin.evaluated_at).toLocaleString() : "Never"}
+                    Evaluated: {assessmentResult?.evaluated_at ? new Date(assessmentResult.evaluated_at).toLocaleString() : (assessmentResult?.generated_at ? new Date(assessmentResult.generated_at).toLocaleString() : (isEvaluated ? "Completed" : "Never"))}
                   </span>
                 </div>
               </div>
@@ -688,7 +709,7 @@ export default function CaseEvaluationPage() {
                       {canSubmitAnalystRec && (() => {
                         const recAction = allowedActions.submit_analyst_recommendation?.suggested_analyst_action || "RECOMMEND_AS_REQUESTED";
                         const isApprovalRec = recAction === "RECOMMEND_AS_REQUESTED" || recAction === "RECOMMEND_ALTERNATIVE_STRUCTURE";
-                        const computedLimit = evalResult?.decision?.binding_limit ?? creditTwin?.binding_limit ?? caseData?.requested_amount ?? 0;
+                        const computedLimit = evalResult?.decision?.binding_limit ?? decisionPackage?.decision?.binding_limit ?? caseData?.requested_amount ?? 0;
                         const showLimit = isApprovalRec && computedLimit > 0;
                         
                         const buttonText = showLimit 
@@ -736,7 +757,7 @@ export default function CaseEvaluationPage() {
                             </option>
                           )}
                           {allowedActions.record_human_decision?.allowed_human_actions?.includes("APPROVE_ALTERNATIVE_STRUCTURE") && (() => {
-                            const computedSupportLimit = creditTwin?.binding_limit ?? evalResult?.decision?.binding_limit ?? caseData?.requested_amount ?? 0;
+                            const computedSupportLimit = decisionPackage?.decision?.binding_limit ?? evalResult?.decision?.binding_limit ?? caseData?.requested_amount ?? 0;
                             if (computedSupportLimit > 0) {
                               return (
                                 <option value="APPROVE_ALTERNATIVE_STRUCTURE">

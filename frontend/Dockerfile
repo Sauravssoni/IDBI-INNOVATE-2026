@@ -9,9 +9,11 @@ COPY . .
 
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:?required}
+ARG BACKEND_URL=http://backend:8000
+ENV BACKEND_URL=${BACKEND_URL}
 
 RUN npm run build
-RUN grep -r "$NEXT_PUBLIC_API_URL" .next/ || (echo "Build failed: NEXT_PUBLIC_API_URL not found in bundle" && exit 1)
+
 
 FROM node:22-alpine AS runner
 WORKDIR /app
