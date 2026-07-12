@@ -7,9 +7,9 @@ logger = logging.getLogger(__name__)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.db.session import SessionLocal
-from app.seed.reset_service import seed_shakti, seed_navprerna, seed_rangrez, seed_nirmaan, seed_demo_principals
-from app.seed.run_evaluations import run_evaluations
+from app.db.session import SessionLocal  # noqa: E402
+from app.seed.reset_service import seed_shakti, seed_navprerna, seed_rangrez, seed_nirmaan, seed_demo_principals  # noqa: E402
+from app.seed.run_evaluations import run_evaluations  # noqa: E402
 
 db = SessionLocal()
 try:

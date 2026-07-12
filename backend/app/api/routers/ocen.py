@@ -50,8 +50,8 @@ def get_ocen_export(
 
     # Try to parse the payload to get real metrics
     data = pkg.canonical_json
-    fhi = data.get("fhi_score")
-    dscr = data.get("current_dscr")
+    data.get("fhi_score")
+    data.get("current_dscr")
     binding = data.get("binding_constraint")
     supportable = data.get("binding_limit", 0.0) # wait, it was supportable_amount but test creates binding_limit
 

@@ -117,8 +117,14 @@ def test_bankability_simulate_api(client: TestClient, db):
 
     auth_kwargs = get_auth_kwargs(client, "credit@bank.example")
     response = client.post(
-        f"/api/cases/{shakti_case.id}/simulate",
-        json={"overrides": {"dscr": "2.25", "operating_inflows_monthly": "1500000"}},
+        f"/api/cases/{shakti_case.id}/bankability/simulate",
+        json={
+            "product_type": "WORKING_CAPITAL_LINE",
+            "amount": 5000000,
+            "tenure_months": 12,
+            "interest_rate": 10.5,
+            "overrides": {"dscr": "2.25", "operating_inflows_monthly": "1500000"}
+        },
         **auth_kwargs,
     )
     assert response.status_code == 200, response.text

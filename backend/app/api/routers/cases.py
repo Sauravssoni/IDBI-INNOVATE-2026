@@ -566,7 +566,7 @@ def evaluate_case(
     try:
         assessment_result = AssessmentService.evaluate_case(db, case)
         latest_snapshot = AssessmentService.get_latest_assessment(db, case.id)
-        features_dict = (
+        features_dict: Any = (
             latest_snapshot.feature_snapshot
             if latest_snapshot and latest_snapshot.feature_snapshot
             else {}
@@ -1707,8 +1707,6 @@ def get_assessment_by_id(case_id: UUID, assessment_id: UUID, db: Session = Depen
     if str(assessment.case_id) != str(case_id):
         raise HTTPException(status_code=400, detail="Assessment does not belong to this case")
     return assessment
-from pydantic import BaseModel
-from typing import Optional
 
 class SimulationRequest(BaseModel):
     product_type: str
@@ -1727,6 +1725,8 @@ def simulate_product_structure(
         return {"error": "No assessment exists to simulate against."}
         
     features = assessment.feature_snapshot.model_dump(mode="json") if hasattr(assessment.feature_snapshot, "model_dump") else assessment.feature_snapshot
+    if not isinstance(features, dict):
+        features = dict(features) if features else {}
     if isinstance(features, dict) and features.get("obligation_verification_state") in ["UNKNOWN_OBLIGATIONS", "UNVERIFIED"]:
         return {"error": "NOT_ASSESSABLE", "decision": "ADDITIONAL_EVIDENCE_REQUIRED"}
         

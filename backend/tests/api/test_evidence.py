@@ -1,10 +1,8 @@
-import pytest
 from fastapi.testclient import TestClient
 from uuid import uuid4
-from datetime import datetime
 from unittest.mock import patch
 from app.main import app
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_current_user
 from app.db.session import SessionLocal
 from app.db.orm.users import User
 from app.db.orm.cases import Case, Business
@@ -13,9 +11,8 @@ from app.db.orm.cases import Case, Business
 def override_get_current_user():
     return User(id=uuid4(), email="test@idbi.in", role="relationship_manager", is_active=True)
 
-app.dependency_overrides[get_current_user] = override_get_current_user
-
 def test_evidence_envelope():
+    app.dependency_overrides[get_current_user] = override_get_current_user
     client = TestClient(app)
     db = SessionLocal()
     try:
@@ -29,7 +26,8 @@ def test_evidence_envelope():
             print(response.json())
             assert response.status_code == 200
             data = response.json()
-            assert "certainty" in data
-            assert "freshness" in data
+            assert "evidence_certainty" in data
+            assert "freshness_score" in data
     finally:
         db.close()
+        app.dependency_overrides.clear()

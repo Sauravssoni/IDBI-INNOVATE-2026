@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 # Add backend directory to sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app.db.session import SessionLocal
-from app.seed.reset_service import execute_bounded_reset
+from app.db.session import SessionLocal  # noqa: E402
+from app.seed.reset_service import execute_bounded_reset  # noqa: E402
 
 db = SessionLocal()
 try:

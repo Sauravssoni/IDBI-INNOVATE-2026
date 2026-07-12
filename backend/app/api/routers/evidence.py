@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from uuid import UUID
 
+from datetime import datetime
+
 from app.schemas.responses import (
     AssessmentHistoryItem,
     CreditTwinResponse,
@@ -248,13 +250,12 @@ def get_case_evidence_passport(
 
     return generate_evidence_passport(db, str(case_id))
 
-from datetime import datetime
 
 @router.get("/{case_id}/evidence-envelope")
 def get_evidence_envelope(
     case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
-    case = can_view_case(db, user, case_id)
+    can_view_case(db, user, case_id)
     rec = run_reconciliation(db, str(case_id))
     
     unresolved_ratio = 0.0
@@ -272,7 +273,8 @@ def get_evidence_envelope(
     
     sufficiency = passport.get("metrics", {}).get("evidence_sufficiency_score", "NOT_AVAILABLE_NOT_USED")
     certainty = assessment.evidence_certainty if assessment else "NOT_AVAILABLE_NOT_USED"
-    asmnt_range = assessment.assessment_range.model_dump() if assessment and hasattr(assessment, "assessment_range") else "NOT_AVAILABLE_NOT_USED"
+    asmnt_range_obj = getattr(assessment, "assessment_range", None) if assessment else None
+    asmnt_range = asmnt_range_obj.model_dump() if asmnt_range_obj and hasattr(asmnt_range_obj, "model_dump") else "NOT_AVAILABLE_NOT_USED"
     integrity = assessment.integrity_state if assessment else "NOT_AVAILABLE_NOT_USED"
     coverage = passport.get("metrics", {}).get("coverage_ratio", "NOT_AVAILABLE_NOT_USED")
     freshness = passport.get("metrics", {}).get("freshness_score", "NOT_AVAILABLE_NOT_USED")
