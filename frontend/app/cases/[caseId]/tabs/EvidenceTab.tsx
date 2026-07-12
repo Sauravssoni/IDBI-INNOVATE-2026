@@ -63,20 +63,22 @@ export default function EvidenceTab({ caseId, assessment }: { caseId: string, as
           <div className="grid grid-cols-4 gap-4">
             <div className="p-4 bg-light-bg rounded-xl border border-light-border">
               <div className="text-sm text-light-secondary mb-1">Certainty</div>
-              <div className="text-xl font-mono text-brand-teal">{(envelope.certainty * 100).toFixed(0)}%</div>
+              <div className="text-xl font-mono text-brand-teal">{(envelope.evidence_certainty * 100).toFixed(0)}%</div>
             </div>
             <div className="p-4 bg-light-bg rounded-xl border border-light-border">
               <div className="text-sm text-light-secondary mb-1">Freshness</div>
-              <div className="text-xl font-mono text-light-text">{envelope.freshness}</div>
+              <div className="text-xl font-mono text-light-text">{envelope.freshness_score}</div>
             </div>
             <div className="p-4 bg-light-bg rounded-xl border border-light-border">
               <div className="text-sm text-light-secondary mb-1">Unresolved Ratio</div>
-              <div className="text-xl font-mono text-brand-red">{(envelope.unresolved_ratio * 100).toFixed(1)}%</div>
+              <div className="text-xl font-mono text-brand-red">{((envelope.unresolved_transaction_ratio || 0) * 100).toFixed(1)}%</div>
             </div>
             <div className="p-4 bg-light-bg rounded-xl border border-light-border">
               <div className="text-sm text-light-secondary mb-1">Reason Codes</div>
               <div className="text-xs font-mono text-light-text mt-1 space-y-1">
-                {envelope.reason_codes?.length ? envelope.reason_codes.map((c: string) => <div key={c}>{c}</div>) : "None"}
+                {(envelope.adverse_reason_codes?.length || envelope.positive_reason_codes?.length) 
+                  ? [...(envelope.adverse_reason_codes || []), ...(envelope.positive_reason_codes || [])].map((c: string) => <div key={c}>{c}</div>) 
+                  : "None"}
               </div>
             </div>
           </div>
