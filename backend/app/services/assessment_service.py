@@ -135,15 +135,26 @@ class AssessmentService:
             FinancialHealthPillarResponse(**p) if isinstance(p, dict) else p
             for p in scores.get("six_pillars", [])
         ]
-        if not pillars:
-            pillars = [
-                FinancialHealthPillarResponse(name="Liquidity", score=85, health_status="STRONG"),
-                FinancialHealthPillarResponse(name="Solvency", score=72, health_status="ADEQUATE"),
-                FinancialHealthPillarResponse(name="Efficiency", score=65, health_status="NEEDS_IMPROVEMENT"),
-                FinancialHealthPillarResponse(name="Profitability", score=90, health_status="EXCELLENT"),
-                FinancialHealthPillarResponse(name="Growth", score=80, health_status="STRONG"),
-                FinancialHealthPillarResponse(name="Resilience", score=75, health_status="ADEQUATE")
-            ]
+        if not pillars and "fhi_breakdown" in scores:
+            for p_name, p_data in scores["fhi_breakdown"].items():
+                s = p_data.get("score")
+                if s is None:
+                    h_stat = "MISSING_DATA"
+                elif s >= 80:
+                    h_stat = "STRONG"
+                elif s >= 60:
+                    h_stat = "ADEQUATE"
+                elif s >= 40:
+                    h_stat = "NEEDS_IMPROVEMENT"
+                else:
+                    h_stat = "WEAK"
+                pillars.append(
+                    FinancialHealthPillarResponse(
+                        name=p_name.replace("_", " ").title(),
+                        score=float(s) if s is not None else 0.0,
+                        health_status=h_stat
+                    )
+                )
 
         # Extract limits
         max_amt = decision.get("binding_limit")
@@ -175,10 +186,10 @@ class AssessmentService:
                         top_covenants.append(CovenantResponse(covenant_text=c_text))
 
         fhi_val = scores.get("financial_health_index")
-        fhi = Decimal(str(fhi_val)) if fhi_val is not None else Decimal("78.5")
+        fhi = Decimal(str(fhi_val)) if fhi_val is not None else None
 
         credit_val = scores.get("vyapar_credit_health_score")
-        credit_score = int(credit_val) if credit_val is not None else 785
+        credit_score = int(credit_val) if credit_val is not None else None
 
         return AssessmentResultResponse(
             assessment_id=uuid.uuid4(),
@@ -208,17 +219,16 @@ class AssessmentService:
             selected_product=req_product_str,
             supportable_amount=max_amt,
             binding_constraint=binding_constraint,
-            stress_results=[
-                StressScenarioResponse(scenario_name="-10% Revenue", impact="Manageable"),
-                StressScenarioResponse(scenario_name="+2% Interest Rate", impact="High Risk")
-            ],
-            bankability_interventions=[
-                BankabilityInterventionResponse(intervention_type="Add Co-Applicant", description="Increase DSCR by including partner income")
-            ],
+            stress_results=cap.get("stress_results", [
+                StressScenarioResponse(scenario_name="NOT_AVAILABLE", impact="REQUIRED_INPUTS_MISSING")
+            ]),
+            bankability_interventions=cap.get("bankability_interventions", [
+                BankabilityInterventionResponse(intervention_type="NOT_AVAILABLE", description="REQUIRED_INPUTS_MISSING")
+            ]),
             policy_recommendation=decision.get("decision", "DECLINE_RECOMMENDED"),
             policy_reason_codes=reasons_list,
             offers=decision.get("offers", []),
-            conditions=[],
+            conditions=decision.get("conditions", []),
             covenants=top_covenants,
             analyst_recommendation=case.analyst_recommendation.value if case.analyst_recommendation else None,
             analyst_reason=None,
@@ -230,7 +240,7 @@ class AssessmentService:
             passport_version="1.0",
             feature_schema_version="3.1",
             evidence_ids=[],
-            limitations=["Uses mocked stress test scenarios"]
+            limitations=[]
         )
 
     @classmethod
