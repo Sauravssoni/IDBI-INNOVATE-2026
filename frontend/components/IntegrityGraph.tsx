@@ -1,117 +1,156 @@
 "use client";
 
-import React from "react";
-import { CheckCircle2, AlertTriangle, Info } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { AlertTriangle, Info, CheckCircle2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
-interface Node {
+interface IntegrityNode {
   id: string;
   label: string;
-  type: "root" | "source" | "data";
-  status: "INTACT" | "TAMPERED" | "UNVERIFIED";
-  x: number;
-  y: number;
+  type: string;
 }
 
-interface Edge {
+interface IntegrityEdge {
   source: string;
   target: string;
-  status: "verified" | "flagged";
+  relationship: string;
+  matched_identifiers: string[];
 }
 
-export function IntegrityGraph({ entityName, state }: { entityName: string, state: string }) {
-  // Hardcoded nodes/edges for the relationship map to avoid distribution bars
-  const nodes: Node[] = [
-    { id: "entity", label: entityName || "MSME Entity", type: "root", status: "INTACT", x: 400, y: 50 },
-    
-    // Level 1: Data Sources
-    { id: "gst", label: "GST Network", type: "source", status: "INTACT", x: 200, y: 150 },
-    { id: "bank", label: "Banking (AA)", type: "source", status: state === "TAMPERED" ? "TAMPERED" : "INTACT", x: 400, y: 150 },
-    { id: "mca", label: "MCA / EPFO", type: "source", status: "INTACT", x: 600, y: 150 },
-    
-    // Level 2: Data Elements
-    { id: "gst_sales", label: "Sales Data", type: "data", status: "INTACT", x: 150, y: 250 },
-    { id: "gst_itc", label: "ITC Claims", type: "data", status: "INTACT", x: 250, y: 250 },
-    
-    { id: "bank_tx", label: "Transactions", type: "data", status: state === "TAMPERED" ? "TAMPERED" : "INTACT", x: 350, y: 250 },
-    { id: "bank_bal", label: "Balances", type: "data", status: state === "TAMPERED" ? "TAMPERED" : "INTACT", x: 450, y: 250 },
-    
-    { id: "mca_dir", label: "Directors", type: "data", status: "INTACT", x: 550, y: 250 },
-    { id: "mca_pf", label: "PF Remittances", type: "data", status: "INTACT", x: 650, y: 250 },
-  ];
+interface IntegrityGraphResult {
+  status: string;
+  reason_code: string;
+  severity: string;
+  relationship_path: string[];
+  matched_identifiers: string[];
+  technical_explanation: string;
+  analyst_explanation: string;
+  evidence_ids: string[];
+  synthetic_demonstration: boolean;
+  nodes: IntegrityNode[];
+  edges: IntegrityEdge[];
+}
 
-  const edges: Edge[] = [
-    { source: "entity", target: "gst", status: "verified" },
-    { source: "entity", target: "bank", status: state === "TAMPERED" ? "flagged" : "verified" },
-    { source: "entity", target: "mca", status: "verified" },
-    
-    { source: "gst", target: "gst_sales", status: "verified" },
-    { source: "gst", target: "gst_itc", status: "verified" },
-    
-    { source: "bank", target: "bank_tx", status: state === "TAMPERED" ? "flagged" : "verified" },
-    { source: "bank", target: "bank_bal", status: state === "TAMPERED" ? "flagged" : "verified" },
-    
-    { source: "mca", target: "mca_dir", status: "verified" },
-    { source: "mca", target: "mca_pf", status: "verified" },
-  ];
+export function IntegrityGraph({ caseId, entityName }: { caseId: string, entityName: string }) {
+  const [data, setData] = useState<IntegrityGraphResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const getNodeColor = (type: string, status: string) => {
-    if (status === "TAMPERED") return "fill-red-900 stroke-red-500 text-red-500";
-    if (status === "UNVERIFIED") return "fill-amber-900 stroke-amber-500 text-amber-500";
-    if (type === "root") return "fill-indigo-900 stroke-indigo-500 text-indigo-400";
-    if (type === "source") return "fill-teal-900 stroke-teal-500 text-teal-400";
+  useEffect(() => {
+    async function fetchGraph() {
+      try {
+        const res = await apiFetch<IntegrityGraphResult>(`/api/cases/${caseId}/integrity-graph`);
+        if (res.status === 200 && res.data) {
+          setData(res.data);
+        } else {
+          setError(res.error || "Failed to load integrity graph");
+        }
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchGraph();
+  }, [caseId]);
+
+  if (loading) {
+    return <div className="animate-pulse h-64 bg-white/5 rounded-xl border border-white/10" />;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl flex items-center gap-3">
+        <AlertTriangle className="w-5 h-5" />
+        <p>Could not load Integrity Graph: {error}</p>
+      </div>
+    );
+  }
+
+  const getNodeColor = (type: string) => {
+    if (type === "BUSINESS") return "fill-indigo-900 stroke-indigo-500 text-indigo-400";
+    if (type === "PERSON") return "fill-teal-900 stroke-teal-500 text-teal-400";
+    if (type === "BANK_ACCOUNT") return "fill-amber-900 stroke-amber-500 text-amber-500";
     return "fill-slate-800 stroke-slate-500 text-slate-300";
   };
+
+  const isFlagged = data.status === "REVIEW" || data.status === "BLOCKED";
+
+  // Simple hardcoded layout for the synthetic nodes for demonstration
+  // In a real app we would use d3 or a layout engine
+  const nodePositions: Record<string, { x: number, y: number }> = {};
+  data.nodes.forEach((n, i) => {
+    if (n.type === "PERSON") { nodePositions[n.id] = { x: 200, y: 100 }; }
+    else if (n.label === entityName || n.id.startsWith("BIZ-") && i === 0) { nodePositions[n.id] = { x: 400, y: 100 }; }
+    else if (n.type === "BUSINESS") { nodePositions[n.id] = { x: 600, y: 100 }; }
+    else if (n.type === "BANK_ACCOUNT") { nodePositions[n.id] = { x: 500, y: 250 }; }
+    else { nodePositions[n.id] = { x: 100 + i * 150, y: 150 }; }
+  });
 
   return (
     <div className="bg-black/40 border border-white/10 rounded-xl p-6 relative overflow-hidden">
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-white font-bold text-sm flex items-center gap-2">
-            Entity Integrity Graph (Relationship Map)
+            Entity Relationship Integrity Overlay
           </h3>
-          <p className="text-xs text-gray-400 mt-1">Cryptographic trace of evidence sources to core entity.</p>
+          <p className="text-xs text-gray-400 mt-1">Cross-referencing entities, directors, and accounts.</p>
         </div>
-        <div className={`px-3 py-1 text-xs font-bold rounded-lg border ${
-          state === "TAMPERED" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+        <div className={`px-3 py-1 text-xs font-bold rounded-lg border flex items-center gap-2 ${
+          isFlagged ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
         }`}>
-          {state === "TAMPERED" ? "INTEGRITY BREACH DETECTED" : "VERIFIED INTACT"}
+          {isFlagged ? <AlertTriangle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
+          {data.status === "REVIEW" ? "REVIEW REQUIRED" : data.status === "BLOCKED" ? "BLOCKED" : "CLEAR"}
         </div>
       </div>
 
-      <div className="w-full h-[300px] relative mt-4 border border-white/5 bg-black/20 rounded-lg overflow-x-auto">
+      {isFlagged && (
+        <div className="mb-4 bg-amber-500/5 border border-amber-500/10 rounded-lg p-4">
+          <p className="text-sm text-amber-200 font-bold mb-1">Reason: {data.reason_code}</p>
+          <p className="text-xs text-amber-200/70 mb-2">{data.analyst_explanation}</p>
+          <div className="flex gap-2">
+            {data.matched_identifiers.map(id => (
+              <span key={id} className="bg-amber-500/20 text-amber-300 text-[10px] px-2 py-0.5 rounded">Matched: {id}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="w-full h-[350px] relative border border-white/5 bg-black/20 rounded-lg overflow-x-auto">
         <div className="min-w-[800px] h-full relative">
           <svg className="absolute inset-0 w-full h-full" style={{ minWidth: 800 }}>
-            {/* Draw Edges */}
-            {edges.map((edge, i) => {
-              const src = nodes.find(n => n.id === edge.source);
-              const tgt = nodes.find(n => n.id === edge.target);
+            {data.edges.map((edge, i) => {
+              const src = nodePositions[edge.source];
+              const tgt = nodePositions[edge.target];
               if (!src || !tgt) return null;
               
-              const isFlagged = edge.status === "flagged";
+              const isFlaggedEdge = isFlagged && (edge.relationship === "SHARES_BANK_ACCOUNT" || edge.relationship === "RELATED_PARTY");
               
               return (
                 <path
                   key={i}
                   d={`M ${src.x} ${src.y + 20} L ${tgt.x} ${tgt.y - 20}`}
-                  className={`${isFlagged ? 'stroke-red-500' : 'stroke-teal-500/30'} fill-none`}
-                  strokeWidth={isFlagged ? 2 : 1.5}
-                  strokeDasharray={isFlagged ? "4 4" : "none"}
+                  className={`${isFlaggedEdge ? 'stroke-amber-500' : 'stroke-teal-500/30'} fill-none`}
+                  strokeWidth={isFlaggedEdge ? 2 : 1.5}
+                  strokeDasharray={isFlaggedEdge ? "4 4" : "none"}
                 />
               );
             })}
 
-            {/* Draw Nodes */}
-            {nodes.map((node) => {
-              const colors = getNodeColor(node.type, node.status);
-              const width = 120;
+            {data.nodes.map((node) => {
+              const pos = nodePositions[node.id] || { x: 0, y: 0 };
+              const colors = getNodeColor(node.type);
+              const width = 140;
               const height = 40;
+              const isFlaggedNode = isFlagged && data.relationship_path.includes(node.id);
+              
               return (
-                <g key={node.id} transform={`translate(${node.x - width/2}, ${node.y - height/2})`}>
+                <g key={node.id} transform={`translate(${pos.x - width/2}, ${pos.y - height/2})`}>
                   <rect
                     width={width}
                     height={height}
                     rx={6}
-                    className={`${colors} stroke-[1.5px]`}
+                    className={`${colors} ${isFlaggedNode ? 'stroke-amber-500 stroke-2' : 'stroke-[1.5px]'}`}
                   />
                   <text
                     x={width / 2}
@@ -123,12 +162,6 @@ export function IntegrityGraph({ entityName, state }: { entityName: string, stat
                   >
                     {node.label}
                   </text>
-                  {node.status === "TAMPERED" && (
-                    <circle cx={width} cy={0} r={8} className="fill-red-500" />
-                  )}
-                  {node.status === "INTACT" && node.type !== "root" && (
-                    <circle cx={width} cy={0} r={6} className="fill-emerald-500" />
-                  )}
                 </g>
               );
             })}
