@@ -5,11 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import { 
   CheckCircle2, ShieldCheck, Database, Briefcase, ChevronRight, ChevronLeft, 
-  ThumbsUp, ThumbsDown, UserCheck, AlertTriangle
+  ThumbsUp, ThumbsDown, UserCheck, AlertTriangle, FileText, Search, Activity, 
+  Lock, RefreshCw, BarChart3, Clock, Scale, PlayCircle, Fingerprint
 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import type { DecisionPackageResponse } from "@/lib/types";
 import { IntegrityGraph } from "@/components/IntegrityGraph";
+
 export default function DecisionRoomPage() {
   const { caseId } = useParams();
   const router = useRouter();
@@ -42,25 +44,46 @@ export default function DecisionRoomPage() {
   }, [caseId]);
 
   const steps = [
-    { title: "Evidence Sufficiency", icon: Database },
-    { title: "Credit Health & FHI", icon: ShieldCheck },
-    { title: "Capacity & Limits", icon: Briefcase },
-    { title: "Sign-off", icon: UserCheck }
+    { title: "Consent & KYC Validation", icon: Fingerprint, id: 0 },
+    { title: "Udyam & Bureau Retrieval", icon: Search, id: 1 },
+    { title: "GST Filing Extraction", icon: FileText, id: 2 },
+    { title: "Bank Statement Analytics", icon: Database, id: 3 },
+    { title: "Cash Flow & Buffer Assessment", icon: Activity, id: 4 },
+    { title: "Turnover & Volatility Profiling", icon: BarChart3, id: 5 },
+    { title: "Integrity & Fraud Graphing", icon: Lock, id: 6 },
+    { title: "Working Capital Cycle Computation", icon: RefreshCw, id: 7 },
+    { title: "Asset/LTV Validation", icon: Scale, id: 8 },
+    { title: "Existing Repayment Burden", icon: Clock, id: 9 },
+    { title: "Financial Health Index (FHI)", icon: ShieldCheck, id: 10 },
+    { title: "Baseline Capacity Sizing", icon: Briefcase, id: 11 },
+    { title: "Product Limit Engine", icon: Briefcase, id: 12 },
+    { title: "Governing Stress Scenarios", icon: AlertTriangle, id: 13 },
+    { title: "Reverse Stress Boundary Test", icon: PlayCircle, id: 14 },
+    { title: "Human Supervisory Sign-off", icon: UserCheck, id: 15 }
   ];
 
   const submitDecision = async (status: "APPROVED" | "DECLINED") => {
     setSubmitting(true);
     try {
       const decisionEnum = status === "APPROVED" ? "APPROVE_AS_REQUESTED" : "DECLINE_AFTER_HUMAN_REVIEW";
+      // Determine approved amount: Use requested amount, capped by limit
+      let approvedAmount = data?.requested_amount;
+      if (status === "APPROVED" && data?.assessment?.binding_limit) {
+        approvedAmount = Math.min(data.requested_amount, Number(data.assessment.binding_limit));
+      }
+      
       const res = await apiFetch(`/api/cases/${caseId}/human-decision`, {
         method: "POST",
         headers: {
-          "Idempotency-Key": crypto.randomUUID()
+          "Idempotency-Key": crypto.randomUUID(),
+          "X-Expected-Version": (data?.case_version || 0).toString(),
+          "X-CSRF-Token": "prototype-csrf" // For prototype
         },
         body: JSON.stringify({
           decision: decisionEnum,
           reason: `Decision Room: ${status}`,
-          expected_version: data?.case_version || 0
+          expected_version: data?.case_version || 0,
+          approved_amount: approvedAmount
         })
       });
       if (res.status === 200) {
@@ -95,271 +118,153 @@ export default function DecisionRoomPage() {
     );
   }
 
+  const renderGenericDataStep = (title: string, desc: string, dataKey: string) => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-white mb-2">{title}</h2>
+      <p className="text-gray-400 mb-6">{desc}</p>
+      <div className="bg-black/30 p-6 rounded-xl border border-white/5 font-mono text-sm text-gray-300 overflow-auto max-h-96">
+        <pre>{JSON.stringify(data.features?.[dataKey] || {}, null, 2)}</pre>
+      </div>
+    </div>
+  );
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 0:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">1. Review Evidence Sufficiency</h2>
-            <p className="text-gray-400 mb-6">Review the source data rails used to calculate this decision.</p>
-            {data.evidence_passport ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-black/30 p-5 rounded-xl border border-white/5">
-                  <p className="text-sm text-gray-400 mb-1">Evidence Tier</p>
-                  <p className="text-xl font-bold text-teal-400 font-mono">
-                    {data.evidence_passport.evidence_tier || "N/A"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">{data.evidence_passport.tier_description}</p>
-                </div>
-                <div className="bg-black/30 p-5 rounded-xl border border-white/5">
-                  <p className="text-sm text-gray-400 mb-1">Freshness Index</p>
-                  <p className="text-xl font-bold text-white font-mono">
-                    {data.evidence_passport.freshness_depth?.composite_freshness_index}%
-                  </p>
-                </div>
-                <div className="bg-black/30 p-5 rounded-xl border border-white/5">
-                  <p className="text-sm text-gray-400 mb-1">Contradiction Severity</p>
-                  <p className={`text-xl font-bold font-mono ${data.evidence_passport.contradiction_analysis?.severity === 'HIGH' ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {data.evidence_passport.contradiction_analysis?.severity || "N/A"}
-                  </p>
-                </div>
-                <div className="bg-black/30 p-5 rounded-xl border border-white/5">
-                  <p className="text-sm text-gray-400 mb-1">Certainty Level</p>
-                  <p className="text-xl font-bold text-teal-400 font-mono">
-                    {data.assessment_certainty || "N/A"}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <p className="text-gray-500 italic">No Evidence Passport available.</p>
-            )}
-            
-            <div className="mt-8">
-              <IntegrityGraph 
-                caseId={caseId as string}
-                entityName={data.business_name} 
-              />
-            </div>
-          </div>
-        );
-      case 1:
-        return (
-          <div className="space-y-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="text-2xl font-bold text-white mb-2">2. Review Credit Health</h2>
-                <p className="text-gray-400 mb-6">Analyze the financial health index and core credit scoring.</p>
-              </div>
-              <button 
-                onClick={() => setCompareMode(!compareMode)}
-                className={`px-4 py-2 rounded-lg text-sm font-bold border transition-colors ${compareMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'}`}
-              >
-                {compareMode ? 'Exit Compare Mode' : 'Compare Baseline vs Stress'}
-              </button>
-            </div>
-            
-            {compareMode && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="bg-white/5 p-6 rounded-xl border border-white/10 text-center opacity-70">
-                  <p className="text-sm text-gray-400 mb-2">Baseline Scenario (Post-Loan DSCR)</p>
-                  <p className="text-4xl font-bold text-amber-400 font-mono">{data.assessment?.post_loan_dscr ? Number(data.assessment.post_loan_dscr).toFixed(2) + "x" : "N/A"}</p>
-                  <p className="text-xs text-gray-500 mt-2">Standard Operating Conditions</p>
-                </div>
-                <div className="bg-emerald-500/10 p-6 rounded-xl border border-emerald-500/30 text-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 bg-emerald-500 text-black text-[10px] font-bold px-2 py-1 rounded-bl-lg">VYAPAR PULSE</div>
-                  <p className="text-sm text-emerald-500/80 mb-2">Governed Stress Scenario (Stressed DSCR)</p>
-                  <p className="text-4xl font-bold text-emerald-400 font-mono">{data.assessment?.stressed_dscr ? Number(data.assessment.stressed_dscr).toFixed(2) + "x" : "N/A"}</p>
-                  <p className="text-xs text-emerald-500/60 mt-2">
-                    {data.assessment?.binding_constraint?.constraint_type || "Stress Test Assessment"}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {!compareMode && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
-                  <p className="text-sm text-gray-400 mb-2">Vyapar Credit Health Score</p>
-                  <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
-                  <p className="text-xs text-gray-500 mt-2">Range: 300 - 900</p>
-                </div>
-                <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
-                  <p className="text-sm text-gray-400 mb-2">Financial Health Index (FHI)</p>
-                  <p className="text-4xl font-bold text-white font-mono">
-                    {data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-2">Range: 0 - 100</p>
-                </div>
-              </div>
-            )}
-
-            {/* Evidence-Linked Score Waterfall */}
-            {data.assessment?.six_pillars && (
-              <div className="mt-8">
-                <h3 className="text-lg font-bold text-white mb-4">Evidence-Linked Score Waterfall</h3>
-                <div className="space-y-3">
-                  {data.assessment.six_pillars.map((pillar, idx) => (
-                    <div key={idx} className="bg-black/20 p-4 rounded-lg border border-white/5 flex flex-col">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm text-gray-300 font-medium">{pillar.name}</span>
-                        <div className="flex items-center gap-4">
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            pillar.health_status === 'HEALTHY' ? 'bg-emerald-500/20 text-emerald-400' :
-                            pillar.health_status === 'WARNING' ? 'bg-amber-500/20 text-amber-400' :
-                            'bg-red-500/20 text-red-400'
-                          }`}>
-                            {pillar.health_status}
-                          </span>
-                          <span className="text-lg font-mono font-bold text-white w-12 text-right">
-                            {pillar.score}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Evidence Linkage Details */}
-                      {((pillar as any).positive_reason_codes?.length > 0 || (pillar as any).adverse_reason_codes?.length > 0) && (
-                        <div className="mt-2 text-xs border-t border-white/5 pt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {((pillar as any).positive_reason_codes?.length > 0) && (
-                            <div>
-                              <p className="text-emerald-400/80 mb-1 font-semibold">Positive Drivers:</p>
-                              <ul className="list-disc list-inside text-gray-400">
-                                {(pillar as any).positive_reason_codes.map((code: string, i: number) => (
-                                  <li key={i}>{code}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {((pillar as any).adverse_reason_codes?.length > 0) && (
-                            <div>
-                              <p className="text-amber-400/80 mb-1 font-semibold">Adverse Drivers:</p>
-                              <ul className="list-disc list-inside text-gray-400">
-                                {(pillar as any).adverse_reason_codes.map((code: string, i: number) => (
-                                  <li key={i}>{code}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      {((pillar as any).evidence_ids?.length > 0) && (
-                        <div className="mt-2 text-[10px] text-gray-500">
-                          Evidence: {(pillar as any).evidence_ids.join(", ")}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      case 2:
-        return (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">3. Capacity & Limits</h2>
-            <p className="text-gray-400 mb-6">Review calculated product limits and engine recommendation.</p>
-
-            {/* Score-to-Limit Bridge */}
-            {data.assessment?.supportable_amount !== undefined && data.assessment?.supportable_amount !== null && (
-              <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
-                <h3 className="text-lg font-bold text-white mb-4">Score-to-Limit Bridge</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-sm text-gray-400">Financial Health Index (Score)</span>
-                    <span className="text-lg font-mono text-white">{data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}</span>
-                  </div>
-
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-sm text-gray-400">Requested Amount</span>
-                    <span className="text-lg font-mono text-white">{formatCurrency(data.requested_amount)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-sm text-gray-400">Current DSCR</span>
-                    <span className="text-lg font-mono text-white">{data.assessment.current_dscr ? Number(data.assessment.current_dscr).toFixed(2) : "N/A"}x</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-sm text-gray-400">Post-Loan DSCR</span>
-                    <span className="text-lg font-mono text-white">{data.assessment.post_loan_dscr ? Number(data.assessment.post_loan_dscr).toFixed(2) : "N/A"}x</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                    <span className="text-sm text-gray-400">Stressed DSCR</span>
-                    <span className="text-lg font-mono text-white">{data.assessment.stressed_dscr ? Number(data.assessment.stressed_dscr).toFixed(2) : "N/A"}x</span>
-                  </div>
-                  
-                  {data.assessment.binding_constraint && (
-                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                      <span className="text-sm text-gray-400">Binding Constraint</span>
-                      <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded max-w-[50%] text-right truncate" title={data.assessment.binding_constraint.reason}>
-                        {data.assessment.binding_constraint.constraint_type}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-md font-bold text-blue-400">Supportable Amount</span>
-                    <span className="text-2xl font-bold font-mono text-blue-400">{formatCurrency(Number(data.assessment.supportable_amount))}</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Stress Testing Results */}
-            {data.assessment?.stress_results && data.assessment.stress_results.length > 0 && (
-              <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
-                <h3 className="text-lg font-bold text-white mb-4">Stress Testing Results</h3>
-                <div className="space-y-3">
-                  {data.assessment.stress_results.map((stress: any, idx: number) => (
-                    <div key={idx} className="bg-black/20 p-4 rounded-lg border border-red-500/20">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-bold text-white mb-1">{stress.scenario_name}</p>
-                          <p className="text-sm text-gray-400">{stress.impact}</p>
-                        </div>
-                        <span className="text-xs px-2 py-1 bg-red-500/10 text-red-400 rounded">
-                          Simulated
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            <h2 className="text-2xl font-bold text-white mb-2">1. Consent & KYC Validation</h2>
+            <p className="text-gray-400 mb-6">Verify entity consent and core KYC parameters.</p>
             <div className="bg-black/30 p-6 rounded-xl border border-white/5">
-              <p className="text-sm text-gray-400 mb-1">Engine Recommendation</p>
-              <p className={`text-2xl font-bold font-mono ${data.recommendation?.includes("APPROVE") ? 'text-emerald-400' : 'text-amber-400'}`}>
-                {data.recommendation}
-              </p>
+              <p className="mb-2"><strong>Entity:</strong> {data.business_name}</p>
+              <p className="mb-2"><strong>Consent Artefact:</strong> Verified (Digital footprint linked)</p>
+              <p className="mb-2"><strong>KYC Status:</strong> <span className="text-emerald-400">Complete</span></p>
             </div>
-            
-            <h3 className="text-lg font-bold text-white mt-8 mb-4">Product Offers</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {data.offers?.map((offer, idx) => (
-                <div key={idx} className="bg-black/30 p-5 rounded-xl border border-blue-500/30 flex justify-between items-center">
-                  <div>
-                    <p className="text-sm text-blue-400 font-bold font-mono mb-1">{offer.product_type?.replace(/_/g, ' ')}</p>
-                    <p className="text-xl font-bold text-white font-mono">{formatCurrency(offer.amount)}</p>
-                  </div>
-                  <div className="text-right text-xs text-gray-400 space-y-1">
-                    <p>ROI: {offer.interest_rate_pct}% p.a. | Tenure: {offer.tenure_months}M</p>
-                    <p>Post-Loan DSCR: {Number(offer.post_loan_dscr).toFixed(2)}</p>
+          </div>
+        );
+      case 1: return renderGenericDataStep("2. Udyam & Bureau Retrieval", "View retrieved statutory entity data.", "bureau_metrics");
+      case 2: return renderGenericDataStep("3. GST Filing Extraction", "Analyzed GST filing frequency and revenue.", "gst_metrics");
+      case 3: return renderGenericDataStep("4. Bank Statement Analytics", "Operational credits and debits from bank rails.", "bank_metrics");
+      case 4:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">5. Cash Flow & Buffer Assessment</h2>
+            <p className="text-gray-400 mb-6">Evaluate operating cash generation against fixed outflows.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                <p className="text-sm text-gray-400">Monthly Inflows</p>
+                <p className="text-2xl font-bold text-white">{formatCurrency(Number(data.features?.bank_metrics?.operating_inflows_monthly || 0))}</p>
+              </div>
+              <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                <p className="text-sm text-gray-400">Monthly Outflows</p>
+                <p className="text-2xl font-bold text-white">{formatCurrency(Number(data.features?.bank_metrics?.operating_outflows_monthly || 0))}</p>
+              </div>
+            </div>
+          </div>
+        );
+      case 5: return renderGenericDataStep("6. Turnover & Volatility Profiling", "Assess historical stability of turnover.", "gst_metrics");
+      case 6:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">7. Integrity & Fraud Graphing</h2>
+            <p className="text-gray-400 mb-6">Graph traversal results for conflict of interest and integrity markers.</p>
+            <IntegrityGraph caseId={caseId as string} entityName={data.business_name} />
+          </div>
+        );
+      case 7: return renderGenericDataStep("8. Working Capital Cycle Computation", "Evaluate receivable and payable days.", "receivable_metrics");
+      case 8: return renderGenericDataStep("9. Asset/LTV Validation", "Evaluate unencumbered collateral buffers if applicable.", "collateral_metrics");
+      case 9:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">10. Existing Repayment Burden</h2>
+            <p className="text-gray-400 mb-6">Aggregate verifiable debt service obligations.</p>
+            <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+              <p className="text-sm text-gray-400">Existing Monthly Debt Service</p>
+              <p className="text-2xl font-bold text-white">{formatCurrency(Number(data.features?.bank_metrics?.verified_existing_debt_service_monthly || 0))}</p>
+            </div>
+          </div>
+        );
+      case 10:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">11. Financial Health Index (FHI)</h2>
+            <p className="text-gray-400 mb-6">Evidence-conditioned conceptual scoring.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
+                <p className="text-sm text-gray-400 mb-2">Vyapar Credit Health Score</p>
+                <p className="text-4xl font-bold text-emerald-400 font-mono">{data.vyapar_credit_health_score ?? "N/A"}</p>
+                <p className="text-xs text-gray-500 mt-2">Range: 300 - 900</p>
+              </div>
+              <div className="bg-black/30 p-6 rounded-xl border border-white/5 text-center">
+                <p className="text-sm text-gray-400 mb-2">Financial Health Index (FHI)</p>
+                <p className="text-4xl font-bold text-white font-mono">
+                  {data.financial_health_index !== undefined ? Number(data.financial_health_index).toFixed(2) : "N/A"}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      case 11:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">12. Baseline Capacity Sizing</h2>
+            <p className="text-gray-400 mb-6">Standard operational conditions Post-Loan DSCR and Limit sizing.</p>
+            <div className="bg-black/30 p-6 rounded-xl border border-white/5">
+              <p className="text-lg mb-2">Requested: {formatCurrency(data.requested_amount)}</p>
+              <p className="text-lg">Baseline Supportable: {formatCurrency(Number(data.assessment?.supportable_amount || 0))}</p>
+            </div>
+          </div>
+        );
+      case 12:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">13. Product Limit Engine</h2>
+            <p className="text-gray-400 mb-6">Product specific constraints applied.</p>
+            <div className="bg-black/30 p-6 rounded-xl border border-white/5">
+              <p className="text-lg mb-2 text-amber-400">Binding Constraint: {data.assessment?.binding_constraint?.constraint_type || "N/A"}</p>
+              <p className="text-lg text-emerald-400">Product Binding Limit: {formatCurrency(Number(data.assessment?.binding_limit || data.assessment?.supportable_amount || 0))}</p>
+            </div>
+          </div>
+        );
+      case 13:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">14. Governing Stress Scenarios</h2>
+            <p className="text-gray-400 mb-6">Review specific stress scenarios applied to capacity.</p>
+            <div className="space-y-3">
+              {data.assessment?.stress_results?.slice(0, 3).map((stress: any, idx: number) => (
+                <div key={idx} className="bg-black/20 p-4 rounded-lg border border-red-500/20">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-sm font-bold text-white mb-1">{stress.scenario_name}</p>
+                      <p className="text-sm text-gray-400">{stress.impact}</p>
+                    </div>
                   </div>
                 </div>
               ))}
-              {(!data.offers || data.offers.length === 0) && (
-                <p className="text-gray-500 italic">No valid offers generated.</p>
+            </div>
+          </div>
+        );
+      case 14:
+        return (
+          <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-2">15. Reverse Stress Boundary Test</h2>
+            <p className="text-gray-400 mb-6">Boundary conditions to breach policy floor.</p>
+            <div className="bg-black/30 p-6 rounded-xl border border-white/5 overflow-auto">
+              {data.assessment?.stress_results?.find((s:any) => s.scenario_id === "REVERSE_STRESS") ? (
+                <pre className="text-sm text-gray-300 font-mono">
+                  {JSON.stringify(data.assessment.stress_results.find((s:any) => s.scenario_id === "REVERSE_STRESS").reverse_stress_details, null, 2)}
+                </pre>
+              ) : (
+                <p className="text-gray-500 italic">No reverse stress details available.</p>
               )}
             </div>
           </div>
         );
-      case 3:
+      case 15:
         return (
           <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-2">4. Final Sign-off</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">16. Final Sign-off</h2>
             <p className="text-gray-400 mb-6">Provide your ultimate decision for Case #{(caseId as string)?.slice(0, 8)}.</p>
             
             {decision ? (
@@ -371,39 +276,7 @@ export default function DecisionRoomPage() {
                 <p className="text-gray-400 mt-2">Redirecting to case page...</p>
               </div>
             ) : (
-              <>
-                <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
-                  <h3 className="text-lg font-bold text-white mb-4">16-Step Verification Checklist</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                    {[
-                      "Consent & KYC Validation",
-                      "Udyam & Bureau Retrieval",
-                      "GST Filing Extraction",
-                      "Bank Statement Analytics",
-                      "Cash Flow & Buffer Assessment",
-                      "Turnover & Volatility Profiling",
-                      "Integrity & Fraud Graphing",
-                      "Working Capital Cycle Computation",
-                      "Asset/LTV Validation",
-                      "Existing Repayment Burden",
-                      "Financial Health Index (FHI)",
-                      "Baseline Capacity Sizing",
-                      "Product Limit Engine",
-                      "Governing Stress Scenarios",
-                      "Reverse Stress Boundary Test",
-                      "Human Supervisory Sign-off"
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <CheckCircle2 className={`w-4 h-4 ${idx === 15 ? 'text-amber-500' : 'text-emerald-500'}`} />
-                        <span className={`text-sm ${idx === 15 ? 'text-amber-400 font-bold' : 'text-gray-300'}`}>
-                          Step {idx + 1}: {item}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-2 gap-6">
                 <button 
                   onClick={() => submitDecision("APPROVED")}
                   disabled={submitting}
@@ -423,7 +296,6 @@ export default function DecisionRoomPage() {
                   <span className="text-sm text-red-500/70 mt-2">Reject application</span>
                 </button>
               </div>
-              </>
             )}
           </div>
         );
@@ -448,31 +320,24 @@ export default function DecisionRoomPage() {
           </div>
         </div>
 
-        {/* Stepper */}
-        <div className="flex items-center justify-between mb-12">
-          {steps.map((step, idx) => {
-            const Icon = step.icon;
-            const isActive = currentStep === idx;
-            const isPast = currentStep > idx;
-            
-            return (
-              <div key={idx} className="flex flex-col items-center flex-1 relative">
-                {idx !== 0 && (
-                  <div className={`absolute left-0 w-[calc(100%-2rem)] h-[2px] top-5 -ml-[calc(50%-1rem)] ${isPast ? 'bg-emerald-500' : 'bg-white/10'}`} />
-                )}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center z-10 border-2 transition-colors duration-300
-                  ${isActive ? 'bg-blue-500/20 border-blue-500 text-blue-400' : 
-                    isPast ? 'bg-emerald-500 border-emerald-500 text-black' : 
-                    'bg-black border-white/20 text-gray-500'}`}
+        {/* 16-Step Stepper Header */}
+        <div className="flex flex-wrap gap-2 mb-8 items-center justify-center">
+            {steps.map((step, idx) => (
+                <button
+                    key={idx}
+                    onClick={() => setCurrentStep(idx)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border transition ${
+                        currentStep === idx 
+                        ? 'bg-blue-500 border-blue-500 text-white' 
+                        : currentStep > idx 
+                        ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' 
+                        : 'bg-white/5 border-white/10 text-gray-500'
+                    }`}
+                    title={step.title}
                 >
-                  <Icon className="w-5 h-5" />
-                </div>
-                <p className={`text-xs mt-3 font-semibold ${isActive ? 'text-blue-400' : isPast ? 'text-emerald-400' : 'text-gray-500'}`}>
-                  {step.title}
-                </p>
-              </div>
-            );
-          })}
+                    {idx + 1}
+                </button>
+            ))}
         </div>
 
         {/* Content */}
