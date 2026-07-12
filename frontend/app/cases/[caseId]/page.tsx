@@ -11,6 +11,7 @@ import ReconciliationTab from "./tabs/ReconciliationTab";
 import AssessmentHistoryTab from "./tabs/AssessmentHistoryTab";
 import DecisionPackageTab from "./tabs/DecisionPackageTab";
 import SimulatorTab from "./tabs/SimulatorTab";
+import MonitoringTab from "./tabs/MonitoringTab";
 import {
   Sparkles,
   Building2,
@@ -439,6 +440,7 @@ export default function CaseEvaluationPage() {
           { id: "history", label: "Assessment History", icon: Clock },
           { id: "decision_package", label: "Sensitivity Lab", icon: FileText },
           { id: "simulator", label: "Simulator", icon: Calculator },
+          { id: "monitoring", label: "Monitoring & Early Warning", icon: AlertTriangle },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -466,6 +468,7 @@ export default function CaseEvaluationPage() {
       {activeTab === "history" && <AssessmentHistoryTab caseId={caseData.id} />}
       {activeTab === "decision_package" && <DecisionPackageTab caseId={caseData.id} assessment={assessmentResult} decisionPackage={decisionPackage} />}
       {activeTab === "simulator" && <SimulatorTab caseId={caseData.id} />}
+      {activeTab === "monitoring" && <MonitoringTab caseId={caseData.id} />}
 
       {activeTab === "overview" && (
         <div className="space-y-6">
