@@ -796,6 +796,8 @@ def record_human_decision(
             "human_decision": dec_enum.value,
             "status": status_val.value,
         }
+        if req.approved_amount is not None:
+            update_values["approved_amount"] = req.approved_amount
 
         cas_update_case_and_audit(
             db=db,
@@ -1405,12 +1407,18 @@ def seal_decision_package(
         .order_by(AuditEvent.event_sequence.desc())
         .first()
     )
+    assessment_snap = (
+        db.query(AssessmentSnapshot)
+        .filter(AssessmentSnapshot.case_id == cid)
+        .order_by(AssessmentSnapshot.case_version.desc())
+        .first()
+    )
 
     package_id = f"pkg_{uuid.uuid4()}"
     package_data = dp.model_dump(exclude={"package_hash"})
     package_data.update({
         "package_id": package_id,
-        "assessment_id": str(latest_eval.id) if latest_eval else f"case-{case.id}-v{case.version}",
+        "assessment_id": str(assessment_snap.assessment_id) if assessment_snap else f"case-{case.id}-v{case.version}",
         "audit_tip_hash": audit_tip.event_hash if audit_tip else None,
         "evidence_passport_version": PASSPORT_ENGINE_VERSION,
         "feature_schema_version": FEATURE_SCHEMA_VERSION,

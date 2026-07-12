@@ -5,6 +5,8 @@ from app.db.orm.cases import Case, Business, DecisionPackage
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User
 import uuid
+import datetime
+from app.db.orm.cases import AssessmentSnapshot
 
 def override_get_current_user():
     return User(id=uuid.uuid4(), email="test@vyaparpulse.example", role="CREDIT_ANALYST")
@@ -22,18 +24,42 @@ def test_ocen_export():
 
         # Manually create DecisionPackage
         pkg = db.query(DecisionPackage).filter(DecisionPackage.case_id == case.id).first()
-        if not pkg:
-            pkg = DecisionPackage(
-                id=uuid.uuid4(),
-                package_id=f"PKG-{uuid.uuid4()}",
-                assessment_id=f"ASSM-{uuid.uuid4()}",
-                case_id=case.id,
-                case_version=1,
-                canonical_json={"binding_limit": 50000.00},
-                package_hash="some_hash"
-            )
-            db.add(pkg)
-            db.commit()
+        if pkg:
+            db.delete(pkg)
+            
+        snap = db.query(AssessmentSnapshot).filter(
+            AssessmentSnapshot.case_id == case.id, 
+            AssessmentSnapshot.case_version == 1
+        ).first()
+        if snap:
+            db.delete(snap)
+            
+        db.commit()
+            
+        assm_id = uuid.uuid4()
+        pkg = DecisionPackage(
+            id=uuid.uuid4(),
+            package_id=f"PKG-{uuid.uuid4()}",
+            assessment_id=str(assm_id),
+            case_id=case.id,
+            case_version=1,
+            canonical_json={"binding_limit": 50000.00},
+            package_hash="some_hash"
+        )
+        db.add(pkg)
+        
+        snap = AssessmentSnapshot(
+            assessment_id=assm_id,
+            case_id=case.id,
+            case_version=1,
+            generated_at=datetime.datetime.utcnow(),
+            feature_snapshot={"total_revenue": 1000000, "total_bank_credits": 1000000},
+            canonical_assessment_json={"supportable_amount": 50000.00},
+            engine_versions={"scoring": "1", "calculation": "1", "policy": "1", "feature": "1"},
+            evidence_ids=[]
+        )
+        db.add(snap)
+        db.commit()
 
         response = client.get(
             f"/api/cases/{case.id}/ocen-export",

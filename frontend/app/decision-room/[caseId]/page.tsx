@@ -50,15 +50,23 @@ export default function DecisionRoomPage() {
   const submitDecision = async (status: "APPROVED" | "DECLINED") => {
     setSubmitting(true);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/status`, {
-        method: "PUT",
-        body: JSON.stringify({ status })
+      const decisionEnum = status === "APPROVED" ? "APPROVE_AS_REQUESTED" : "DECLINE_AFTER_HUMAN_REVIEW";
+      const res = await apiFetch(`/api/cases/${caseId}/human-decision`, {
+        method: "POST",
+        headers: {
+          "Idempotency-Key": crypto.randomUUID()
+        },
+        body: JSON.stringify({
+          decision: decisionEnum,
+          reason: `Decision Room: ${status}`,
+          expected_version: data?.case_version || 0
+        })
       });
       if (res.status === 200) {
         setDecision(status);
         setTimeout(() => router.push(`/cases/${caseId}`), 2000);
       } else {
-        alert("Failed to submit decision: " + res.error);
+        alert("Failed to submit decision: " + (res.error || JSON.stringify(res.data)));
         setSubmitting(false);
       }
     } catch (err: any) {
@@ -145,6 +153,32 @@ export default function DecisionRoomPage() {
                 <p className="text-xs text-gray-500 mt-2">Range: 0 - 100</p>
               </div>
             </div>
+
+            {/* Score Waterfall */}
+            {data.assessment?.six_pillars && (
+              <div className="mt-8">
+                <h3 className="text-lg font-bold text-white mb-4">Evidence-Linked Score Waterfall</h3>
+                <div className="space-y-3">
+                  {data.assessment.six_pillars.map((pillar, idx) => (
+                    <div key={idx} className="bg-black/20 p-4 rounded-lg border border-white/5 flex justify-between items-center">
+                      <span className="text-sm text-gray-300 font-medium">{pillar.name}</span>
+                      <div className="flex items-center gap-4">
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          pillar.health_status === 'HEALTHY' ? 'bg-emerald-500/20 text-emerald-400' :
+                          pillar.health_status === 'WARNING' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {pillar.health_status}
+                        </span>
+                        <span className="text-lg font-mono font-bold text-white w-12 text-right">
+                          {pillar.score}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         );
       case 2:
@@ -152,6 +186,49 @@ export default function DecisionRoomPage() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white mb-2">3. Capacity & Limits</h2>
             <p className="text-gray-400 mb-6">Review calculated product limits and engine recommendation.</p>
+
+            {/* Facility Waterfall */}
+            {data.assessment?.supportable_amount !== undefined && data.assessment?.supportable_amount !== null && (
+              <div className="bg-black/30 p-6 rounded-xl border border-white/5 mb-6">
+                <h3 className="text-lg font-bold text-white mb-4">Facility Waterfall</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <span className="text-sm text-gray-400">Requested Amount</span>
+                    <span className="text-lg font-mono text-white">{formatCurrency(data.requested_amount)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <span className="text-sm text-gray-400">Current DSCR</span>
+                    <span className="text-lg font-mono text-white">{data.assessment.current_dscr ? Number(data.assessment.current_dscr).toFixed(2) : "N/A"}x</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <span className="text-sm text-gray-400">Post-Loan DSCR</span>
+                    <span className="text-lg font-mono text-white">{data.assessment.post_loan_dscr ? Number(data.assessment.post_loan_dscr).toFixed(2) : "N/A"}x</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <span className="text-sm text-gray-400">Stressed DSCR</span>
+                    <span className="text-lg font-mono text-white">{data.assessment.stressed_dscr ? Number(data.assessment.stressed_dscr).toFixed(2) : "N/A"}x</span>
+                  </div>
+                  
+                  {data.assessment.binding_constraint && (
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <span className="text-sm text-gray-400">Binding Constraint</span>
+                      <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-1 rounded max-w-[50%] text-right truncate" title={data.assessment.binding_constraint.reason}>
+                        {data.assessment.binding_constraint.constraint_type}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-md font-bold text-blue-400">Supportable Amount</span>
+                    <span className="text-2xl font-bold font-mono text-blue-400">{formatCurrency(Number(data.assessment.supportable_amount))}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="bg-black/30 p-6 rounded-xl border border-white/5">
               <p className="text-sm text-gray-400 mb-1">Engine Recommendation</p>
               <p className={`text-2xl font-bold font-mono ${data.recommendation?.includes("APPROVE") ? 'text-emerald-400' : 'text-amber-400'}`}>
