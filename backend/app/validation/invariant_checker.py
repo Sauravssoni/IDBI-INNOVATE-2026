@@ -1,4 +1,6 @@
 import random
+import hashlib
+import json
 from typing import Dict, Any, List
 from decimal import Decimal, ROUND_HALF_UP
 
@@ -69,6 +71,7 @@ def generate_synthetic_features(seed: int = 20260713) -> List[Dict[str, Any]]:
 def run_validation_suite() -> Dict[str, Any]:
     cases = generate_synthetic_features(20260713)
     
+    hash_state = []
     results = {
         "total_cases": 1000,
         "seed": 20260713,
@@ -125,6 +128,14 @@ def run_validation_suite() -> Dict[str, Any]:
                 
             results["invariants_passed"] += 4
             
+            # Collect state for checksum
+            hash_state.append({
+                "features": features,
+                "fhi": fhi,
+                "score": credit_score,
+                "limits": {k: float(v) for k, v in limit_dict.items()}
+            })
+            
         except Exception as e:
             results["invariants_failed"] += 1
             results["failures"].append({"case_index": idx, "error": str(e)})
@@ -132,4 +143,8 @@ def run_validation_suite() -> Dict[str, Any]:
     if results["invariants_failed"] > 0:
         results["status"] = "FAIL"
         
+    # Generate checksum
+    checksum = hashlib.sha256(json.dumps(hash_state, sort_keys=True, default=str).encode()).hexdigest()
+    results["deterministic_checksum"] = checksum
+    
     return results
