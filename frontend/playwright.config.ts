@@ -34,7 +34,10 @@ export default defineConfig({
           DATABASE_URL: process.env.DATABASE_URL || 'postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test',
           JWT_SECRET: process.env.JWT_SECRET || 'test-secret',
           DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || 'VyaparPulseDemo2026!',
-          DEMO_ACCESS_ENABLED: 'true'
+          DEMO_ACCESS_ENABLED: 'true',
+          DEMO_RESET_ENABLED: 'true',
+          DEMO_RESET_TOKEN: 'dummy',
+          DEMO_DATABASE_FINGERPRINT: 'BYPASS'
         },
         port: 8000,
         reuseExistingServer: false,
