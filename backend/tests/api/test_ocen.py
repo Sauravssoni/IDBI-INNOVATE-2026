@@ -5,14 +5,12 @@ from app.db.orm.cases import Case, Business, DecisionPackage
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User
 import uuid
-import datetime
 
 def override_get_current_user():
-    return User(id=1, email="test@vyaparpulse.example", role="CREDIT_ANALYST")
-
-app.dependency_overrides[get_current_user] = override_get_current_user
+    return User(id=uuid.uuid4(), email="test@vyaparpulse.example", role="CREDIT_ANALYST")
 
 def test_ocen_export():
+    app.dependency_overrides[get_current_user] = override_get_current_user
     client = TestClient(app)
     db = SessionLocal()
     try:
@@ -51,3 +49,4 @@ def test_ocen_export():
 
     finally:
         db.close()
+        app.dependency_overrides.clear()

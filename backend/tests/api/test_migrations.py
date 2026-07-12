@@ -287,10 +287,13 @@ def test_migration_upgrade_downgrade():
     # 10. Restore demo principals for downstream tests since we dropped the schema
     from app.db.session import SessionLocal
     from app.seed.seed_demo_principals import seed_demo_principals
+    from app.seed.seed_shakti import seed_shakti
 
     db_session = SessionLocal()
     try:
         seed_demo_principals(db_session)
+        db_session.commit()
+        seed_shakti(db_session)
         db_session.commit()
     finally:
         db_session.close()

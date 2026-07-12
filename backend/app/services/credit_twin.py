@@ -1,12 +1,11 @@
 from sqlalchemy.orm import Session
-from typing import Any, Dict
 from decimal import Decimal
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from fastapi import HTTPException
 
 from app.db.orm.cases import Case
-from app.db.orm.evidence import BankTransaction, GSTPeriod
+from app.db.orm.evidence import BankTransaction
 
 
 def calculate_dscr_sandbox_v1(db: Session, business_id: str, as_of_date: date):

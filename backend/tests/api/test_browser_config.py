@@ -10,7 +10,6 @@ from app.api.auth import get_password_hash
 
 client = TestClient(app)
 
-
 @pytest.fixture(scope="module")
 def test_user():
     db = SessionLocal()
@@ -77,7 +76,7 @@ def test_deployment_cookies_secure(monkeypatch, test_user):
     for cookie in cookies:
         assert "secure" in cookie.lower()
         assert "path=/" in cookie.lower()
-        assert "samesite=lax" in cookie.lower()
+        assert "samesite=none" in cookie.lower()
 
 
 def test_unsafe_deployed_configuration_rejected(monkeypatch):
@@ -155,7 +154,7 @@ def test_logout_deletion_uses_matching_cookie_settings(monkeypatch, test_user):
     for cookie in logout_cookies:
         lower_cookie = cookie.lower()
         assert "path=/" in lower_cookie
-        assert "samesite=lax" in lower_cookie
+        assert "samesite=none" in lower_cookie
         assert "secure" in lower_cookie
         if "vyapar_session_token" in cookie:
             session_cookie_found = True

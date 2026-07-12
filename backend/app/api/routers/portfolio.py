@@ -4,7 +4,6 @@ from app.db.session import SessionLocal
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User
 from app.db.orm.cases import Case, CaseStatus
-import json
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -20,18 +19,18 @@ def get_portfolio_metrics(db: Session = Depends(get_db), user: User = Depends(ge
     from app.db.orm.cases import AssessmentSnapshot
     from sqlalchemy import func
     
-    active_cases = db.query(Case).count()
+    db.query(Case).count()
     approved_cases = db.query(Case).filter(Case.status == CaseStatus.HUMAN_APPROVED).count()
     
     # Retrieve all latest assessments per case
     subq = db.query(
-        AssessmentSnapshot.case_id_fk,
+        AssessmentSnapshot.case_id,
         func.max(AssessmentSnapshot.created_at).label('max_date')
-    ).group_by(AssessmentSnapshot.case_id_fk).subquery()
+    ).group_by(AssessmentSnapshot.case_id).subquery()
     
     latest_assessments = db.query(AssessmentSnapshot).join(
         subq,
-        (AssessmentSnapshot.case_id_fk == subq.c.case_id_fk) & 
+        (AssessmentSnapshot.case_id == subq.c.case_id) & 
         (AssessmentSnapshot.created_at == subq.c.max_date)
     ).all()
     

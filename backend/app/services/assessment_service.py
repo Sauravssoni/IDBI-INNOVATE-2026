@@ -167,7 +167,7 @@ class AssessmentService:
                 reason=reasons_list[0]
             )
 
-        top_covenants = []
+        top_covenants: list[CovenantResponse] = []
         for o in decision.get("offers", []):
             if isinstance(o, dict) and o.get("covenants"):
                 for c_text in o["covenants"]:

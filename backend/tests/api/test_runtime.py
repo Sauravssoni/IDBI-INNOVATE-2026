@@ -145,6 +145,7 @@ def test_seed_missing_readiness(mock_session_local, monkeypatch):
     monkeypatch.setattr(
         main_module.ScriptDirectory, "from_config", lambda cfg: DummyScript()
     )
+    monkeypatch.setattr(main_module.settings, "DEMO_ACCESS_ENABLED", True)
 
     client = TestClient(app)
     res = client.get("/ready")

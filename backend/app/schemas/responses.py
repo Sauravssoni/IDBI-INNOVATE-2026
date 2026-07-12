@@ -261,9 +261,16 @@ class AuditVerificationResponse(BaseModel):
     cas_verification_status: str
     audit_chain_valid: bool
     analyst_event_status: str
-    feature_event_status: str
-    recommendation_event_status: str
-    decision_event_status: str
+    feature_event_status: Optional[str] = None
+    recommendation_event_status: Optional[str] = None
+    decision_event_status: Optional[str] = None
+    human_decision_event_status: Optional[str] = None
+    package_hash_valid: Optional[bool] = None
+    authorization_scope_valid: Optional[bool] = None
+    package_hash: Optional[str] = None
+    audit_tip_hash: Optional[str] = None
+    verification_version: Optional[str] = None
+    reason: Optional[str] = None
     verified_at: datetime
     error_message: Optional[str] = None
 
