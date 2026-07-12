@@ -1,5 +1,11 @@
 from fastapi.testclient import TestClient
+import pytest
 import os
+from app.main import app
+
+@pytest.fixture
+def client():
+    return TestClient(app)
 
 def test_login(client: TestClient):
     email = "demo_analyst@vyaparpulse.com"

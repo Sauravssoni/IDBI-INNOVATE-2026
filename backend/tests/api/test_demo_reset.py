@@ -56,12 +56,13 @@ def test_demo_reset_disabled(client: TestClient, demo_user):
     app.dependency_overrides = {}
     with patch("app.core.config.os.getenv") as mock_getenv:
         def side_effect(key, default=None):
-            if key == "DEMO_RESET_ENABLED": return "false"
-            if key == "DEMO_ACCESS_ENABLED": return "true"
+            if key == "DEMO_RESET_ENABLED":
+                return "false"
+            if key == "DEMO_ACCESS_ENABLED":
+                return "true"
             return os.environ.get(key, default)
         mock_getenv.side_effect = side_effect
         
-        from app.core.config import get_settings
 
         session_token, csrf_token = login_and_get_tokens(client, email, password)
         if not session_token:
@@ -78,11 +79,12 @@ def test_demo_reset_missing_csrf(client: TestClient, demo_user):
     app.dependency_overrides = {}
     with patch("app.core.config.os.getenv") as mock_getenv:
         def side_effect(key, default=None):
-            if key == "DEMO_RESET_ENABLED": return "true"
-            if key == "DEMO_ACCESS_ENABLED": return "true"
+            if key == "DEMO_RESET_ENABLED":
+                return "true"
+            if key == "DEMO_ACCESS_ENABLED":
+                return "true"
             return os.environ.get(key, default)
         mock_getenv.side_effect = side_effect
-        from app.core.config import get_settings
 
         session_token, _ = login_and_get_tokens(client, email, password)
         if not session_token:
@@ -98,12 +100,14 @@ def test_demo_reset_wrong_token(client: TestClient, demo_user):
     app.dependency_overrides = {}
     with patch("app.core.config.os.getenv") as mock_getenv:
         def side_effect(key, default=None):
-            if key == "DEMO_RESET_ENABLED": return "true"
-            if key == "DEMO_ACCESS_ENABLED": return "true"
-            if key == "DEMO_RESET_TOKEN": return "correct_token"
+            if key == "DEMO_RESET_ENABLED":
+                return "true"
+            if key == "DEMO_ACCESS_ENABLED":
+                return "true"
+            if key == "DEMO_RESET_TOKEN":
+                return "correct_token"
             return os.environ.get(key, default)
         mock_getenv.side_effect = side_effect
-        from app.core.config import get_settings
         
         session_token, csrf_token = login_and_get_tokens(client, email, password)
         if not session_token:
