@@ -152,7 +152,10 @@ class AssessmentService:
                     FinancialHealthPillarResponse(
                         name=p_name.replace("_", " ").title(),
                         score=float(s) if s is not None else 0.0,
-                        health_status=h_stat
+                        health_status=h_stat,
+                        positive_reason_codes=p_data.get("positive_reason_codes", []),
+                        adverse_reason_codes=p_data.get("adverse_reason_codes", []),
+                        evidence_ids=p_data.get("evidence_ids", [])
                     )
                 )
 

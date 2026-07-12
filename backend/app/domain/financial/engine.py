@@ -202,6 +202,58 @@ class FinancialCapacityEngine:
         exist_ds_ann = float((verified_existing_ds * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
         prop_ds_ann = float((proposed_emi * Decimal("12")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
 
+        if obligation_verification_state in ASSESSABLE_OBLIGATION_STATES and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
+            total_post_ds = verified_existing_ds + proposed_emi
+        else:
+            total_post_ds = None
+
+        if observed_operating_inflows > 0 and total_post_ds is not None:
+            break_even_inflows = total_post_ds + observed_operating_outflows
+            if break_even_inflows < observed_operating_inflows:
+                drop_pct = (Decimal("1") - (break_even_inflows / observed_operating_inflows)) * Decimal("100")
+                reverse_stress_result = f"Can withstand a {float(drop_pct):.1f}% drop in revenue before DSCR < 1.0x"
+            else:
+                reverse_stress_result = "Currently operating below 1.0x DSCR threshold"
+        else:
+            reverse_stress_result = "Cannot compute reverse stress (missing data)"
+
+        stress_results = [
+            {
+                "scenario_name": "Revenue Drop 15%",
+                "impact": f"Stressed DSCR drops to {float(stressed_dscr):.2f}x" if stressed_dscr else "Data Missing"
+            },
+            {
+                "scenario_name": "Interest Rate Hike 2%",
+                "impact": f"Debt service increases to {float(stressed_debt_service):.2f}" if stressed_debt_service else "Data Missing"
+            },
+            {
+                "scenario_name": "Reverse Stress (Break-even)",
+                "impact": reverse_stress_result
+            }
+        ]
+        
+        bankability_interventions = []
+        longer_tenure = custom_tenure_months + 12
+        if longer_tenure <= 60:
+            alt_limits = cls._derive_product_limits(
+                observed_operating_inflows, operating_cash_available, verified_existing_ds,
+                obligation_verification_state, cash_flow_status, features, calculation_evidence_ids,
+                custom_annual_rate, longer_tenure
+            )
+            alt_limit = alt_limits.get(matched_method, {}).get("calculated_limit", Decimal("0.00"))
+            if alt_limit > binding_limit:
+                increase = alt_limit - binding_limit
+                bankability_interventions.append({
+                    "intervention_type": "Extend Tenure",
+                    "description": f"Extending tenure to {longer_tenure} months increases limit by {float(increase):,.0f}."
+                })
+        
+        if not bankability_interventions:
+            bankability_interventions.append({
+                "intervention_type": "Provide Additional Collateral",
+                "description": "Increases product limit capacity when DSCR is constrained."
+            })
+
         return {
             "cash_flow_status": cash_flow_status,
             "observed_operating_inflows_monthly": observed_operating_inflows,
@@ -240,6 +292,8 @@ class FinancialCapacityEngine:
             "net_operating_cash_flow_annual": net_op_cash_ann,
             "existing_debt_service_annual": exist_ds_ann,
             "proposed_annual_debt_service": prop_ds_ann,
+            "stress_results": stress_results,
+            "bankability_interventions": bankability_interventions,
         }
 
     @classmethod
@@ -408,6 +462,7 @@ class FinancialCapacityEngine:
         If obligation_verification_state is UNKNOWN_OBLIGATIONS or cash_flow_status is INSUFFICIENT_CASH_FLOW_DATA,
         all product limits strictly return 0.
         """
+        custom_annual_rate = Decimal(str(custom_annual_rate))
         if custom_annual_rate > Decimal("1.0"):
             custom_annual_rate = custom_annual_rate / Decimal("100")
         if custom_annual_rate <= Decimal("0.00"):
@@ -434,6 +489,7 @@ class FinancialCapacityEngine:
                 "WORKING_CAPITAL_LINE": dict(zero_result, method="WORKING_CAPITAL_LINE", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-WC-001"], input_snapshot={}),
                 "RECEIVABLES_FINANCE": dict(zero_result, method="RECEIVABLES_FINANCE", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-REC-001"], input_snapshot={}),
                 "TERM_LOAN": dict(zero_result, method="TERM_LOAN", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-TL-001"], input_snapshot={}),
+                "EQUIPMENT_FINANCE": dict(zero_result, method="EQUIPMENT_FINANCE", formula="0 (unverified status)", binding_constraint="unverified_status", policy_rule_ids=["POL-EQ-001"], input_snapshot={}),
             }
 
         # A. Working Capital Line (WORKING_CAPITAL_LINE)
@@ -540,10 +596,57 @@ class FinancialCapacityEngine:
             "limitations": [f"Calculated using exact reducing-balance amortization at {custom_annual_rate*100}% p.a. over {custom_tenure_months} months."]
         }
 
+        # D. Equipment Finance (EQUIPMENT_FINANCE)
+        if operating_cash_available > Decimal("0.00"):
+            target_dscr_eq = Decimal("1.25")
+            max_total_ds_eq = operating_cash_available / target_dscr_eq
+            supportable_emi_eq = max(Decimal("0.00"), max_total_ds_eq - verified_existing_ds)
+            eq_dscr_limit = cls.calculate_loan_from_emi(supportable_emi_eq, custom_annual_rate, custom_tenure_months)
+            
+            eq_value = Decimal(str(features.get("equipment_value", "0.00")))
+            eq_ltv_limit = (eq_value * Decimal("0.80")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            
+            if eq_value > Decimal("0.00"):
+                eq_limit = min(eq_dscr_limit, eq_ltv_limit)
+                eq_binding = "ltv_constraint" if eq_limit == eq_ltv_limit else "target_dscr_serviceability"
+            else:
+                eq_limit = eq_dscr_limit
+                eq_binding = "target_dscr_serviceability"
+                
+            eq_warnings = []
+        else:
+            eq_limit = Decimal("0.00")
+            supportable_emi_eq = Decimal("0.00")
+            eq_warnings = ["Equipment finance requires verified obligation state and positive operating cash available."]
+            eq_binding = "target_dscr_serviceability"
+
+        eq_result = {
+            "method": "EQUIPMENT_FINANCE",
+            "applicability": "APPLICABLE" if eq_limit > 0 else "NOT_APPLICABLE",
+            "calculated_limit": eq_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            "supportable_limit_inr": eq_limit.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
+            "formula": f"min(eq_value * 0.80, calculate_loan_from_emi((operating_cash_available / 1.25) - verified_existing_ds, rate={custom_annual_rate*100}%, tenure={custom_tenure_months}m))",
+            "input_snapshot": {
+                "operating_cash_available_monthly": str(operating_cash_available),
+                "verified_existing_ds_monthly": str(verified_existing_ds),
+                "target_dscr": "1.25",
+                "supportable_emi": str(supportable_emi_eq),
+                "tenure_months": str(custom_tenure_months),
+                "annual_rate": str(custom_annual_rate)
+            },
+            "binding_constraint": eq_binding,
+            "policy_rule_ids": ["POL-EQ-001"],
+            "evidence_ids": calculation_evidence_ids.get("inflows", []) + calculation_evidence_ids.get("obligations", []),
+            "confidence": 0.85 if eq_limit > 0 else 0.0,
+            "warnings": eq_warnings,
+            "limitations": [f"Calculated using exact reducing-balance amortization."]
+        }
+
         return {
             "WORKING_CAPITAL_LINE": wc_result,
             "RECEIVABLES_FINANCE": rec_result,
-            "TERM_LOAN": tl_result
+            "TERM_LOAN": tl_result,
+            "EQUIPMENT_FINANCE": eq_result
         }
 
     @classmethod
@@ -556,12 +659,14 @@ class FinancialCapacityEngine:
         req_upper = (requested_product or "").upper()
         if "RECEIVABLE" in req_upper or "INVOICE" in req_upper or "DISCOUNT" in req_upper:
             target_key = "RECEIVABLES_FINANCE"
-        elif "TERM" in req_upper or "EQUIPMENT" in req_upper or "MACHINERY" in req_upper:
+        elif "EQUIPMENT" in req_upper or "MACHINERY" in req_upper:
+            target_key = "EQUIPMENT_FINANCE"
+        elif "TERM" in req_upper:
             target_key = "TERM_LOAN"
         elif "WORKING_CAPITAL" in req_upper or "WC" in req_upper or "CASH_CREDIT" in req_upper or "OD" in req_upper:
             target_key = "WORKING_CAPITAL_LINE"
         else:
-            for key in ["WORKING_CAPITAL_LINE", "RECEIVABLES_FINANCE", "TERM_LOAN"]:
+            for key in ["WORKING_CAPITAL_LINE", "RECEIVABLES_FINANCE", "TERM_LOAN", "EQUIPMENT_FINANCE"]:
                 if product_limits[key]["applicability"] == "APPLICABLE":
                     return product_limits[key]["calculated_limit"], key
             return Decimal("0.00"), "WORKING_CAPITAL_LINE"

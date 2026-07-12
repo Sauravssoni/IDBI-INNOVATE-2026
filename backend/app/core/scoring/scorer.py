@@ -202,10 +202,27 @@ class ScoringEngine:
         if assessable:
             fhi_dec = q2(sum(Decimal(str(item["contribution"])) for item in pillar_items.values() if item["contribution"] is not None))
             raw_health_score = min(Decimal("900"), max(Decimal("300"), Decimal("300") + Decimal("6") * fhi_dec))
-            vyapar_credit_health_score = int(raw_health_score.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            
             missing_count = sum(1 for item in pillar_items.values() if item["status"] == "MISSING_DATA")
             assessment_certainty = "HIGH_CERTAINTY" if missing_count == 0 else "MODERATE_CERTAINTY" if missing_count <= 1 else "LIMITED_CERTAINTY"
             band = {"HIGH_CERTAINTY": 15, "MODERATE_CERTAINTY": 30, "LIMITED_CERTAINTY": 50}[assessment_certainty]
+            
+            evidence_adjustment = 0
+            if assessment_certainty == "LIMITED_CERTAINTY":
+                evidence_adjustment = -30
+            elif assessment_certainty == "MODERATE_CERTAINTY":
+                evidence_adjustment = -10
+                
+            integrity = self.features.get("integrity_state", "INTACT")
+            integrity_adjustment = 0
+            if integrity == "TAMPERED":
+                integrity_adjustment = -100
+            elif integrity == "UNVERIFIED":
+                integrity_adjustment = -20
+                
+            final_score_raw = raw_health_score + Decimal(str(evidence_adjustment)) + Decimal(str(integrity_adjustment))
+            vyapar_credit_health_score = int(max(Decimal("300"), min(Decimal("900"), final_score_raw)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            
             score_range = {
                 "lower": max(300, vyapar_credit_health_score - band),
                 "upper": min(900, vyapar_credit_health_score + band),
@@ -216,11 +233,17 @@ class ScoringEngine:
             running = 300
             for k, v in pillar_items.items():
                 if v["contribution"] is not None:
-                    # Distribute the total score proportionally to match the final score
                     contrib = float((Decimal(str(v["contribution"])) * Decimal("6")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
                     running += contrib
                     ledger.append({"component": k.replace("_", " ").title(), "contribution": contrib, "running_score": running})
-            # Ensure the last item exactly matches vyapar_credit_health_score
+            
+            if evidence_adjustment != 0:
+                running += evidence_adjustment
+                ledger.append({"component": "Evidence Adjustment", "contribution": evidence_adjustment, "running_score": running})
+            if integrity_adjustment != 0:
+                running += integrity_adjustment
+                ledger.append({"component": "Integrity Adjustment", "contribution": integrity_adjustment, "running_score": running})
+                
             if len(ledger) > 1:
                 ledger[-1]["running_score"] = float(vyapar_credit_health_score)
 

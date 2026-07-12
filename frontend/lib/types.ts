@@ -218,4 +218,5 @@ export interface AssessmentResultResponse {
   supportable_amount?: number | null;
   binding_constraint?: BindingConstraintResponse | null;
   six_pillars?: FinancialHealthPillarResponse[] | null;
+  stress_results?: any[] | null;
 }
