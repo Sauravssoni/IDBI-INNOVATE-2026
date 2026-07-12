@@ -18,7 +18,7 @@ def _clean_database_url(raw_url: str | None) -> str:
 
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 DEFAULT_LOCAL_DATABASE_URL = (
-    "postgresql://vyapar_local:vyapar_local_password@127.0.0.1:5433/vyapar_pulse"
+    "postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse"
 )
 DATABASE_URL = _clean_database_url(os.getenv("DATABASE_URL"))
 

@@ -24,7 +24,7 @@ import uuid
 import math
 import enum
 import re
-from typing import Optional, Any
+from typing import Optional, Any, Dict, List
 from app.db.session import SessionLocal
 from pydantic import BaseModel
 from app.db.orm.cases import (
@@ -38,7 +38,6 @@ from app.db.orm.cases import (
     IdempotencyStatus,
     utc_now,
 )
-from app.core.features.engine import FeatureEngine
 from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
 from app.domain.financial.engine import FinancialCapacityEngine
@@ -46,6 +45,7 @@ from app.api.dependencies import get_current_user
 from app.core.audit import calculate_audit_hash
 from app.domain.audit.verification import verify_audit_chain
 from app.db.orm.users import User
+from app.services.assessment_service import AssessmentService
 from app.services.authz import (
     apply_case_list_scope,
     can_view_case,
@@ -180,6 +180,7 @@ def cas_update_case_and_audit(
     reason: str,
     metadata: dict,
     idempotency_record_id: UUID,
+    idempotency_payload: Optional[dict] = None,
 ):
     """
     Perform a Compare-And-Swap (CAS) update on the Case, append to AuditEvent, and fulfill idempotency atomically.
@@ -280,7 +281,12 @@ def cas_update_case_and_audit(
     metadata_enc["resulting_version"] = resulting_version
     metadata_enc["audit_hash"] = event_hash
 
-    fulfill_idempotency(db, idempotency_record_id, 200, metadata_enc)
+    payload_to_save = (
+        jsonable_encoder(idempotency_payload)
+        if idempotency_payload is not None
+        else metadata_enc
+    )
+    fulfill_idempotency(db, idempotency_record_id, 200, payload_to_save)
 
     db.commit()
 
@@ -297,8 +303,8 @@ def get_portfolio_command_centre(
     
     # Calculate supportable exposure approximation from cases
     total_supportable_exposure = Decimal("0")
-    status_counts = {}
-    work_queue = []
+    status_counts: Dict[str, int] = {}
+    work_queue: List[Any] = []
 
     for c in cases:
         st_str = c.status.value if hasattr(c.status, "value") else str(c.status)
@@ -558,43 +564,18 @@ def evaluate_case(
         )
 
     try:
-        # 1. Derive Features
-        feature_engine = FeatureEngine(db, str(case.business_id_fk))
-        features = feature_engine.derive_all_features()
-
-        # 2. Score
-        scorer = ScoringEngine(features)
-        scores = scorer.compute_all_scores()
-
-        # 3. Decision
-        policy = DecisionPolicy(
-            features,
-            scores,
-            Decimal(str(case.requested_amount)),
-            case.requested_product.value,
+        assessment_result = AssessmentService.evaluate_case(db, case)
+        latest_snapshot = AssessmentService.get_latest_assessment(db, case.id)
+        features_dict = (
+            latest_snapshot.feature_snapshot
+            if latest_snapshot and latest_snapshot.feature_snapshot
+            else {}
         )
-        decision = policy.evaluate()
-
-        result_payload = {
-            "case_id": str(case.id),
-            "business_name": case.business.legal_name,
-            "features": features,
-            "scores": scores,
-            "decision": decision,
-        }
-
-        dscr_val = None
-        if (
-            "bank_metrics" in features
-            and "dscr" in features["bank_metrics"]
-            and features["bank_metrics"]["dscr"] is not None
-        ):
-            dscr_val = Decimal(str(features["bank_metrics"]["dscr"]))
 
         update_values = {
-            "recommendation": decision["decision"],
+            "recommendation": assessment_result.policy_recommendation,
             "status": CaseStatus.ASSESSMENT_COMPLETED.value,
-            "dscr": dscr_val,
+            "dscr": assessment_result.current_dscr,
         }
 
         cas_update_case_and_audit(
@@ -605,14 +586,20 @@ def evaluate_case(
             user=user,
             action="evaluate",
             reason="System Evaluation",
-            metadata=result_payload,
+            metadata={
+                "assessment_id": str(assessment_result.assessment_id),
+                "features": features_dict,
+            },
             idempotency_record_id=record_id,
+            idempotency_payload=jsonable_encoder(assessment_result),
         )
 
-        return result_payload
+        return assessment_result
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
         db.rollback()
 
         with SessionLocal() as tx_db:
@@ -620,7 +607,7 @@ def evaluate_case(
                 IdempotencyRecord.id == record_id
             ).update({"status": IdempotencyStatus.FAILED_RETRYABLE})
             tx_db.commit()
-        raise HTTPException(status_code=500, detail="Internal processing error")
+        raise HTTPException(status_code=500, detail=f"Internal processing error: {exc}")
 
 
 class AnalystRecommendationRequest(BaseModel):
@@ -699,6 +686,7 @@ def record_analyst_recommendation(
             reason=req.reason,
             metadata=result_payload,
             idempotency_record_id=record_id,
+            idempotency_payload=result_payload.copy(),
         )
 
         return result_payload
@@ -788,7 +776,7 @@ def record_human_decision(
             "decision": dec_enum.value,
         }
         if req.approved_amount is not None:
-            result_payload["approved_amount"] = req.approved_amount
+            result_payload["approved_amount"] = float(req.approved_amount)
 
         status_val = CaseStatus.DECISION_PENDING
         if dec_enum in [
@@ -819,6 +807,7 @@ def record_human_decision(
             reason=req.reason,
             metadata=result_payload,
             idempotency_record_id=record_id,
+            idempotency_payload=result_payload.copy(),
         )
 
         return result_payload
@@ -1113,6 +1102,80 @@ def get_decision_package(
         "bankability_path_actions": path_actions_hindi,
     }
 
+    latest_assessment = AssessmentService.get_latest_assessment(db, case.id)
+    
+    if latest_assessment:
+        if binding_limit is None and latest_assessment.supportable_amount is not None:
+            binding_limit = float(latest_assessment.supportable_amount)
+        if post_loan_dscr is None and latest_assessment.post_loan_dscr is not None:
+            post_loan_dscr = float(latest_assessment.post_loan_dscr)
+        if not reason_codes and latest_assessment.policy_reason_codes:
+            reason_codes = latest_assessment.policy_reason_codes
+        if not offers and latest_assessment.offers:
+            offers = latest_assessment.offers
+            
+        if not offers and latest_assessment.product_capacities:
+            offers = []
+            for cap in latest_assessment.product_capacities:
+                offers.append({
+                    "product_type": cap.product_name,
+                    "amount": float(cap.capacity),
+                    "interest_rate_pct": 11.5, # hardcoded fallback for deprecated UI component
+                    "tenure_months": 36,
+                    "estimated_repayment": float(cap.capacity) / 36,
+                    "post_loan_dscr": post_loan_dscr,
+                    "collateral_structure": "First charge on current assets",
+                    "covenants": [c.covenant_text for c in latest_assessment.covenants]
+                })
+
+    if not offers or not reason_codes or binding_limit is None:
+        try:
+            from app.core.decision.policy import DecisionPolicy
+            req_prod_str = case.requested_product.value if hasattr(case.requested_product, "value") else str(case.requested_product)
+            policy_inst = DecisionPolicy(
+                features_dict,
+                scores_meta,
+                Decimal(str(case.requested_amount)),
+                req_prod_str,
+            )
+            policy_res = policy_inst.evaluate()
+            if not offers and policy_res.get("offers"):
+                offers = policy_res["offers"]
+            if not reason_codes and (policy_res.get("reasons") or policy_res.get("reason_codes")):
+                reason_codes = policy_res.get("reasons") or policy_res.get("reason_codes") or []
+            if binding_limit is None and policy_res.get("binding_limit") is not None:
+                binding_limit = float(policy_res["binding_limit"])
+        except Exception:
+            pass
+
+    current_dscr_val = None
+    if latest_assessment and latest_assessment.current_dscr is not None:
+        current_dscr_val = latest_assessment.current_dscr
+    elif cap_summary and cap_summary.get("current_dscr") is not None:
+        current_dscr_val = Decimal(str(cap_summary.get("current_dscr")))
+    else:
+        current_dscr_val = case.dscr
+
+    proposed_emi_val = None
+    if latest_assessment and latest_assessment.proposed_emi is not None:
+        proposed_emi_val = latest_assessment.proposed_emi
+    elif cap_summary and cap_summary.get("proposed_emi") is not None:
+        proposed_emi_val = Decimal(str(cap_summary.get("proposed_emi")))
+
+    stressed_dscr_val = None
+    if latest_assessment and hasattr(latest_assessment, "stressed_dscr") and latest_assessment.stressed_dscr is not None:
+        stressed_dscr_val = latest_assessment.stressed_dscr
+    elif cap_summary and cap_summary.get("stressed_dscr") is not None:
+        stressed_dscr_val = Decimal(str(cap_summary.get("stressed_dscr")))
+
+    post_loan_dscr_dec = None
+    if latest_assessment and latest_assessment.post_loan_dscr is not None:
+        post_loan_dscr_dec = latest_assessment.post_loan_dscr
+    elif cap_summary and cap_summary.get("post_loan_dscr") is not None:
+        post_loan_dscr_dec = Decimal(str(cap_summary.get("post_loan_dscr")))
+    elif post_loan_dscr is not None:
+        post_loan_dscr_dec = Decimal(str(post_loan_dscr))
+
     dp = DecisionPackageResponse(
         case_id=str(case.id),
         business_name=case.business.legal_name if case.business else "Unknown",
@@ -1121,8 +1184,11 @@ def get_decision_package(
         if hasattr(case.requested_product, "value")
         else case.requested_product,
         reconciliation=reconciliation,
-        dscr=case.dscr,
-        post_loan_dscr=Decimal(str(post_loan_dscr)) if post_loan_dscr is not None else None,
+        dscr=current_dscr_val or case.dscr,
+        current_dscr=current_dscr_val,
+        proposed_emi=proposed_emi_val,
+        post_loan_dscr=post_loan_dscr_dec,
+        stressed_dscr=stressed_dscr_val,
         binding_limit=Decimal(str(binding_limit)) if binding_limit is not None else None,
         recommendation=case.recommendation,
         reason_codes=reason_codes,
@@ -1149,10 +1215,7 @@ def get_decision_package(
         case_version=case.version,
         audit_chain=audit_chain,
         bankability_path=bankability_path,
-        integrity_state=features_dict.get("integrity_state", "UNKNOWN"),
-        current_dscr=cap_summary.get("current_dscr"),
-        proposed_emi=cap_summary.get("proposed_emi"),
-        stressed_dscr=cap_summary.get("stressed_dscr"),
+        assessment=latest_assessment
     )
     
     # Calculate package hash deterministically
@@ -1373,6 +1436,17 @@ def seal_decision_package(
     metadata = latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
     evidence_snapshot = package_data.get("evidence_passport") or {}
     raw_features = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
+    if not raw_features:
+        latest_snapshot = AssessmentService.get_latest_assessment(db, case.id)
+        if latest_snapshot and latest_snapshot.feature_snapshot:
+            raw_features = latest_snapshot.feature_snapshot if isinstance(latest_snapshot.feature_snapshot, dict) else {}
+    if not raw_features:
+        try:
+            from app.core.features.engine import FeatureEngine
+            fe = FeatureEngine(db, str(case.business_id_fk))
+            raw_features = fe.derive_all_features()
+        except Exception:
+            raw_features = {}
     feature_snapshot = _build_replay_feature_snapshot(raw_features, evidence_snapshot, package_data)
     missing_snapshot_fields = _missing_replay_snapshot_fields(feature_snapshot)
     if missing_snapshot_fields:
@@ -1547,7 +1621,7 @@ def replay_decision_package(
         "policy_recommendation": policy.get("decision"),
         "binding_rule": policy.get("missing_verification_state") or policy.get("reasons", [None])[0],
         "conditions": replay_conditions,
-        "covenants": original_selected_offer.get("covenants", []),
+        "covenants": selected_offer.get("covenants", []),
     }
     original = {
         "financial_health_index": record.canonical_json.get("financial_health_index"),
@@ -1564,7 +1638,7 @@ def replay_decision_package(
         "policy_recommendation": record.canonical_json.get("recommendation"),
         "binding_rule": (record.canonical_json.get("reason_codes") or [None])[0],
         "conditions": record.canonical_json.get("conditions", []),
-        "covenants": selected_offer.get("covenants", []),
+        "covenants": original_selected_offer.get("covenants", []),
     }
     differences = [
         {"field": key, "original": original.get(key), "replayed": value}
@@ -1615,3 +1689,21 @@ def verify_audit_chain_endpoint(
         verification_version=result["verification_version"],
         reason=result.get("reason")
     )
+
+@router.get("/{case_id}/assessment-result")
+def get_assessment_result(case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    can_view_case(db, user, case_id)
+    assessment = AssessmentService.get_latest_assessment(db, case_id)
+    if not assessment:
+        raise HTTPException(status_code=404, detail="No assessment found")
+    return assessment
+
+@router.get("/{case_id}/assessments/{assessment_id}")
+def get_assessment_by_id(case_id: UUID, assessment_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    can_view_case(db, user, case_id)
+    assessment = AssessmentService.get_assessment_by_id(db, assessment_id)
+    if not assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    if str(assessment.case_id) != str(case_id):
+        raise HTTPException(status_code=400, detail="Assessment does not belong to this case")
+    return assessment

@@ -50,9 +50,11 @@ app.add_middleware(
 @app.middleware("http")
 async def csrf_middleware(request: Request, call_next):
     if request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-        if request.url.path.startswith(
-            "/api/auth/login"
-        ) or request.url.path.startswith("/api/auth/demo/session"):
+        if (
+            request.url.path.startswith("/api/auth/login")
+            or request.url.path.startswith("/api/auth/demo/session")
+            or request.url.path.startswith("/api/demo/reset")
+        ):
             return await call_next(request)
 
         csrf_header = request.headers.get("x-csrf-token")

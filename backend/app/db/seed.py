@@ -71,7 +71,13 @@ def run_seed():
             "business_name": case.business.legal_name,
             "features": features,
             "scores": scores,
-            "decision": decision,
+            "decision": {
+                "recommendation": decision.get("decision"),
+                "binding_limit": decision.get("binding_limit"),
+                "reason_codes": decision.get("reasons"),
+                "offers": decision.get("offers", []),
+                "post_loan_dscr": decision.get("post_loan_dscr"),
+            },
         }
 
         dscr_val = None

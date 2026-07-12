@@ -115,14 +115,13 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
         print("EVALUATION FAILED:", eval_res.text)
     assert eval_res.status_code == 200
     eval_data = eval_res.json()
-    print("EVAL DATA:", eval_data)
-    assert eval_data["decision"]["decision"] == "CONDITIONAL_OFFER"
+    assert eval_data["policy_recommendation"] == "CONDITIONAL_OFFER"
 
     # Validate Shakti winning outcome
     assert float(case_data["requested_amount"]) == 5000000.00
     import math
 
-    binding_limit = eval_data["decision"]["binding_limit"]
+    binding_limit = float(eval_data["supportable_amount"])
     assert math.isclose(binding_limit, 3570000.00, abs_tol=2000.0), (
         f"Binding limit {binding_limit} is not approx 3570000"
     )

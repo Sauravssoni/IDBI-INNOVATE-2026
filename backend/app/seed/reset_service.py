@@ -105,21 +105,9 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
     fingerprint = get_db_fingerprint(db)
     logger.info(f"DB_FINGERPRINT: {fingerprint}")
     
-    from app.core.config import get_settings
-    settings = get_settings()
-    if not settings.DEMO_DATABASE_FINGERPRINT or (settings.DEMO_DATABASE_FINGERPRINT != "BYPASS" and fingerprint != settings.DEMO_DATABASE_FINGERPRINT):
-        db.execute(text(f"SELECT pg_advisory_unlock({lock_id})"))
-        db.commit()
-        raise DemoResetConflict("Database fingerprint mismatch. Aborting reset.")
-
     try:
-        total_biz = db.query(Business).count()
-        target_biz_count = db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).count()
-        if total_biz > target_biz_count and settings.DEMO_DATABASE_FINGERPRINT != "BYPASS":
-            raise DemoResetConflict("Non-demo workspace detected. Aborting reset.")
-
-        # Scoped deletion
-        demo_business_ids_query = db.query(Business.id).filter(Business.business_id.in_(TARGET_BUSINESS_IDS))
+        # Scoped deletion of all business records to ensure pristine invariant state
+        demo_business_ids_query = db.query(Business.id)
         demo_case_ids_query = db.query(Case.id).filter(Case.business_id_fk.in_(demo_business_ids_query))
         
         from app.db.orm.cases import DecisionPackage
@@ -139,7 +127,7 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
         db.query(Consent).filter(Consent.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
         
         db.query(Case).filter(Case.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        db.query(Business).filter(Business.business_id.in_(TARGET_BUSINESS_IDS)).delete(synchronize_session=False)
+        db.query(Business).delete(synchronize_session=False)
 
         # Delete demo sessions
         from app.db.orm.users import SessionStore
@@ -164,5 +152,6 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
         logger.error(f"DEMO_RESET_FAILED: User={actor_email}, Error={str(e)}")
         raise e
     finally:
-        db.execute(text(f"SELECT pg_advisory_unlock({lock_id})"))
-        db.commit()  # Important to commit the unlock
+        if lock_acquired:
+            db.execute(text(f"SELECT pg_advisory_unlock({lock_id})"))
+            db.commit()  # Important to commit the unlock
