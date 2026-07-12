@@ -1,0 +1,50 @@
+{
+  "cohort_size": 500,
+  "seed": 42,
+  "source_main_sha": "62aaa0c5adc6d0089daade7ca07b85c62c7568f1",
+  "engine_versions": {
+    "scoring": "2.0",
+    "calculation": "1.5",
+    "policy": "2026.Q2",
+    "feature": "3.1"
+  },
+  "generated_at": "2026-07-12T16:57:14.410582+00:00",
+  "checksum": "68c9fa9b98ae3292e087157f3df9425642a2fe3f03c546adffb0f8e85428ffd2",
+  "metrics": {
+    "assessable": 476,
+    "ready_for_review": 0,
+    "conditional_structure": 0,
+    "additional_evidence_required": 500,
+    "enhanced_due_diligence": 0,
+    "integrity_blocked": 24,
+    "decline_recommended": 0,
+    "safely_abstained": 0,
+    "unknown_obligation_offers_blocked": 0,
+    "unsafe_positive_recommendations_blocked": 0,
+    "sampled_package_replay_success": 500,
+    "score_distribution": {
+      "excellent": 0,
+      "good": 0,
+      "fair": 0,
+      "poor": 500
+    },
+    "certainty_distribution": {
+      "HIGH": 0,
+      "MODERATE": 0,
+      "LIMITED": 0,
+      "INSUFFICIENT": 0,
+      "INSUFFICIENT_TO_ASSESS": 500
+    },
+    "product_distribution": {
+      "Term Loan": 189,
+      "Working Capital": 154,
+      "Invoice Discounting": 157
+    },
+    "sector_distribution": {
+      "Manufacturing": 135,
+      "Services": 122,
+      "Retail": 119,
+      "Technology": 124
+    }
+  }
+}

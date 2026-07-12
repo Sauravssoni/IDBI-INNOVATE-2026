@@ -80,6 +80,8 @@ export interface EvidencePassport {
   assessment_certainty: string;
   authoritative_evidence_ids: string[];
   generated_at: string;
+  evidence_tier?: string;
+  tier_description?: string;
 }
 
 export interface PeerContext {

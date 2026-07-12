@@ -28,6 +28,7 @@ class ScoringEngine:
             ),
             "financial_health_index": fhi_data["financial_health_index"],
             "fhi_breakdown": fhi_data["fhi_breakdown"],
+            "score_contribution_ledger": fhi_data["score_contribution_ledger"],
             "vyapar_credit_health_score": fhi_data["vyapar_credit_health_score"],
             "credit_health_disclaimer": fhi_data["credit_health_disclaimer"],
             "credit_score_disclaimer": fhi_data["credit_score_disclaimer"],
@@ -199,8 +200,9 @@ class ScoringEngine:
         )
 
         if assessable:
-            fhi_dec = q2(sum((Decimal(str(item["contribution"])) for item in pillar_items.values() if item["contribution"] is not None), Decimal("0")))
-            vyapar_credit_health_score = int(min(Decimal("900"), max(Decimal("300"), Decimal("300") + Decimal("6") * fhi_dec)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+            fhi_dec = q2(sum(Decimal(str(item["contribution"])) for item in pillar_items.values() if item["contribution"] is not None))
+            raw_health_score = min(Decimal("900"), max(Decimal("300"), Decimal("300") + Decimal("6") * fhi_dec))
+            vyapar_credit_health_score = int(raw_health_score.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
             missing_count = sum(1 for item in pillar_items.values() if item["status"] == "MISSING_DATA")
             assessment_certainty = "HIGH_CERTAINTY" if missing_count == 0 else "MODERATE_CERTAINTY" if missing_count <= 1 else "LIMITED_CERTAINTY"
             band = {"HIGH_CERTAINTY": 15, "MODERATE_CERTAINTY": 30, "LIMITED_CERTAINTY": 50}[assessment_certainty]
@@ -209,11 +211,25 @@ class ScoringEngine:
                 "upper": min(900, vyapar_credit_health_score + band),
                 "basis": "evidence-conditioned assessment range; not a statistical confidence interval",
             }
+            
+            ledger = [{"component": "Base Score", "contribution": 300, "running_score": 300}]
+            running = 300
+            for k, v in pillar_items.items():
+                if v["contribution"] is not None:
+                    # Distribute the total score proportionally to match the final score
+                    contrib = float((Decimal(str(v["contribution"])) * Decimal("6")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+                    running += contrib
+                    ledger.append({"component": k.replace("_", " ").title(), "contribution": contrib, "running_score": running})
+            # Ensure the last item exactly matches vyapar_credit_health_score
+            if len(ledger) > 1:
+                ledger[-1]["running_score"] = float(vyapar_credit_health_score)
+
         else:
             fhi_dec = None
             vyapar_credit_health_score = None
             assessment_certainty = "INSUFFICIENT_TO_ASSESS"
             score_range = None
+            ledger = []
 
         disclaimer = (
             "Indicative MSME Credit Health Score — not a bureau score, probability of default or sanction decision. "
@@ -226,6 +242,7 @@ class ScoringEngine:
             "financial_health_index": fhi_dec,
             "vyapar_credit_health_score": vyapar_credit_health_score,
             "fhi_breakdown": pillar_items,
+            "score_contribution_ledger": ledger,
             "assessment_certainty": assessment_certainty,
             "score_range": score_range,
             "missing_material_evidence": sorted(set(material_missing)),

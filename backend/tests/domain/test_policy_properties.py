@@ -144,6 +144,7 @@ def test_scoring_engine_returns_replayable_score_metadata():
         "resilience_score",
         "financial_health_index",
         "fhi_breakdown",
+        "score_contribution_ledger",
         "vyapar_credit_health_score",
         "credit_health_disclaimer",
         "credit_score_disclaimer",
