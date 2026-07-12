@@ -77,7 +77,7 @@ export default function DecisionRoomPage() {
         headers: {
           "Idempotency-Key": crypto.randomUUID(),
           "X-Expected-Version": (data?.case_version || 0).toString(),
-          "X-CSRF-Token": "prototype-csrf" // For prototype
+          "X-CSRF-Token": "" // For prototype
         },
         body: JSON.stringify({
           decision: decisionEnum,
@@ -137,9 +137,7 @@ export default function DecisionRoomPage() {
             <p className="text-gray-400 mb-6">Verify entity consent and core KYC parameters.</p>
             <div className="bg-black/30 p-6 rounded-xl border border-white/5">
               <p className="mb-2"><strong>Entity:</strong> {data.business_name}</p>
-              <p className="mb-2"><strong>Consent Artefact:</strong> Verified (Digital footprint linked)</p>
-              <p className="mb-2"><strong>KYC Status:</strong> <span className="text-emerald-400">Complete</span></p>
-            </div>
+                                        </div>
           </div>
         );
       case 1: return renderGenericDataStep("2. Udyam & Bureau Retrieval", "View retrieved statutory entity data.", "bureau_metrics");

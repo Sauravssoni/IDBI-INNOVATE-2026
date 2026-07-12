@@ -334,7 +334,7 @@ def run_case_stress_lab(
             "decision_after": "DECLINE",
             "formula": "(Base Inflows - Base Outflows) / Post DSCR = Policy Floor",
             "inputs": {"base_inflows": float(base_inflows), "base_outflows": float(base_outflows), "post_ds": float(total_post_ds)},
-            "evidence_ids": ["EVD-BANK-001"],
+            "evidence_ids": [],
             "limitations": ["Assumes linear cost behavior"]
         }
     })
