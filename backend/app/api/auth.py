@@ -156,7 +156,7 @@ def create_demo_session(
         value=session_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none" if settings.COOKIE_SECURE else "lax",
         path="/",
         max_age=SESSION_EXPIRE_HOURS * 3600,
     )
@@ -167,7 +167,7 @@ def create_demo_session(
         value=csrf_token,
         httponly=False,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none" if settings.COOKIE_SECURE else "lax",
         path="/",
         max_age=SESSION_EXPIRE_HOURS * 3600,
     )
@@ -210,7 +210,7 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
         value=session_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none" if settings.COOKIE_SECURE else "lax",
         path="/",
         max_age=SESSION_EXPIRE_HOURS * 3600,
     )
@@ -221,7 +221,7 @@ def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
         value=csrf_token,
         httponly=False,
         secure=settings.COOKIE_SECURE,
-        samesite="lax",
+        samesite="none" if settings.COOKIE_SECURE else "lax",
         path="/",
         max_age=SESSION_EXPIRE_HOURS * 3600,
     )
@@ -248,14 +248,14 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         path="/",
         secure=settings.COOKIE_SECURE,
         httponly=True,
-        samesite="lax",
+        samesite="none" if settings.COOKIE_SECURE else "lax",
     )
     response.delete_cookie(
         key=CSRF_COOKIE_NAME,
         path="/",
         secure=settings.COOKIE_SECURE,
         httponly=False,
-        samesite="lax",
+        samesite="none" if settings.COOKIE_SECURE else "lax",
     )
     return {"status": "logged_out"}
 
