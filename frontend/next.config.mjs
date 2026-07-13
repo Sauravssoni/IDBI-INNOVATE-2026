@@ -7,7 +7,7 @@ if (isProd && !process.env.BACKEND_URL) {
   console.warn("BACKEND_URL is missing, falling back to vyapar-pulse-backend.vercel.app");
 }
 
-const backendUrl = process.env.BACKEND_URL || (isProd ? 'http://127.0.0.1:8000' : 'http://127.0.0.1:8000');
+const backendUrl = process.env.BACKEND_URL || (isProd ? 'https://vyapar-pulse-backend.vercel.app' : 'http://127.0.0.1:8000');
 
 const securityHeaders = [
   {
