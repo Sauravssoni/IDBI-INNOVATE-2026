@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.api.dependencies import get_current_user
 from app.db.orm.users import User
 from app.db.orm.cases import Case, DecisionPackage, AssessmentSnapshot
+from app.db.orm.consents import Consent
 from app.schemas.ocen import OCENExportResponse, OCENBorrower, OCENCreditDecision, OCENEvidence, OCENAudit
 
 router = APIRouter(prefix="/api/cases", tags=["ocen"])
@@ -77,6 +78,23 @@ def get_ocen_export(
 
     business = case_db.business
 
+    consent_db = db.query(Consent).filter(Consent.business_id_fk == business.id).first()
+    consent_ref = str(consent_db.id) if consent_db else "UNAVAILABLE"
+
+    # Engine versions
+    eng = pkg.engine_versions or {}
+    pol_v = eng.get("policy", "UNAVAILABLE")
+    calc_v = eng.get("calculation", "UNAVAILABLE")
+    scor_v = eng.get("scoring", "UNAVAILABLE")
+    pass_v = eng.get("passport", "UNAVAILABLE")
+
+    tenor = features.get("proposed_tenor_months") or getattr(case_db, 'proposed_tenor_months', None)
+    rate = features.get("proposed_annual_rate") or getattr(case_db, 'proposed_annual_rate', None)
+    repay = features.get("repayment_type", "UNAVAILABLE")
+
+    audit_h = pkg.audit_tip_hash if pkg.audit_tip_hash else "UNAVAILABLE"
+
+
     # Generate the OCEN export
     return OCENExportResponse(
         schema_version="2.0-CANONICAL",
@@ -84,7 +102,7 @@ def get_ocen_export(
         assessment_id=str(pkg.assessment_id),
         package_id=str(pkg.id),
         case_version=str(case_db.version),
-        consent_artefact_reference=f"CONSENT-ART-{business.business_id}",
+        consent_artefact_reference=consent_ref,
         product=case_db.requested_product.value if hasattr(case_db.requested_product, "value") else str(case_db.requested_product),
         prototype_interoperability_payload=True,
         interoperability_disclaimer="Not certified by OCEN or ULI. Hackathon interoperability prototype.",
@@ -99,9 +117,9 @@ def get_ocen_export(
             indicative_supportable_amount=supportable,
             sanctioned_amount=case_db.approved_amount if status_str == "SANCTIONED" else None,
             currency=case_db.currency,
-            tenure_months=getattr(case_db, 'proposed_tenor_months', 36) or 36,
-            interest_rate=float(getattr(case_db, 'proposed_annual_rate', 13.5) or 13.5),
-            repayment="Monthly EMI",
+            tenure_months=int(tenor) if tenor else None,
+            interest_rate=float(rate) if rate else None,
+            repayment=repay,
             conditions=conditions,
             covenants=covenants,
             reason_codes=reason_codes
@@ -114,14 +132,14 @@ def get_ocen_export(
             evidence_ids=ev_ids
         ),
         audit=OCENAudit(
-            audit_hash=pkg.package_hash if pkg.package_hash else "",
+            audit_hash=audit_h,
             package_hash=pkg.package_hash if pkg.package_hash else "",
             generated_by="system"
         ),
         engine_versions={
-            "policy": POLICY_VERSION,
-            "calculation": CALCULATION_VERSION,
-            "scoring": SCORING_VERSION,
-            "passport": PASSPORT_ENGINE_VERSION
+            "policy": pol_v,
+            "calculation": calc_v,
+            "scoring": scor_v,
+            "passport": pass_v
         }
     )

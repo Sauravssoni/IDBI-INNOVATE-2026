@@ -447,14 +447,15 @@ class ApplicantViewHindiSummary(BaseModel):
     bankability_path_actions: List[str]
 
 class ApplicantViewResponse(BaseModel):
-    id: str
-    business_name: str
-    requested_amount: Optional[float] = None
-    requested_product: str
     status: str
-    vyapar_credit_health_score: Optional[int] = None
-    binding_limit: Optional[Decimal] = None
-    recommendation: Optional[str] = None
-    hindi_summary: Optional[ApplicantViewHindiSummary] = None
-    offers: Optional[List[ApplicantViewOffer]] = None
+    sanctioned_amount_after_human_decision: Optional[float] = None
+    positive_factors: List[str]
+    safe_adverse_factors: List[str]
+    missing_evidence: List[str]
+    conditions: List[str]
+    bankability_actions: List[str]
+    milestones_30_60_90: List[str]
+    reconsideration_requirements: List[str]
+    english_text: str
+    hindi_text: str
 

@@ -12,8 +12,8 @@ class OCENCreditDecision(BaseModel):
     indicative_supportable_amount: Decimal
     sanctioned_amount: Optional[Decimal] = None
     currency: str
-    tenure_months: int
-    interest_rate: float
+    tenure_months: Optional[int] = None
+    interest_rate: Optional[float] = None
     repayment: str
     conditions: List[str]
     covenants: List[str]
