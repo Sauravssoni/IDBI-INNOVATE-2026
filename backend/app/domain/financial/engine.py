@@ -20,6 +20,27 @@ from app.domain.financial.obligations import (
 )
 
 
+def _safe_decimal(val: Any, default: Decimal = Decimal("0.00")) -> Decimal:
+    if val is None or val == "" or str(val).strip().lower() in ("none", "null", ""):
+        return default
+    try:
+        return Decimal(str(val))
+    except Exception:
+        return default
+
+
+def _safe_int(val: Any, default: int = 0) -> int:
+    if val is None or val == "" or str(val).strip().lower() in ("none", "null", ""):
+        return default
+    try:
+        return int(val)
+    except Exception:
+        try:
+            return int(float(str(val)))
+        except Exception:
+            return default
+
+
 class FinancialCapacityEngine:
     """
     Canonical financial engine responsible for:
@@ -42,7 +63,9 @@ class FinancialCapacityEngine:
         P * r * (1+r)^n / ((1+r)^n - 1)
         """
         return SafeLimitEngine.calculate_emi_from_loan(
-            Decimal(str(principal)), Decimal(str(annual_rate)), int(tenure_months)
+            _safe_decimal(principal, Decimal("0.00")),
+            _safe_decimal(annual_rate, Decimal("0.135")),
+            _safe_int(tenure_months, 36),
         )
 
     @classmethod
@@ -53,7 +76,9 @@ class FinancialCapacityEngine:
         tenure_months: int = 36,
     ) -> Decimal:
         return SafeLimitEngine._calculate_loan_from_emi(
-            Decimal(str(monthly_emi)), Decimal(str(annual_rate)), int(tenure_months)
+            _safe_decimal(monthly_emi, Decimal("0.00")),
+            _safe_decimal(annual_rate, Decimal("0.135")),
+            _safe_int(tenure_months, 36),
         )
 
     @classmethod
@@ -127,11 +152,26 @@ class FinancialCapacityEngine:
                 "custom_annual_rate", kwargs.get("interest_rate_pct", Decimal("0.135"))
             )
             custom_tenure_months = int(
-                kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36))
+                kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36)) or 36
             )
 
-        requested_amount_dec = Decimal(str(requested_amount))
-        custom_annual_rate_dec = Decimal(str(custom_annual_rate))
+        if custom_annual_rate is None or str(custom_annual_rate).strip().lower() in ("none", "null", ""):
+            custom_annual_rate = kwargs.get("interest_rate_pct", Decimal("0.135"))
+        if custom_annual_rate is None or str(custom_annual_rate).strip().lower() in ("none", "null", ""):
+            custom_annual_rate = Decimal("0.135")
+
+        if requested_amount is None or str(requested_amount).strip().lower() in ("none", "null", ""):
+            requested_amount = kwargs.get("requested_amount_inr", Decimal("0.00"))
+        if requested_amount is None or str(requested_amount).strip().lower() in ("none", "null", ""):
+            requested_amount = Decimal("0.00")
+
+        if custom_tenure_months is None or str(custom_tenure_months).strip().lower() in ("none", "null", ""):
+            custom_tenure_months = kwargs.get("tenure_months", 36)
+        if custom_tenure_months is None or str(custom_tenure_months).strip().lower() in ("none", "null", ""):
+            custom_tenure_months = 36
+
+        requested_amount_dec = _safe_decimal(requested_amount, Decimal("0.00"))
+        custom_annual_rate_dec = _safe_decimal(custom_annual_rate, Decimal("0.135"))
         if custom_annual_rate_dec > Decimal("1.0"):
             custom_annual_rate_dec = custom_annual_rate_dec / Decimal("100")
 
@@ -201,7 +241,7 @@ class FinancialCapacityEngine:
             and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA"
         ):
             operating_cash_available = (
-                Decimal(str(financials["ebitda_reported"])) / Decimal("12")
+                _safe_decimal(financials["ebitda_reported"], Decimal("0.00")) / Decimal("12")
             ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if (
                 observed_operating_outflows <= 0

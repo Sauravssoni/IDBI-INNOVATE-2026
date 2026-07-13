@@ -117,6 +117,9 @@ def run_case_stress_lab(
         # Enforce invariant: stressed_limit <= baseline_limit
         if result["supportable_amount"] > float(base_limit):
             result["supportable_amount"] = float(base_limit)
+        assert result["supportable_amount"] <= float(
+            base_limit
+        ), "adverse_supportable_amount <= baseline_supportable_amount"
 
         dscr_dec = (
             Decimal(str(result["post_loan_dscr"]))
@@ -537,16 +540,27 @@ def run_case_stress_lab(
     custom_features["verified_existing_debt_service_monthly"] = str(custom_ds)
     custom_features["obligation_verification_state"] = obligation_state
 
+    custom_scores = ScoringEngine(custom_features).compute_all_scores()
     custom_cap = FinancialCapacityEngine.compute_capacity_from_features(
         custom_features,
         requested_amount,
         requested_product,
         custom_annual_rate=custom_annual_rate_dec,
     )
+    custom_policy = DecisionPolicy(
+        custom_features,
+        custom_scores,
+        requested_amount,
+        requested_product,
+        custom_annual_rate=custom_annual_rate_dec,
+    ).evaluate()
     custom_dscr = get_effective_dscr(custom_cap)
-    custom_limit = custom_cap.get("binding_product_limit", Decimal("0.00"))
+    custom_limit = custom_policy.get("binding_limit", Decimal("0.00"))
     if custom_limit > base_limit:
         custom_limit = base_limit
+    assert (
+        custom_limit <= base_limit
+    ), "adverse_supportable_amount <= baseline_supportable_amount"
     custom_status = get_custom_status(custom_dscr, custom_inflows - base_outflows)
     baseline_status = get_custom_status(base_dscr, base_inflows - base_outflows)
 
