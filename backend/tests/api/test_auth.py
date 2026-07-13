@@ -83,7 +83,9 @@ def test_auth_expired_session(client: TestClient, db):
         .first()
     )
     assert db_session
-    db_session.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    db_session.expires_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(
+        hours=1
+    )
     db.commit()
 
     client.cookies.clear()

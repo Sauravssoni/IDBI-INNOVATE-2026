@@ -40,22 +40,22 @@ export default defineConfig({
           DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || 'VyaparPulseDemo2026!',
           DEMO_ACCESS_ENABLED: 'true',
           DEMO_RESET_ENABLED: 'true',
-          DEMO_RESET_TOKEN: 'secret',
+          DEMO_RESET_TOKEN: process.env.DEMO_RESET_TOKEN || 'change-this-local-development-password',
           DEMO_DATABASE_FINGERPRINT: 'BYPASS'
         },
         port: 8000,
         reuseExistingServer: true,
-        stdout: 'pipe',
+        
       },
       {
         command: 'npm run start -- -p 3005',
         env: {
           NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? '',
-          BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:8000',
+          BACKEND_URL: process.env.BACKEND_URL || 'http://127.0.0.1:8000',
         },
         port: 3005,
         reuseExistingServer: true,
-        stdout: 'pipe',
+        
       },
     ]
   } : {}),

@@ -60,14 +60,26 @@ class AssessmentService:
             Decimal(str(case.requested_amount)),
             req_product_str,
         )
-        decision = policy.evaluate()
+        try:
+            decision = policy.evaluate()
+        except Exception as e:
+            decision = {
+                "decision": "DECLINE_RECOMMENDED",
+                "binding_limit": Decimal("0"),
+                "offers": [],
+                "reasons": [f"Malformed financial inputs rejected: {str(e)}. Zero capacity."],
+                "conditions": []
+            }
         from app.domain.financial.engine import FinancialCapacityEngine
 
-        cap = FinancialCapacityEngine.compute_capacity_from_features(
-            features,
-            Decimal(str(case.requested_amount)),
-            req_product_str,
-        )
+        try:
+            cap = FinancialCapacityEngine.compute_capacity_from_features(
+                features,
+                Decimal(str(case.requested_amount)),
+                req_product_str,
+            )
+        except Exception:
+            cap = {}
 
         # 4. Build Canonical Assessment
         assessment = cls.build_assessment_result(case, features, scores, decision, cap)

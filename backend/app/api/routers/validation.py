@@ -16,9 +16,13 @@ def run_invariants(user: User = Depends(get_current_user)) -> Dict[str, Any]:
     """
     settings = get_settings()
     if settings.APP_ENV == "production":
-        raise HTTPException(status_code=403, detail="Validation execution is disabled in production.")
-        
+        raise HTTPException(
+            status_code=403, detail="Validation execution is disabled in production."
+        )
+
     if user.role != "RISK_ADMIN":
-        raise HTTPException(status_code=403, detail="Only RISK_ADMIN can run validations.")
-        
+        raise HTTPException(
+            status_code=403, detail="Only RISK_ADMIN can run validations."
+        )
+
     return run_validation_suite()

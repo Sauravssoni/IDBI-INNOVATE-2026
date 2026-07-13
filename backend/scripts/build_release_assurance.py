@@ -24,8 +24,8 @@ def generate_validation():
         "profile_distribution": profile_distribution,
         "product_distribution": product_distribution,
         "case_invariant_executions": results["invariants_passed"] + results["invariants_failed"],
-        "cases_with_no_recorded_failure": results["invariants_passed"],
-        "case_level_failures": results["invariants_failed"],
+        "cases_with_no_recorded_failure": results["total_cases"] - len(results["failures"]),
+        "case_level_failures": len(results["failures"]),
         "failed_case_ids": [f["case_index"] for f in results["failures"]],
         "checksum": results["deterministic_checksum"],
         "engine_replay_cases": len(results.get("replay_results", [])),
@@ -41,8 +41,17 @@ def generate_validation():
         "generator_version": "v2.0"
     }
     
-    with open("artifacts/validation/release_assurance.json", "w") as f:
-        json.dump(output, f, indent=2)
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+    backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    
+    paths = [
+        os.path.join(root_dir, "artifacts/validation/release_assurance.json"),
+        os.path.join(backend_dir, "artifacts/validation/release_assurance.json")
+    ]
+    for p in paths:
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w") as f:
+            json.dump(output, f, indent=2)
         
     print("Generated artifacts/validation/release_assurance.json successfully.")
 

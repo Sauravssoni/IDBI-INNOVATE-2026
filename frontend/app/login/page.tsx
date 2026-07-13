@@ -224,32 +224,7 @@ export default function LoginPage() {
                     <div className="text-[11px] text-light-secondary">Inspect versioned decision history</div>
                   </div>
                 </button>
-                <button
-                  onClick={() => handleDemoLogin("RISK_ADMIN")}
-                  disabled={isSubmitting || serviceStatus === "unavailable"}
-                  className="p-3 bg-light-bg border border-light-border hover:border-brand-teal hover:bg-brand-softTeal text-left rounded-lg transition-all flex items-center gap-3 disabled:opacity-50 disabled:hover:bg-light-bg disabled:hover:border-light-border"
-                >
-                  <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-teal shrink-0 border border-brand-teal/20">
-                    <ShieldCheck className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-light-text">Risk Admin</div>
-                    <div className="text-[11px] text-light-secondary">Configure policies and scorecards</div>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleDemoLogin("SYSTEM_ADMIN")}
-                  disabled={isSubmitting || serviceStatus === "unavailable"}
-                  className="p-3 bg-light-bg border border-light-border hover:border-brand-teal hover:bg-brand-softTeal text-left rounded-lg transition-all flex items-center gap-3 disabled:opacity-50 disabled:hover:bg-light-bg disabled:hover:border-light-border"
-                >
-                  <div className="w-8 h-8 rounded bg-white flex items-center justify-center text-brand-teal shrink-0 border border-brand-teal/20">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-light-text">System Admin</div>
-                    <div className="text-[11px] text-light-secondary">Manage users and global config</div>
-                  </div>
-                </button>
+
               </div>
             </div>
 

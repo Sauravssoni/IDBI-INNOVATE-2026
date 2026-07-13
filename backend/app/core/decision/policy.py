@@ -68,7 +68,9 @@ class DecisionPolicy:
         if assessment_certainty == "INSUFFICIENT_TO_ASSESS":
             return {
                 "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
-                "reasons": ["Insufficient evidence to compute a reliable financial score"],
+                "reasons": [
+                    "Insufficient evidence to compute a reliable financial score"
+                ],
                 "offers": [],
                 "binding_limit": Decimal("0"),
                 "post_loan_dscr": None,
@@ -95,10 +97,10 @@ class DecisionPolicy:
         from app.domain.financial.engine import FinancialCapacityEngine
 
         cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
-            self.features, 
-            self.requested_amount, 
+            self.features,
+            self.requested_amount,
             self.requested_product,
-            custom_annual_rate=self.custom_annual_rate
+            custom_annual_rate=self.custom_annual_rate,
         )
 
         # Check for material unresolved credit/debit activity first

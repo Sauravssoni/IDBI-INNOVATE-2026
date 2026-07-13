@@ -103,6 +103,7 @@ def create_demo_session(
         t for t in demo_rate_limits[client_ip] if now - t < DEMO_TIME_WINDOW
     ]
     import os
+
     if os.environ.get("PYTEST_CURRENT_TEST"):
         demo_rate_limits[client_ip].clear()
     if len(demo_rate_limits[client_ip]) >= DEMO_MAX_REQUESTS:
@@ -181,14 +182,21 @@ login_rate_limits: defaultdict[str, list[float]] = defaultdict(list)
 LOGIN_MAX_REQUESTS = 10
 LOGIN_TIME_WINDOW = 60
 
+
 @router.post("/login", response_model=LoginResponse)
-def login(req: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+def login(
+    req: LoginRequest,
+    response: Response,
+    request: Request,
+    db: Session = Depends(get_db),
+):
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
     login_rate_limits[client_ip] = [
         t for t in login_rate_limits[client_ip] if now - t < LOGIN_TIME_WINDOW
     ]
     import os
+
     if os.environ.get("PYTEST_CURRENT_TEST"):
         login_rate_limits[client_ip].clear()
     if len(login_rate_limits[client_ip]) >= LOGIN_MAX_REQUESTS:

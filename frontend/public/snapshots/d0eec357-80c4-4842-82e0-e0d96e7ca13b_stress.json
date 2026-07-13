@@ -1,0 +1,744 @@
+{
+  "overall_stress_status": "NOT_ASSESSABLE",
+  "base_dscr": 1.74,
+  "base_binding_limit": 0.0,
+  "scenarios": [
+    {
+      "scenario_id": "REVENUE_DROP_15",
+      "name": "Revenue Drop (-15%)",
+      "description": "Simulates a 15% reduction in verified operating cash inflows.",
+      "recomputed_dscr": 0.55,
+      "recomputed_limit": 0.0,
+      "status": "FAIL",
+      "policy_rule_id": "POL-STR-001",
+      "transition_explanation": "Revenue Drop (-15%): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 21.666666666666668,
+        "credit_health_score": 430,
+        "assessment_range": {
+          "lower": 400,
+          "upper": 460,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 0.55,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "RATE_HIKE_200BPS",
+      "name": "Interest Rate Hike (+200bps)",
+      "description": "Re-amortises proposed facility at shocked rate.",
+      "recomputed_dscr": 1.74,
+      "recomputed_limit": 0.0,
+      "status": "PASS",
+      "policy_rule_id": "POL-STR-002",
+      "transition_explanation": "Interest Rate Hike (+200bps): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "working_capital_requirement",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "COGS_INCREASE_10",
+      "name": "COGS / Outflow Increase (+10%)",
+      "description": "Simulates a 10% inflation in operating expenses.",
+      "recomputed_dscr": 1.13,
+      "recomputed_limit": 0.0,
+      "status": "MARGINAL",
+      "policy_rule_id": "POL-STR-003",
+      "transition_explanation": "COGS / Outflow Increase (+10%): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 36.666666666666664,
+        "credit_health_score": 520,
+        "assessment_range": {
+          "lower": 490,
+          "upper": 550,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.13,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "COMBINED_DOWNSIDE",
+      "name": "Combined Downside Shock",
+      "description": "Simulates simultaneous -15% rev, +10% COGS, and +200bps rate shock.",
+      "recomputed_dscr": -0.06,
+      "recomputed_limit": 0.0,
+      "status": "NOT_ASSESSABLE",
+      "policy_rule_id": "POL-STR-004",
+      "transition_explanation": "Combined Downside Shock: policy state DECLINE_RECOMMENDED -> ADDITIONAL_EVIDENCE_REQUIRED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": null,
+        "credit_health_score": null,
+        "assessment_range": null,
+        "post_loan_dscr": -0.06,
+        "supportable_amount": 0.0,
+        "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Insufficient evidence to compute a reliable financial score"
+        ]
+      }
+    },
+    {
+      "scenario_id": "REVENUE_DROP_25",
+      "name": "Severe Revenue Drop (-25%)",
+      "description": "Simulates a 25% reduction in verified operating cash inflows.",
+      "recomputed_dscr": -0.24,
+      "recomputed_limit": 0.0,
+      "status": "NOT_ASSESSABLE",
+      "policy_rule_id": "POL-STR-005",
+      "transition_explanation": "Severe Revenue Drop (-25%): policy state DECLINE_RECOMMENDED -> ADDITIONAL_EVIDENCE_REQUIRED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": null,
+        "credit_health_score": null,
+        "assessment_range": null,
+        "post_loan_dscr": -0.24,
+        "supportable_amount": 0.0,
+        "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Insufficient evidence to compute a reliable financial score"
+        ]
+      }
+    },
+    {
+      "scenario_id": "REVENUE_DROP_35",
+      "name": "Extreme Revenue Drop (-35%)",
+      "description": "Simulates a 35% reduction in verified operating cash inflows.",
+      "recomputed_dscr": -1.03,
+      "recomputed_limit": 0.0,
+      "status": "NOT_ASSESSABLE",
+      "policy_rule_id": "POL-STR-006",
+      "transition_explanation": "Extreme Revenue Drop (-35%): policy state DECLINE_RECOMMENDED -> ADDITIONAL_EVIDENCE_REQUIRED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": null,
+        "credit_health_score": null,
+        "assessment_range": null,
+        "post_loan_dscr": -1.03,
+        "supportable_amount": 0.0,
+        "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Insufficient evidence to compute a reliable financial score"
+        ]
+      }
+    },
+    {
+      "scenario_id": "RATE_HIKE_300BPS",
+      "name": "Moderate Rate Hike (+300bps)",
+      "description": "Re-amortises proposed facility at +300bps.",
+      "recomputed_dscr": 1.73,
+      "recomputed_limit": 0.0,
+      "status": "PASS",
+      "policy_rule_id": "POL-STR-007",
+      "transition_explanation": "Moderate Rate Hike (+300bps): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.73,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "working_capital_requirement",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "RATE_HIKE_400BPS",
+      "name": "Severe Rate Hike (+400bps)",
+      "description": "Re-amortises proposed facility at +400bps.",
+      "recomputed_dscr": 1.73,
+      "recomputed_limit": 0.0,
+      "status": "PASS",
+      "policy_rule_id": "POL-STR-008",
+      "transition_explanation": "Severe Rate Hike (+400bps): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.73,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "working_capital_requirement",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "COGS_INCREASE_20",
+      "name": "Severe COGS Increase (+20%)",
+      "description": "Simulates a 20% inflation in operating expenses.",
+      "recomputed_dscr": 0.51,
+      "recomputed_limit": 0.0,
+      "status": "FAIL",
+      "policy_rule_id": "POL-STR-009",
+      "transition_explanation": "Severe COGS Increase (+20%): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 21.666666666666668,
+        "credit_health_score": 430,
+        "assessment_range": {
+          "lower": 400,
+          "upper": 460,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 0.51,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "COGS_INCREASE_30",
+      "name": "Extreme COGS Increase (+30%)",
+      "description": "Simulates a 30% inflation in operating expenses.",
+      "recomputed_dscr": -0.11,
+      "recomputed_limit": 0.0,
+      "status": "NOT_ASSESSABLE",
+      "policy_rule_id": "POL-STR-010",
+      "transition_explanation": "Extreme COGS Increase (+30%): policy state DECLINE_RECOMMENDED -> ADDITIONAL_EVIDENCE_REQUIRED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": null,
+        "credit_health_score": null,
+        "assessment_range": null,
+        "post_loan_dscr": -0.11,
+        "supportable_amount": 0.0,
+        "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Insufficient evidence to compute a reliable financial score"
+        ]
+      }
+    },
+    {
+      "scenario_id": "COMBINED_SEVERE",
+      "name": "Severe Combined Shock",
+      "description": "Simulates -25% rev, +20% COGS, and +300bps rate shock.",
+      "recomputed_dscr": -1.46,
+      "recomputed_limit": 0.0,
+      "status": "NOT_ASSESSABLE",
+      "policy_rule_id": "POL-STR-011",
+      "transition_explanation": "Severe Combined Shock: policy state DECLINE_RECOMMENDED -> ADDITIONAL_EVIDENCE_REQUIRED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": null,
+        "credit_health_score": null,
+        "assessment_range": null,
+        "post_loan_dscr": -1.46,
+        "supportable_amount": 0.0,
+        "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Insufficient evidence to compute a reliable financial score"
+        ]
+      }
+    },
+    {
+      "scenario_id": "COMBINED_EXTREME",
+      "name": "Extreme Combined Shock",
+      "description": "Simulates -35% rev, +30% COGS, and +400bps rate shock.",
+      "recomputed_dscr": -2.86,
+      "recomputed_limit": 0.0,
+      "status": "NOT_ASSESSABLE",
+      "policy_rule_id": "POL-STR-012",
+      "transition_explanation": "Extreme Combined Shock: policy state DECLINE_RECOMMENDED -> ADDITIONAL_EVIDENCE_REQUIRED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": null,
+        "credit_health_score": null,
+        "assessment_range": null,
+        "post_loan_dscr": -2.86,
+        "supportable_amount": 0.0,
+        "decision": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Insufficient evidence to compute a reliable financial score"
+        ]
+      }
+    },
+    {
+      "scenario_id": "MARGIN_SQUEEZE",
+      "name": "Margin Squeeze Shock",
+      "description": "Simulates -10% rev and +10% COGS.",
+      "recomputed_dscr": 0.33,
+      "recomputed_limit": 0.0,
+      "status": "FAIL",
+      "policy_rule_id": "POL-STR-013",
+      "transition_explanation": "Margin Squeeze Shock: policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 21.666666666666668,
+        "credit_health_score": 430,
+        "assessment_range": {
+          "lower": 400,
+          "upper": 460,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 0.33,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "RECEIVABLES_SHOCK",
+      "name": "Top Buyer Default (-20%)",
+      "description": "Simulates a 20% drop in revenue due to top buyer default.",
+      "recomputed_dscr": 0.16,
+      "recomputed_limit": 0.0,
+      "status": "FAIL",
+      "policy_rule_id": "POL-STR-014",
+      "transition_explanation": "Top Buyer Default (-20%): policy state DECLINE_RECOMMENDED -> DECLINE_RECOMMENDED.",
+      "before": {
+        "fhi": 65,
+        "credit_health_score": 690,
+        "assessment_range": {
+          "lower": 660,
+          "upper": 720,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 1.74,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": null,
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      },
+      "after": {
+        "fhi": 21.666666666666668,
+        "credit_health_score": 430,
+        "assessment_range": {
+          "lower": 400,
+          "upper": 460,
+          "basis": "evidence-conditioned assessment range; not a statistical confidence interval"
+        },
+        "post_loan_dscr": 0.16,
+        "supportable_amount": 0.0,
+        "decision": "DECLINE_RECOMMENDED",
+        "binding_constraint": "cash_flow_headroom_cap",
+        "breached_rules": [
+          "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+        ]
+      }
+    },
+    {
+      "scenario_id": "REVERSE_STRESS",
+      "scenario_name": "Reverse Stress (Break-even)",
+      "impact": "Revenue Drop to breach 1.25x DSCR: -6.2%",
+      "stressed_features": {
+        "monthly_revenue_inr": "5510205.56",
+        "gst_metrics": {
+          "months_filed": 18,
+          "avg_monthly_revenue": "5510205.56",
+          "revenue_cv": "0.0567",
+          "trend": "STABLE"
+        },
+        "bank_metrics": {
+          "total_credits": "76296774.08",
+          "total_debits": "67610220.00",
+          "avg_monthly_credits": "4238709.67",
+          "avg_monthly_debits": "3756123.33",
+          "operating_inflows_monthly": "3974671.11",
+          "operating_outflows_monthly": "3306123.33",
+          "verified_debt_service_monthly": "450000.00",
+          "debt_service_verified": true,
+          "dscr": "0.55",
+          "independent_reamortization_dscr": "6.509269870370370370370370370",
+          "transaction_categorization_summary": {
+            "version": "1.0.0",
+            "included_inflow_ids": [
+              "0c90f08b-1641-4095-b39a-7b77f7f0930a",
+              "edeacb71-16a9-4609-b213-ba97b4f5757d",
+              "3f93c21a-a131-48b4-97a3-4f7026944dbd",
+              "9820bd3a-c7da-4eb6-bace-c29a86f53fc7",
+              "f80ce0f1-d8a2-4295-ad08-0a3ffa603a39",
+              "d055139f-46e6-4301-afa5-c5cdc286af2c",
+              "e1790037-8e75-4318-808f-2bc0eca51cb4",
+              "07b9126f-8dfc-44b6-a02a-68bd6f173a3d",
+              "93e6e4b5-6493-4f7b-ba8d-e802b03789c8",
+              "681175cc-7a62-4035-8329-e09b42e74eef",
+              "b45fb900-933f-4e04-9667-dfc679cb0173",
+              "0ced2c6d-3f3f-4fab-aa7a-fdb6ddea8e1e",
+              "999d94aa-42b1-4cec-805c-f59f0f5e21d3",
+              "2ece91ce-e8ad-41c5-83e8-f84dc61aa2a5",
+              "e3fc38e9-ea66-45ba-a691-e3b14b4cdcd3",
+              "80966d39-2129-49cb-a1f0-b963d3b115bd",
+              "19966713-b186-4fc9-a0a2-c23d9edf1911",
+              "ac05093f-6243-445e-b58f-f8722d08460a"
+            ],
+            "excluded_inflow_ids": [],
+            "unresolved_inflow_ids": [],
+            "unresolved_inflow_items": [],
+            "unresolved_credit_amount": "0",
+            "unresolved_credit_ratio": 0.0,
+            "included_outflow_ids": [
+              "16ea3062-f20e-4e75-905c-3d86bc23e93c",
+              "005ebc61-055f-4eb2-ba03-9a18a3a6b179",
+              "830292c9-a356-4e32-bfbf-844b8960e61b",
+              "baecc30e-4c34-49be-8e9b-8a6c37ec38fb",
+              "883be472-6ce3-4a4e-b86d-fa2604588fb8",
+              "462a035d-23c1-4ea6-8e43-35a8928edbf8",
+              "6abf4591-2e14-45ef-bdc6-4a085eb5e12a",
+              "06119063-2006-4952-8c17-e40b98e90572",
+              "1ffc0efb-2245-4b70-99c1-b7b312a4f3f4",
+              "08fc3ddd-94d2-4b9e-b671-6029d9490974",
+              "ecdf3442-a2ad-4122-9a1a-a1297028b2b4",
+              "0eeaa7df-0569-497a-88b4-8950eca153d8",
+              "718056bf-b799-4129-992c-36ac351a70bb",
+              "62cee6da-225c-45a8-bf64-64215e486237",
+              "9dd02488-a337-47e8-94ba-59fd2c5e9e75",
+              "46029b10-2583-40d4-ae46-c813df35e4b6",
+              "dd78525e-9dff-4024-9306-f350417c235e",
+              "428efe2e-9d2e-4f5e-b269-bc1b59ad2633"
+            ],
+            "excluded_outflow_ids": [],
+            "unresolved_outflow_ids": [],
+            "unresolved_outflow_items": [],
+            "unresolved_debit_amount": "0",
+            "unresolved_debit_ratio": 0.0,
+            "debt_service_ids": [
+              "127e57cc-7c96-4a1b-a6ee-c7739a962508",
+              "39737276-93a8-40a2-9bb4-f618c58d0de3",
+              "27c65d33-c65e-4d8a-9a1a-aaa08b521a6f",
+              "99c08510-2b85-4f1a-9aa5-196c4d6fba0b",
+              "ef0b59e6-980b-4e33-ad74-1a061fc03585",
+              "77c8b884-45f6-4e07-8925-5ef948004a7b",
+              "b877c616-decc-4f8e-b74e-9dafd28141e0",
+              "1fe324a2-4f4b-4904-a5fd-cab3a03c506a",
+              "3d2f7b5e-1108-4ba5-b0bf-cdbad4c74dc9",
+              "b47f7506-7c65-4d7b-8f25-b094e1823dd6",
+              "dc47d330-5735-40d0-abb6-dc933b41ef6c",
+              "6de28f4c-86c8-4e36-ad2e-9fbf71f11a08",
+              "99b2628d-ac73-4349-91a3-9e205cb333fa",
+              "b648473f-2518-4e70-a6cf-ce24a4bbeb1c",
+              "4e365484-4f19-42bb-b31f-0011daf9cae6",
+              "902191b0-1c16-4469-9b63-da903ddd6a27",
+              "907054f6-b700-4afd-8877-4df6e330b9ea",
+              "e47afc0c-2a9a-4614-a34c-70d85f99f451"
+            ],
+            "has_material_unresolved_activity": false
+          }
+        },
+        "obligation_verification_state": "VERIFIED_OBLIGATIONS",
+        "verified_existing_debt_service_monthly": "450000.00",
+        "obligations": [
+          {
+            "id": "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1",
+            "monthly_emi": "450000.00",
+            "facility_type": "TERM_LOAN"
+          }
+        ],
+        "obligation_evidence_ids": [
+          "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1"
+        ],
+        "reconciliation_metrics": {
+          "gst_bank_ratio": "0.7692",
+          "status": "UNDER_REPORTED_BANK"
+        },
+        "employment_metrics": {
+          "months_filed": 18,
+          "avg_employees": 120,
+          "trend": "STABLE"
+        },
+        "receivable_metrics": {
+          "total_invoices": 0,
+          "overdue_ratio": "0.00",
+          "concentration_risk": "UNKNOWN",
+          "eligible_amount": "0.00",
+          "avg_payment_delay_days": "UNKNOWN"
+        },
+        "invoice_metrics": {
+          "total_invoices": 0,
+          "overdue_ratio": "0.00",
+          "concentration_risk": "UNKNOWN",
+          "eligible_amount": "0.00",
+          "avg_payment_delay_days": "UNKNOWN"
+        }
+      },
+      "policy_rule_id": "POL-STR-015",
+      "status": "MARGINAL",
+      "reverse_stress_details": {
+        "policy_floor": 1.25,
+        "base_value": 4238709.67,
+        "breakpoint_value": 3974671.11,
+        "maximum_shock": "-6.2% Revenue",
+        "binding_rule_id": "POL-STR-015",
+        "decision_before": "APPROVE",
+        "decision_after": "DECLINE",
+        "formula": "(Base Inflows - Base Outflows) / Post DSCR = Policy Floor",
+        "inputs": {
+          "base_inflows": 4238709.67,
+          "base_outflows": 3306123.33,
+          "post_ds": 534838.22
+        },
+        "evidence_ids": [],
+        "limitations": [
+          "Assumes linear cost behavior"
+        ]
+      }
+    }
+  ],
+  "authoritative_engine": "Vyapar Pulse Stress Lab Engine v2.0",
+  "calculation_version": "2.0-STRESS-CANONICAL",
+  "scenario": {
+    "revenue_drop_pct": 15.0,
+    "interest_rate_hike_bps": 200
+  },
+  "baseline": {
+    "dscr": 1.74,
+    "max_loan_amount": 0.0,
+    "status": "SECURE"
+  },
+  "stressed": {
+    "dscr": 0.55,
+    "max_loan_amount": 0.0,
+    "status": "DISTRESSED"
+  },
+  "summary": "Stressed DSCR under 15.0% revenue drop and +200bps rate hike is 0.55 (DISTRESSED)."
+}

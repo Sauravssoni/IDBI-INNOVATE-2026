@@ -19,7 +19,7 @@
     "EQUIPMENT_FINANCE": 250
   },
   "case_invariant_executions": 9001,
-  "cases_with_no_recorded_failure": 9001,
+  "cases_with_no_recorded_failure": 1000,
   "case_level_failures": 0,
   "failed_case_ids": [],
   "checksum": "ab7df717fa7e24c4886710bc45421b98079a9b37b001496a34cf443df4948e6a",

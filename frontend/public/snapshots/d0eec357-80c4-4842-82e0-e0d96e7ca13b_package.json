@@ -1,0 +1,657 @@
+{
+  "case_id": "d0eec357-80c4-4842-82e0-e0d96e7ca13b",
+  "business_name": "Nirmaan Infrastructure Services",
+  "requested_amount": "5000000.00",
+  "requested_product": "WORKING_CAPITAL_LINE",
+  "reconciliation": {
+    "reconciliation_quality": "76.92471049174410714663800604",
+    "evidence_confidence": null,
+    "source_coverage": "80"
+  },
+  "dscr": "2.07",
+  "current_dscr": "2.07",
+  "proposed_emi": "169676.44",
+  "post_loan_dscr": "1.5",
+  "stressed_dscr": "0.66",
+  "binding_limit": "0.0",
+  "recommendation": "DECLINE_RECOMMENDED",
+  "reason_codes": [
+    "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+  ],
+  "conditions": [
+    "MIL-001 (30_DAYS): Obtain valid borrower consent and governed bank evidence before assessment -> Transitions decision to ADDITIONAL_EVIDENCE_REQUIRED (IMPACT_NOT_QUANTIFIABLE)",
+    "MIL-002 (45_DAYS): Verify existing obligations through bureau report, obligation records, or explicit zero-debt evidence -> Transitions decision to ADDITIONAL_EVIDENCE_REQUIRED (IMPACT_NOT_QUANTIFIABLE)"
+  ],
+  "offers": [
+    {
+      "product_type": "Term Loan",
+      "amount": 0.0,
+      "interest_rate_pct": null,
+      "tenure_months": null,
+      "estimated_repayment": null,
+      "post_loan_dscr": 1.5,
+      "collateral_structure": "First charge on current assets",
+      "covenants": []
+    }
+  ],
+  "limit_details": [],
+  "evidence_passport": {
+    "case_id": "d0eec357-80c4-4842-82e0-e0d96e7ca13b",
+    "business_id": "ef39f0eb-728b-447a-8f81-5c65a73d3bb1",
+    "consent_status": "EXPIRED",
+    "consent_scope": "NONE",
+    "rail_coverage": {
+      "gst": true,
+      "account_aggregator": true,
+      "invoices": false,
+      "epfo": true,
+      "cibil": true
+    },
+    "freshness_depth": {
+      "months_of_history": 18,
+      "gst_periods": 18,
+      "bank_transactions": 54,
+      "invoice_records": 0,
+      "employment_periods": 18,
+      "freshness_scores": {
+        "gst": 65.7,
+        "bank": 64.4,
+        "invoices": 0.0
+      },
+      "composite_freshness_index": 65.05
+    },
+    "obligation_verification": {
+      "state": "UNKNOWN_OBLIGATIONS",
+      "cibil_monthly_emi": 450000.0,
+      "observed_monthly_debt_service": 1620000.0
+    },
+    "contradiction_analysis": {
+      "severity": "MEDIUM",
+      "reconciliation_ratio": 0.769,
+      "gst_declared_revenue": 99183700.0,
+      "bank_buyer_receipts": 76296774.08
+    },
+    "assessment_certainty": "INSUFFICIENT_TO_ASSESS",
+    "authoritative_evidence_ids": [
+      "bc4f59f4-465e-4e24-b752-6be32691d192",
+      "a3e136eb-fa7c-40f0-a03a-c587e5d8fb86",
+      "9940ba80-1736-4a5e-861a-247e10bc8b67",
+      "fe69b971-832e-4173-b551-4f35aff65bb7",
+      "4ffed3c6-31fc-42b9-9170-b370c8703241",
+      "a7caec31-518b-4dd6-b26d-f1189dffc38d",
+      "fb61cb1d-6e4f-40a7-bd55-1fde72328ac3",
+      "de561468-9f48-4f38-9f6a-2ef0997f9a01",
+      "e4ec5d59-649a-467d-86d6-8cd707dfa3d1",
+      "d6a0accf-a558-40d6-8e2d-7e4e02c7ae07",
+      "fafec41e-a490-44b7-894c-9be59f780b99",
+      "b827b25d-75b1-44e8-87c5-0f49f7742153",
+      "e47afc0c-2a9a-4614-a34c-70d85f99f451",
+      "428efe2e-9d2e-4f5e-b269-bc1b59ad2633",
+      "ac05093f-6243-445e-b58f-f8722d08460a",
+      "907054f6-b700-4afd-8877-4df6e330b9ea",
+      "dd78525e-9dff-4024-9306-f350417c235e",
+      "19966713-b186-4fc9-a0a2-c23d9edf1911",
+      "902191b0-1c16-4469-9b63-da903ddd6a27",
+      "46029b10-2583-40d4-ae46-c813df35e4b6",
+      "80966d39-2129-49cb-a1f0-b963d3b115bd",
+      "4e365484-4f19-42bb-b31f-0011daf9cae6",
+      "9dd02488-a337-47e8-94ba-59fd2c5e9e75",
+      "e3fc38e9-ea66-45ba-a691-e3b14b4cdcd3",
+      "b648473f-2518-4e70-a6cf-ce24a4bbeb1c",
+      "62cee6da-225c-45a8-bf64-64215e486237",
+      "2ece91ce-e8ad-41c5-83e8-f84dc61aa2a5",
+      "99b2628d-ac73-4349-91a3-9e205cb333fa",
+      "718056bf-b799-4129-992c-36ac351a70bb",
+      "999d94aa-42b1-4cec-805c-f59f0f5e21d3",
+      "6de28f4c-86c8-4e36-ad2e-9fbf71f11a08",
+      "0eeaa7df-0569-497a-88b4-8950eca153d8",
+      "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1"
+    ],
+    "generated_at": "2026-07-13T18:27:39.435735+00:00"
+  },
+  "assessment_certainty": "INSUFFICIENT_TO_ASSESS",
+  "certainty_reasons": [
+    "Scoring engine found complete material evidence for this assessment."
+  ],
+  "peer_context": {
+    "sample_status": "NOT_USED",
+    "reason": "Peer benchmarking is not used in this decision."
+  },
+  "hindi_summary": {
+    "decision_label": "समीक्षा के लिए तैयार (Ready for Review)",
+    "reason_explanation": "वित्तीय साक्ष्य और नकदी प्रवाह वर्तमान ऋण आवेदन का समर्थन करने में असमर्थ हैं।",
+    "missing_evidence_checklist": [],
+    "bankability_path_actions": [
+      "MIL-001 (30_DAYS): Obtain valid borrower consent and governed bank evidence before assessment -> ADDITIONAL_EVIDENCE_REQUIRED के लिए प्रयास करें",
+      "MIL-002 (45_DAYS): Verify existing obligations through bureau report, obligation records, or explicit zero-debt evidence -> ADDITIONAL_EVIDENCE_REQUIRED के लिए प्रयास करें"
+    ]
+  },
+  "policy_version": "2.0-CANONICAL",
+  "calculation_version": "2.0-CANONICAL",
+  "scoring_version": "3.1-EVIDENCE-LINKED-FHI",
+  "financial_health_index": null,
+  "vyapar_credit_health_score": null,
+  "score_range": null,
+  "fhi_breakdown": {
+    "liquidity": {
+      "name": "Liquidity",
+      "score": null,
+      "contribution": null,
+      "status": "MISSING_DATA",
+      "missing_inputs": [
+        "operating_inflows_monthly"
+      ],
+      "positive_reason_codes": [],
+      "adverse_reason_codes": [],
+      "evidence_ids": []
+    },
+    "cash_flow_capacity": {
+      "name": "Cash Flow Capacity",
+      "score": null,
+      "contribution": null,
+      "status": "MISSING_DATA",
+      "missing_inputs": [
+        "verified_existing_debt_service_monthly"
+      ],
+      "positive_reason_codes": [],
+      "adverse_reason_codes": [],
+      "evidence_ids": []
+    },
+    "revenue_stability_momentum": {
+      "name": "Revenue Stability",
+      "score": null,
+      "contribution": null,
+      "status": "MISSING_DATA",
+      "missing_inputs": [
+        "six_month_revenue_series"
+      ],
+      "positive_reason_codes": [],
+      "adverse_reason_codes": [],
+      "evidence_ids": []
+    },
+    "repayment_burden_discipline": {
+      "name": "Repayment Burden",
+      "score": null,
+      "contribution": null,
+      "status": "MISSING_DATA",
+      "missing_inputs": [
+        "verified_existing_debt_service_monthly"
+      ],
+      "positive_reason_codes": [],
+      "adverse_reason_codes": [],
+      "evidence_ids": []
+    },
+    "compliance_formalisation": {
+      "name": "Compliance",
+      "score": null,
+      "contribution": null,
+      "status": "MISSING_DATA",
+      "missing_inputs": [
+        "gst_bank_reconciliation"
+      ],
+      "positive_reason_codes": [],
+      "adverse_reason_codes": [],
+      "evidence_ids": []
+    },
+    "concentration_resilience": {
+      "name": "Concentration",
+      "score": null,
+      "contribution": null,
+      "status": "MISSING_DATA",
+      "missing_inputs": [
+        "top_buyer_concentration"
+      ],
+      "positive_reason_codes": [],
+      "adverse_reason_codes": [],
+      "evidence_ids": []
+    }
+  },
+  "credit_score_disclaimer": "Indicative MSME Credit Health Score — not a bureau score, probability of default or sanction decision. The score describes financial condition. Certainty describes how complete and reliable the evidence is. Integrity identifies contradictions or manipulation risks. Policy determines what may proceed. A human authority makes the final decision.",
+  "calculation_evidence_ids": {
+    "inflows": [],
+    "outflows": [],
+    "obligations": []
+  },
+  "analyst_action": null,
+  "human_action": null,
+  "case_version": 2,
+  "audit_chain": [
+    {
+      "event_type": "evaluate",
+      "actor": "b6c50140-3c33-4b08-a0ee-5c6999455a6f",
+      "event_hash": "5ae83841af7c83daccc64e0d0f8691c3197100fb990185dd8f6c3081cc97227f",
+      "created_at": "2026-07-13T18:27:23.499315+00:00"
+    }
+  ],
+  "bankability_path": {
+    "current_state": "ADDITIONAL_EVIDENCE_REQUIRED",
+    "current_binding_limit": 0.0,
+    "current_limit": 0.0,
+    "target_requested": 5000000.0,
+    "gap_to_target": 5000000.0,
+    "is_target_achievable_now": false,
+    "max_achievable_limit": 0.0,
+    "current_evidence_score": 0.0,
+    "current_health_score": null,
+    "milestones": [
+      {
+        "milestone_id": "MIL-001",
+        "timeline_tier": "30_DAYS",
+        "action": "Obtain valid borrower consent and governed bank evidence before assessment",
+        "hindi_action": "मूल्यांकन से पहले वैध सहमति और सत्यापित बैंक साक्ष्य प्राप्त करें",
+        "changed_input": "consent_status",
+        "assumption": "Consent is valid and evidence rails are refreshed; no financial values are fabricated.",
+        "impact_on_score": "IMPACT_NOT_QUANTIFIABLE",
+        "expected_timeline_days": 30,
+        "target_state": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "target_tier": "SCENARIO_ONLY",
+        "projected_limit_inr": 0.0,
+        "projected_rate_bps": null,
+        "prerequisites": [
+          "Consent is valid and evidence rails are refreshed; no financial values are fabricated."
+        ],
+        "scenario_disclaimer": "Scenario only. Completion does not guarantee sanction.",
+        "simulation_evidence": {
+          "before_evidence_score": 0.0,
+          "after_evidence_score": null,
+          "before_health_score": null,
+          "after_health_score": null,
+          "before_fhi": null,
+          "after_fhi": null,
+          "before_credit_health_score": null,
+          "after_credit_health_score": null,
+          "before_dscr": null,
+          "after_dscr": null,
+          "before_supportable_amount": 0.0,
+          "after_supportable_amount": 0.0,
+          "before_policy_state": "ADDITIONAL_EVIDENCE_REQUIRED",
+          "after_policy_state": "ADDITIONAL_EVIDENCE_REQUIRED"
+        }
+      },
+      {
+        "milestone_id": "MIL-002",
+        "timeline_tier": "45_DAYS",
+        "action": "Verify existing obligations through bureau report, obligation records, or explicit zero-debt evidence",
+        "hindi_action": "ब्यूरो रिपोर्ट, देनदारी रिकॉर्ड या स्पष्ट शून्य-ऋण साक्ष्य से मौजूदा देनदारियां सत्यापित करें",
+        "changed_input": "obligation_verification_state",
+        "assumption": "Authoritative obligation amount or explicit zero-debt evidence has not yet been supplied.",
+        "impact_on_score": "IMPACT_NOT_QUANTIFIABLE",
+        "expected_timeline_days": 45,
+        "target_state": "ADDITIONAL_EVIDENCE_REQUIRED",
+        "target_tier": "SCENARIO_ONLY",
+        "projected_limit_inr": 0.0,
+        "projected_rate_bps": null,
+        "prerequisites": [
+          "Authoritative obligation amount or explicit zero-debt evidence"
+        ],
+        "scenario_disclaimer": "Scenario only. Completion does not guarantee sanction.",
+        "simulation_evidence": {
+          "before_evidence_score": 0.0,
+          "after_evidence_score": null,
+          "before_health_score": null,
+          "after_health_score": null,
+          "before_dscr": null,
+          "after_dscr": null,
+          "before_supportable_amount": 0.0,
+          "after_supportable_amount": null,
+          "before_policy_state": "ADDITIONAL_EVIDENCE_REQUIRED",
+          "after_policy_state": "IMPACT_NOT_QUANTIFIABLE"
+        }
+      }
+    ],
+    "hindi_bilingual_presentation": {
+      "summary": "बैंक योग्यता पथ (Bankability Path): यह दस्तावेज़ आवेदक को स्पष्ट और चरणबद्ध कार्रवाई योजना प्रदान करता है जिससे वे अपनी ऋण योग्यता और स्वीकृत सीमा को बढ़ा सकते हैं।",
+      "milestone_actions": [
+        "मूल्यांकन से पहले वैध सहमति और सत्यापित बैंक साक्ष्य प्राप्त करें",
+        "ब्यूरो रिपोर्ट, देनदारी रिकॉर्ड या स्पष्ट शून्य-ऋण साक्ष्य से मौजूदा देनदारियां सत्यापित करें"
+      ]
+    },
+    "engine_version": "2.0-BANKABILITY-CANONICAL"
+  },
+  "package_hash": "43d34bffe7b43e6af6ec19257460f562d2e9dfd8c592bde33956eed9a7a191b3",
+  "assessment": {
+    "assessment_id": "96f56916-8170-40e6-b1d3-6b423946ab2a",
+    "case_id": "d0eec357-80c4-4842-82e0-e0d96e7ca13b",
+    "case_version": 1,
+    "generated_at": "2026-07-13T18:27:23.490844Z",
+    "consent_state": "VERIFIED",
+    "evidence_passport": {
+      "evidence_tier": "T0",
+      "tier_description": "Insufficient: Missing Bank statements."
+    },
+    "feature_snapshot": {
+      "monthly_revenue_inr": "5510205.56",
+      "gst_metrics": {
+        "months_filed": 18,
+        "avg_monthly_revenue": "5510205.56",
+        "revenue_cv": "0.0567",
+        "trend": "STABLE"
+      },
+      "bank_metrics": {
+        "total_credits": "76296774.08",
+        "total_debits": "67610220.00",
+        "avg_monthly_credits": "4238709.67",
+        "avg_monthly_debits": "3756123.33",
+        "operating_inflows_monthly": "4238709.67",
+        "operating_outflows_monthly": "3306123.33",
+        "verified_debt_service_monthly": "450000.00",
+        "debt_service_verified": true,
+        "dscr": "0.55",
+        "independent_reamortization_dscr": "6.509269870370370370370370370",
+        "transaction_categorization_summary": {
+          "version": "1.0.0",
+          "included_inflow_ids": [
+            "0c90f08b-1641-4095-b39a-7b77f7f0930a",
+            "edeacb71-16a9-4609-b213-ba97b4f5757d",
+            "3f93c21a-a131-48b4-97a3-4f7026944dbd",
+            "9820bd3a-c7da-4eb6-bace-c29a86f53fc7",
+            "f80ce0f1-d8a2-4295-ad08-0a3ffa603a39",
+            "d055139f-46e6-4301-afa5-c5cdc286af2c",
+            "e1790037-8e75-4318-808f-2bc0eca51cb4",
+            "07b9126f-8dfc-44b6-a02a-68bd6f173a3d",
+            "93e6e4b5-6493-4f7b-ba8d-e802b03789c8",
+            "681175cc-7a62-4035-8329-e09b42e74eef",
+            "b45fb900-933f-4e04-9667-dfc679cb0173",
+            "0ced2c6d-3f3f-4fab-aa7a-fdb6ddea8e1e",
+            "999d94aa-42b1-4cec-805c-f59f0f5e21d3",
+            "2ece91ce-e8ad-41c5-83e8-f84dc61aa2a5",
+            "e3fc38e9-ea66-45ba-a691-e3b14b4cdcd3",
+            "80966d39-2129-49cb-a1f0-b963d3b115bd",
+            "19966713-b186-4fc9-a0a2-c23d9edf1911",
+            "ac05093f-6243-445e-b58f-f8722d08460a"
+          ],
+          "excluded_inflow_ids": [],
+          "unresolved_inflow_ids": [],
+          "unresolved_inflow_items": [],
+          "unresolved_credit_amount": "0",
+          "unresolved_credit_ratio": 0.0,
+          "included_outflow_ids": [
+            "16ea3062-f20e-4e75-905c-3d86bc23e93c",
+            "005ebc61-055f-4eb2-ba03-9a18a3a6b179",
+            "830292c9-a356-4e32-bfbf-844b8960e61b",
+            "baecc30e-4c34-49be-8e9b-8a6c37ec38fb",
+            "883be472-6ce3-4a4e-b86d-fa2604588fb8",
+            "462a035d-23c1-4ea6-8e43-35a8928edbf8",
+            "6abf4591-2e14-45ef-bdc6-4a085eb5e12a",
+            "06119063-2006-4952-8c17-e40b98e90572",
+            "1ffc0efb-2245-4b70-99c1-b7b312a4f3f4",
+            "08fc3ddd-94d2-4b9e-b671-6029d9490974",
+            "ecdf3442-a2ad-4122-9a1a-a1297028b2b4",
+            "0eeaa7df-0569-497a-88b4-8950eca153d8",
+            "718056bf-b799-4129-992c-36ac351a70bb",
+            "62cee6da-225c-45a8-bf64-64215e486237",
+            "9dd02488-a337-47e8-94ba-59fd2c5e9e75",
+            "46029b10-2583-40d4-ae46-c813df35e4b6",
+            "dd78525e-9dff-4024-9306-f350417c235e",
+            "428efe2e-9d2e-4f5e-b269-bc1b59ad2633"
+          ],
+          "excluded_outflow_ids": [],
+          "unresolved_outflow_ids": [],
+          "unresolved_outflow_items": [],
+          "unresolved_debit_amount": "0",
+          "unresolved_debit_ratio": 0.0,
+          "debt_service_ids": [
+            "127e57cc-7c96-4a1b-a6ee-c7739a962508",
+            "39737276-93a8-40a2-9bb4-f618c58d0de3",
+            "27c65d33-c65e-4d8a-9a1a-aaa08b521a6f",
+            "99c08510-2b85-4f1a-9aa5-196c4d6fba0b",
+            "ef0b59e6-980b-4e33-ad74-1a061fc03585",
+            "77c8b884-45f6-4e07-8925-5ef948004a7b",
+            "b877c616-decc-4f8e-b74e-9dafd28141e0",
+            "1fe324a2-4f4b-4904-a5fd-cab3a03c506a",
+            "3d2f7b5e-1108-4ba5-b0bf-cdbad4c74dc9",
+            "b47f7506-7c65-4d7b-8f25-b094e1823dd6",
+            "dc47d330-5735-40d0-abb6-dc933b41ef6c",
+            "6de28f4c-86c8-4e36-ad2e-9fbf71f11a08",
+            "99b2628d-ac73-4349-91a3-9e205cb333fa",
+            "b648473f-2518-4e70-a6cf-ce24a4bbeb1c",
+            "4e365484-4f19-42bb-b31f-0011daf9cae6",
+            "902191b0-1c16-4469-9b63-da903ddd6a27",
+            "907054f6-b700-4afd-8877-4df6e330b9ea",
+            "e47afc0c-2a9a-4614-a34c-70d85f99f451"
+          ],
+          "has_material_unresolved_activity": false
+        }
+      },
+      "obligation_verification_state": "VERIFIED_OBLIGATIONS",
+      "verified_existing_debt_service_monthly": "450000.00",
+      "obligations": [
+        {
+          "id": "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1",
+          "monthly_emi": "450000.00",
+          "facility_type": "TERM_LOAN"
+        }
+      ],
+      "obligation_evidence_ids": [
+        "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1"
+      ],
+      "reconciliation_metrics": {
+        "gst_bank_ratio": "0.7692",
+        "status": "UNDER_REPORTED_BANK"
+      },
+      "employment_metrics": {
+        "months_filed": 18,
+        "avg_employees": 120,
+        "trend": "STABLE"
+      },
+      "receivable_metrics": {
+        "total_invoices": 0,
+        "overdue_ratio": "0.00",
+        "concentration_risk": "UNKNOWN",
+        "eligible_amount": "0.00",
+        "avg_payment_delay_days": "UNKNOWN"
+      },
+      "invoice_metrics": {
+        "total_invoices": 0,
+        "overdue_ratio": "0.00",
+        "concentration_risk": "UNKNOWN",
+        "eligible_amount": "0.00",
+        "avg_payment_delay_days": "UNKNOWN"
+      }
+    },
+    "financial_health_index": "65",
+    "six_pillars": [
+      {
+        "name": "Liquidity",
+        "score": 120,
+        "health_status": "STRONG",
+        "positive_reason_codes": [],
+        "adverse_reason_codes": [],
+        "evidence_ids": []
+      },
+      {
+        "name": "Cash Flow Capacity",
+        "score": 150,
+        "health_status": "STRONG",
+        "positive_reason_codes": [],
+        "adverse_reason_codes": [],
+        "evidence_ids": []
+      },
+      {
+        "name": "Revenue Stability Momentum",
+        "score": 90,
+        "health_status": "STRONG",
+        "positive_reason_codes": [],
+        "adverse_reason_codes": [],
+        "evidence_ids": []
+      },
+      {
+        "name": "Repayment Burden Discipline",
+        "score": 30,
+        "health_status": "WEAK",
+        "positive_reason_codes": [],
+        "adverse_reason_codes": [],
+        "evidence_ids": []
+      },
+      {
+        "name": "Compliance Formalisation",
+        "score": 0,
+        "health_status": "WEAK",
+        "positive_reason_codes": [],
+        "adverse_reason_codes": [],
+        "evidence_ids": []
+      },
+      {
+        "name": "Concentration Resilience",
+        "score": 0,
+        "health_status": "MISSING_DATA",
+        "positive_reason_codes": [],
+        "adverse_reason_codes": [],
+        "evidence_ids": []
+      }
+    ],
+    "vyapar_credit_health_score": 690,
+    "assessment_range": {
+      "min_amount": "2500000.000",
+      "max_amount": "0.00"
+    },
+    "evidence_certainty": "MODERATE_CERTAINTY",
+    "integrity_state": "INTACT",
+    "current_dscr": "2.07",
+    "existing_debt_service": "450000.00",
+    "proposed_debt_service": "619676.44",
+    "proposed_emi": "169676.44",
+    "post_loan_dscr": "1.5",
+    "stressed_dscr": "0.66",
+    "requested_product": "WORKING_CAPITAL_LINE",
+    "requested_amount": "5000000.00",
+    "product_capacities": [
+      {
+        "product_name": "Term Loan",
+        "capacity": "0.00"
+      }
+    ],
+    "selected_product": "WORKING_CAPITAL_LINE",
+    "offers": [],
+    "supportable_amount": "0.00",
+    "limit_bridge": {
+      "requested_amount": 5000000.0,
+      "final_supportable_amount": 0.0,
+      "binding_constraint": "STRESS_CAP",
+      "stages": [
+        {
+          "stage_id": "REQUESTED_AMOUNT",
+          "calculated_value": 5000000.0,
+          "formula": "requested_amount",
+          "inputs": {
+            "amount": 5000000.0
+          },
+          "evidence_ids": [],
+          "policy_rule_id": "NONE",
+          "explanation": "Applicant's requested facility amount.",
+          "applied": true
+        },
+        {
+          "stage_id": "CASH_SERVICEABILITY_CAP",
+          "calculated_value": 8724519.38,
+          "formula": "loan_from_emi((operating_cash / 1.25) - verified_ds)",
+          "inputs": {
+            "operating_cash": 932586.34,
+            "verified_ds": 450000.0,
+            "rate": 0.135,
+            "tenure": 36
+          },
+          "evidence_ids": [
+            "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1"
+          ],
+          "policy_rule_id": "POL-CF-1.0",
+          "explanation": "Maximum loan sustainable from operating cash flows.",
+          "applied": false
+        },
+        {
+          "stage_id": "VERIFIED_OBLIGATION_CAP",
+          "calculated_value": 8724519.38,
+          "formula": "cash_serviceability_cap",
+          "inputs": {
+            "operating_cash": 932586.34,
+            "verified_ds": 450000.0
+          },
+          "evidence_ids": [
+            "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1"
+          ],
+          "policy_rule_id": "POL-LEV-1.0",
+          "explanation": "Maximum total leverage permitted by policy.",
+          "applied": false
+        },
+        {
+          "stage_id": "PRODUCT_POLICY_CAP",
+          "calculated_value": 50000000.0,
+          "formula": "policy.maximum_exposure",
+          "inputs": {},
+          "evidence_ids": [],
+          "policy_rule_id": "POL-MAX-1.0",
+          "explanation": "Absolute product exposure limit.",
+          "applied": false
+        },
+        {
+          "stage_id": "CONCENTRATION_CAP",
+          "calculated_value": 5000000.0,
+          "formula": "previous_limit * concentration_haircut",
+          "inputs": {
+            "concentration_haircut": 1.0
+          },
+          "evidence_ids": [],
+          "policy_rule_id": "POL-CONC-1.0",
+          "explanation": "Haircut due to top-buyer concentration risks.",
+          "applied": false
+        },
+        {
+          "stage_id": "STRESS_CAP",
+          "calculated_value": 0.0,
+          "formula": "loan_from_emi((stressed_operating_cash / 1.25) - verified_ds, stressed_rate)",
+          "inputs": {
+            "stressed_cash": 296779.89,
+            "stressed_rate": 0.155
+          },
+          "evidence_ids": [
+            "16f767bf-7c5a-473c-a80f-f6d1bcd7f9b1"
+          ],
+          "policy_rule_id": "POL-STR-1.0",
+          "explanation": "Limit sustainable under downside revenue stress and rate hikes.",
+          "applied": true
+        }
+      ]
+    },
+    "binding_constraint": {
+      "constraint_type": "POLICY_RULE",
+      "reason": "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+    },
+    "stress_results": [
+      {
+        "scenario_name": "Revenue Drop 15%",
+        "impact": "Stressed DSCR drops to 0.66x"
+      },
+      {
+        "scenario_name": "Interest Rate Hike 2%",
+        "impact": "Debt service increases to 450000.00"
+      },
+      {
+        "scenario_name": "Reverse Stress (Break-even)",
+        "impact": "Can withstand a 7.4% drop in revenue before DSCR < 1.0x"
+      }
+    ],
+    "bankability_interventions": [
+      {
+        "intervention_type": "Provide Additional Collateral",
+        "description": "Increases product limit capacity when DSCR is constrained."
+      }
+    ],
+    "policy_recommendation": "DECLINE_RECOMMENDED",
+    "policy_reason_codes": [
+      "Debt Service Coverage Ratio (DSCR) of 0.55 is below minimum requirement of 1.15"
+    ],
+    "conditions": [],
+    "covenants": [],
+    "analyst_recommendation": null,
+    "analyst_reason": null,
+    "human_decision": null,
+    "approved_amount": null,
+    "scoring_version": "2.0",
+    "calculation_version": "1.5",
+    "policy_version": "2026.Q2",
+    "passport_version": "1.0",
+    "feature_schema_version": "3.1",
+    "evidence_ids": [],
+    "limitations": []
+  }
+}

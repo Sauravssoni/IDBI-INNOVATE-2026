@@ -1,0 +1,12 @@
+{
+  "case_version": 2,
+  "requested_amount": "3000000.00",
+  "supportable_amount": null,
+  "mandate_ceiling": null,
+  "capacity_cap": null,
+  "maximum_permitted_amount": null,
+  "analyst_recommendation": null,
+  "allowed_actions": [],
+  "blocked_reason_code": "ROLE_NOT_AUTHORIZED",
+  "message": "Only sanctioning authorities can record decisions"
+}

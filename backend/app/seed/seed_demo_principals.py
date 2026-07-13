@@ -18,7 +18,6 @@ def seed_demo_principals(db):
     ):
         raise RuntimeError("Demo seeding is refused in production.")
     default_pw = os.environ.get("DEMO_USER_PASSWORD")
-    print("SEEDING WITH PASSWORD:", default_pw)
     if not default_pw:
         raise RuntimeError(
             "DEMO_USER_PASSWORD environment variable must be explicitly supplied for development/test seeding."

@@ -731,7 +731,10 @@ class HumanDecisionContextResponse(BaseModel):
     blocked_reason_code: Optional[str] = None
     message: Optional[str] = None
 
-@router.get("/{case_id}/human-decision-context", response_model=HumanDecisionContextResponse)
+
+@router.get(
+    "/{case_id}/human-decision-context", response_model=HumanDecisionContextResponse
+)
 def get_human_decision_context(
     case_id: UUID,
     db: Session = Depends(get_db),
@@ -743,6 +746,7 @@ def get_human_decision_context(
     now = datetime.datetime.now(datetime.timezone.utc)
     from app.db.orm.org import SanctioningMandate, Branch
     from sqlalchemy import or_
+
     mandates = (
         db.query(SanctioningMandate)
         .filter(
@@ -760,7 +764,9 @@ def get_human_decision_context(
         .all()
     )
 
-    case_branch = db.query(Branch).filter(Branch.id == case.originating_branch_id).first()
+    case_branch = (
+        db.query(Branch).filter(Branch.id == case.originating_branch_id).first()
+    )
     max_amount_limit = Decimal("0")
     if case_branch:
         for m in mandates:
@@ -772,6 +778,7 @@ def get_human_decision_context(
                         max_amount_limit = m.maximum_amount
 
     from app.db.orm.cases import AssessmentSnapshot
+
     snapshot = (
         db.query(AssessmentSnapshot)
         .filter(
@@ -788,7 +795,11 @@ def get_human_decision_context(
             supportable = Decimal(str(supp))
 
     mandate_ceiling = max_amount_limit if max_amount_limit > 0 else None
-    capacity_cap = ctx.maximum_approved_amount if ctx.maximum_approved_amount is not None else mandate_ceiling
+    capacity_cap = (
+        ctx.maximum_approved_amount
+        if ctx.maximum_approved_amount is not None
+        else mandate_ceiling
+    )
     if capacity_cap == Decimal("0") and mandate_ceiling is None:
         capacity_cap = None
 
@@ -799,11 +810,14 @@ def get_human_decision_context(
         mandate_ceiling=mandate_ceiling,
         capacity_cap=capacity_cap,
         maximum_permitted_amount=capacity_cap,
-        analyst_recommendation=case.analyst_recommendation.value if case.analyst_recommendation else None,
+        analyst_recommendation=case.analyst_recommendation.value
+        if case.analyst_recommendation
+        else None,
         allowed_actions=ctx.allowed_human_actions or [],
         blocked_reason_code=ctx.blocked_reason_code,
-        message=ctx.message
+        message=ctx.message,
     )
+
 
 class HumanDecisionRequest(BaseModel):
     decision: HumanDecisionAction
@@ -1193,7 +1207,7 @@ def get_decision_package(
     # CD-002: Synthetic peer context
     peer_context = {
         "sample_status": "NOT_USED",
-        "reason": "Peer benchmarking is not used in this decision."
+        "reason": "Peer benchmarking is not used in this decision.",
     }
 
     try:
@@ -1792,7 +1806,13 @@ def replay_decision_package(
         return {
             "status": "REPLAY_MISMATCH",
             "package_id": package_id,
-            "differences": [{"field": "case_version", "original": record.case_version, "replayed": case.version}],
+            "differences": [
+                {
+                    "field": "case_version",
+                    "original": record.case_version,
+                    "replayed": case.version,
+                }
+            ],
             "replayed": {"case_version": case.version},
         }
     recorded_versions = record.engine_versions or {}
@@ -2116,7 +2136,11 @@ def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
     bank_acc_id = "ACC-001X"
 
     nodes = [
-        {"id": business_id, "label": case.business.legal_name if case.business else "Unknown", "type": "BUSINESS"},
+        {
+            "id": business_id,
+            "label": case.business.legal_name if case.business else "Unknown",
+            "type": "BUSINESS",
+        },
         {"id": promoter_id, "label": "Main Promoter", "type": "PERSON"},
         {"id": related_biz_id, "label": "Supplier Corp", "type": "BUSINESS"},
         {"id": bank_acc_id, "label": "Shared Bank Acct", "type": "BANK_ACCOUNT"},

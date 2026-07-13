@@ -1,3 +1,6 @@
+import hmac
+import time
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -8,13 +11,10 @@ from app.core.config import get_settings
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
 
-import hmac
-import time
-from collections import defaultdict
-
 reset_rate_limits: defaultdict[str, list[float]] = defaultdict(list)
 RESET_MAX_REQUESTS = 5
 RESET_TIME_WINDOW = 60
+
 
 @router.post("/reset")
 def reset_demo(
@@ -103,9 +103,12 @@ def get_validations(
 
     import json
     import os
-    
+
     # Path relative to this router file: backend/app/api/routers/demo.py -> backend/artifacts/validation/release_assurance.json
-    file_path = os.path.join(os.path.dirname(__file__), "../../../artifacts/validation/release_assurance.json")
+    file_path = os.path.join(
+        os.path.dirname(__file__),
+        "../../../artifacts/validation/release_assurance.json",
+    )
     try:
         with open(file_path, "r") as f:
             return json.load(f)
