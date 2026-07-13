@@ -73,7 +73,7 @@ def run_validation_suite() -> Dict[str, Any]:
     cases = generate_synthetic_features(20260713)
 
     hash_state = []
-    results = {
+    results: Dict[str, Any] = {
         "total_cases": 1000,
         "seed": 20260713,
         "invariants_passed": 0,

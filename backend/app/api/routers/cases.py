@@ -819,7 +819,7 @@ def record_human_decision(
         ]:
             status_val = CaseStatus.HUMAN_DEFERRED
 
-        update_values = {
+        update_values: dict[str, Any] = {
             "human_decision": dec_enum.value,
             "status": status_val.value,
         }
@@ -2037,7 +2037,7 @@ def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
     bank_acc_id = "ACC-001X"
 
     nodes = [
-        {"id": business_id, "label": case.business_name, "type": "BUSINESS"},
+        {"id": business_id, "label": case.business.legal_name if case.business else "Unknown", "type": "BUSINESS"},
         {"id": promoter_id, "label": "Main Promoter", "type": "PERSON"},
         {"id": related_biz_id, "label": "Supplier Corp", "type": "BUSINESS"},
         {"id": bank_acc_id, "label": "Shared Bank Acct", "type": "BANK_ACCOUNT"},
@@ -2095,15 +2095,14 @@ def get_applicant_view(
 
     from app.services.assessment_service import AssessmentService
 
-    service = AssessmentService(db)
-    snapshot = service.get_latest_assessment(str(case_id))
+    snapshot = AssessmentService.get_latest_assessment(db, str(case_id))
 
     if not snapshot:
         raise HTTPException(
             status_code=404, detail="No assessment snapshot found for applicant view"
         )
 
-    assessment = snapshot.canonical_assessment_json
+    assessment = snapshot.model_dump()
 
     status_str = (
         case.status.value if hasattr(case.status, "value") else str(case.status)

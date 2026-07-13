@@ -7,7 +7,7 @@ Removes unsafe inferences (e.g., obligations = credits / dscr, obligations = deb
 and guarantees canonical DSCR numerator definitions across base, proposed, and stressed states.
 """
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.versions import CALCULATION_VERSION
 from app.core.decision.limits import SafeLimitEngine
@@ -271,6 +271,7 @@ class FinancialCapacityEngine:
             else Decimal("0.00")
         )
 
+        total_post_ds: Optional[Decimal] = None
         if (
             obligation_verification_state in ASSESSABLE_OBLIGATION_STATES
             and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA"

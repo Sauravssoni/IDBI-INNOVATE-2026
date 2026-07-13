@@ -27,13 +27,6 @@ class ProductPolicy(BaseModel):
 
 
 def get_product_policy(product: ProductType) -> ProductPolicy:
-    common_stress = {
-        "stress_revenue_drop": Decimal("0.10"),
-        "stress_cost_increase": Decimal("0.05"),
-        "stress_rate_hike_bps": 200,
-        "concentration_haircut": Decimal("0.50"),
-    }
-
     if product == ProductType.WORKING_CAPITAL_LINE:
         return ProductPolicy(
             policy_version="1.0",
@@ -45,7 +38,10 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("50000000.00"),
             receivable_advance_rate=Decimal("0.0"),
             equipment_ltv=Decimal("0.0"),
-            **common_stress,
+            stress_revenue_drop=Decimal("0.10"),
+            stress_cost_increase=Decimal("0.05"),
+            stress_rate_hike_bps=200,
+            concentration_haircut=Decimal("0.50"),
         )
     elif product == ProductType.RECEIVABLES_FINANCE:
         return ProductPolicy(
@@ -58,7 +54,10 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("100000000.00"),
             receivable_advance_rate=Decimal("0.80"),
             equipment_ltv=Decimal("0.0"),
-            **common_stress,
+            stress_revenue_drop=Decimal("0.10"),
+            stress_cost_increase=Decimal("0.05"),
+            stress_rate_hike_bps=200,
+            concentration_haircut=Decimal("0.50"),
         )
     elif product == ProductType.TERM_LOAN:
         return ProductPolicy(
@@ -71,7 +70,10 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("50000000.00"),
             receivable_advance_rate=Decimal("0.0"),
             equipment_ltv=Decimal("0.0"),
-            **common_stress,
+            stress_revenue_drop=Decimal("0.10"),
+            stress_cost_increase=Decimal("0.05"),
+            stress_rate_hike_bps=200,
+            concentration_haircut=Decimal("0.50"),
         )
     elif product == ProductType.EQUIPMENT_FINANCE:
         return ProductPolicy(
@@ -84,7 +86,10 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("100000000.00"),
             receivable_advance_rate=Decimal("0.0"),
             equipment_ltv=Decimal("0.75"),
-            **common_stress,
+            stress_revenue_drop=Decimal("0.10"),
+            stress_cost_increase=Decimal("0.05"),
+            stress_rate_hike_bps=200,
+            concentration_haircut=Decimal("0.50"),
         )
     else:
         raise ValueError(f"Unknown product type: {product}")
