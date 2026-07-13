@@ -3,10 +3,10 @@ import process from 'node:process';
 const isProd = process.env.NODE_ENV === 'production';
 
 if (isProd && !process.env.BACKEND_URL) {
-  throw new Error("BACKEND_URL is required in production");
+  console.warn("BACKEND_URL is missing, falling back to vyapar-pulse-backend.vercel.app");
 }
 
-const backendUrl = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+const backendUrl = process.env.BACKEND_URL || (isProd ? 'https://vyapar-pulse-backend.vercel.app' : 'http://127.0.0.1:8000');
 
 const securityHeaders = [
   {
@@ -15,7 +15,7 @@ const securityHeaders = [
   },
   {
     key: 'Content-Security-Policy',
-    value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:8000;"
+    value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' http://localhost:8000 https://vyapar-pulse-backend.vercel.app;"
   },
   {
     key: 'X-Content-Type-Options',
