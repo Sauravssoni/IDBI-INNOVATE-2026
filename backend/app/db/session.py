@@ -30,7 +30,7 @@ if APP_ENV == "production":
         raise RuntimeError("DATABASE_URL is required in production")
     parsed = urllib.parse.urlparse(DATABASE_URL)
     hostname = (parsed.hostname or "").lower()
-    if hostname in {"localhost", "127.0.0.1", "::1", "0.0.0.0", "db"}:
+    if hostname in {"localhost", "127.0.0.1", "::1", "0.0.0.0", "db"}:  # nosec B104
         raise RuntimeError(
             "Production DATABASE_URL must point to managed PostgreSQL, not localhost or compose"
         )

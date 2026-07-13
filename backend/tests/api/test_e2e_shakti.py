@@ -173,7 +173,7 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
     dec_res = client.post(
         f"/api/cases/{case_id}/human-decision",
         json=dec_req,
-        headers={**sa_auth["headers"], "Idempotency-Key": idempotency_key_dec},
+        headers={**sa_auth["headers"], "Idempotency-Key": idempotency_key_dec, "X-Expected-Version": str(current_version)},
     )
 
     # If the case wasn't assigned to the SA, or if SA branch mandate isn't correctly set, this might fail with 403.

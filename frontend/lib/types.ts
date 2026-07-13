@@ -219,6 +219,19 @@ export interface AssessmentResultResponse {
   binding_constraint?: BindingConstraintResponse | null;
   six_pillars?: FinancialHealthPillarResponse[] | null;
   stress_results?: any[] | null;
+  
+  // Added fields to match page.tsx usage
+  binding_limit?: number | null;
+  requested_product?: string;
+  evidence_passport?: EvidencePassport;
+  integrity_state?: string;
+  vyapar_credit_health_score?: number | null;
+  financial_health_index?: number | null;
+  product_capacities?: Record<string, LimitDetail>;
+  limit_bridge?: any;
+  analyst_recommendation?: any;
+  policy_recommendation?: any;
+  bankability_interventions?: any[];
 }
 
 export interface ApplicantViewResponse {

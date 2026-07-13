@@ -323,7 +323,7 @@ def run_case_stress_lab(
         "impact": f"Revenue Drop to breach {policy_dscr_floor}x DSCR: -{max_rev_drop}%",
         "stressed_features": s15_features,
         "policy_rule_id": "POL-STR-015",
-        "status": "MARGINAL",
+        "status": "NOT_ASSESSABLE" if base_decision.get("decision") == "ADDITIONAL_EVIDENCE_REQUIRED" else "MARGINAL",
         "reverse_stress_details": {
             "policy_floor": float(policy_dscr_floor),
             "base_value": float(base_inflows),
