@@ -352,20 +352,34 @@ def can_record_human_decision(
             message="Escalation required—outside current sanction mandate.",
         )
 
+
+    from app.db.orm.cases import AssessmentSnapshot
+    snapshot = db.query(AssessmentSnapshot).filter(
+        AssessmentSnapshot.case_id == case.id,
+        AssessmentSnapshot.case_version == case.version
+    ).first()
+    
+    capacity_cap = max_amount_limit
+    if snapshot and snapshot.canonical_assessment_json:
+        supportable = snapshot.canonical_assessment_json.get("supportable_amount")
+        if supportable is not None:
+            capacity_cap = min(max_amount_limit, Decimal(str(supportable)))
+
     allowed_actions = [
         "DEFER_FOR_EVIDENCE",
         "ESCALATE_FOR_DUE_DILIGENCE",
         "DECLINE_AFTER_HUMAN_REVIEW",
     ]
 
-    if case.requested_amount <= max_amount_limit and (
-        approved_amount is None or approved_amount <= max_amount_limit
+    if case.requested_amount <= capacity_cap and (
+        approved_amount is None or approved_amount <= capacity_cap
     ):
         allowed_actions.append("APPROVE_AS_REQUESTED")
-    if (approved_amount is not None and approved_amount <= max_amount_limit) or (
-        approved_amount is None and case.requested_amount <= max_amount_limit
+    if (approved_amount is not None and approved_amount <= capacity_cap) or (
+        approved_amount is None and case.requested_amount <= capacity_cap
     ):
         allowed_actions.append("APPROVE_ALTERNATIVE_STRUCTURE")
+
 
     if action is not None:
         if action.value not in allowed_actions:

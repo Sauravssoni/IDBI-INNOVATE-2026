@@ -1131,12 +1131,18 @@ def get_decision_package(
         if not offers and latest_assessment.product_capacities:
             offers = []
             for cap in latest_assessment.product_capacities:
+                t = getattr(case, 'proposed_tenor_months', None)
+                r = getattr(case, 'proposed_annual_rate', None)
+                tenor = int(t) if t else None
+                rate = float(r) if r else None
+                emi = float(cap.capacity) / tenor if tenor else None
+                
                 offers.append({
                     "product_type": cap.product_name,
                     "amount": float(cap.capacity),
-                    "interest_rate_pct": 11.5, # hardcoded fallback for deprecated UI component
-                    "tenure_months": 36,
-                    "estimated_repayment": float(cap.capacity) / 36,
+                    "interest_rate_pct": rate,
+                    "tenure_months": tenor,
+                    "estimated_repayment": emi,
                     "post_loan_dscr": post_loan_dscr,
                     "collateral_structure": "First charge on current assets",
                     "covenants": [c.covenant_text for c in latest_assessment.covenants]
@@ -1873,44 +1879,27 @@ def get_applicant_view(
         
     assessment = snapshot.canonical_assessment_json
     
-    hindi_rec_map = {
-        "CONDITIONAL_OFFER": "सशर्त प्रस्ताव (Conditional Offer)",
-        "DECLINE_RECOMMENDED": "अस्वीकृति अनुशंसित (Decline Recommended)",
-        "APPROVE": "स्वीकृत (Approved)",
-        "ADDITIONAL_EVIDENCE_REQUIRED": "अतिरिक्त साक्ष्य की आवश्यकता (Additional Evidence Required)",
-    }
+    status_str = case.status.value if hasattr(case.status, 'value') else str(case.status)
+    sanctioned_amt = float(case.approved_amount) if status_str == "HUMAN_APPROVED" and case.approved_amount else None
     
-    rec_str = case.recommendation or assessment.get("policy_recommendation", "")
+    pillars = assessment.get("six_pillars", [])
+    positive = [p["name"] for p in pillars if p.get("health_status") in ("STRONG", "HEALTHY")]
     
-    hindi_summary = {
-        "decision_label": hindi_rec_map.get(str(rec_str), "समीक्षा के लिए तैयार (Ready for Review)"),
-        "reason_explanation": "आवेदक का ऋण सेवा अनुपात (DSCR) और वित्तीय साक्ष्य अनुशंसित कार्यशील पूंजी सीमा की पुष्टि करते हैं।"
-        if str(rec_str) in ["CONDITIONAL_OFFER", "APPROVE"]
-        else "वित्तीय साक्ष्य और नकदी प्रवाह वर्तमान ऋण आवेदन का समर्थन करने में असमर्थ हैं।",
-        "bankability_path_actions": [
-            f"{m.get('intervention_type', '')}: {m.get('description', '')}"
-            for m in assessment.get("bankability_interventions", [])
-        ]
-    }
+    interventions = assessment.get("bankability_interventions", [])
+    bank_actions = [f"{i.get('intervention_type')}: {i.get('description')}" for i in interventions]
     
-    offers = []
-    for cap in assessment.get("product_capacities", []):
-        offers.append({
-            "product_type": cap.get("product_name", ""),
-            "amount": cap.get("capacity", 0),
-            "interest_rate_pct": 11.5,
-            "tenure_months": 36,
-        })
-        
+    missing = assessment.get("evidence_passport", {}).get("missing_mandatory", [])
+    
     return {
-        "id": str(case.id),
-        "business_name": case.business.legal_name if case.business else "Applicant",
-        "requested_amount": float(case.requested_amount) if case.requested_amount else None,
-        "requested_product": case.requested_product.value if hasattr(case.requested_product, 'value') else str(case.requested_product),
-        "status": case.status.value if hasattr(case.status, 'value') else str(case.status),
-        "vyapar_credit_health_score": assessment.get("vyapar_credit_health_score"),
-        "binding_limit": assessment.get("supportable_amount"),
-        "recommendation": str(rec_str) if rec_str else None,
-        "hindi_summary": hindi_summary,
-        "offers": offers,
+        "status": status_str,
+        "sanctioned_amount_after_human_decision": sanctioned_amt,
+        "positive_factors": positive,
+        "safe_adverse_factors": ["Data freshness could be improved"],
+        "missing_evidence": missing,
+        "conditions": [c.get("condition_text") for c in assessment.get("conditions", [])] if assessment.get("conditions") else [],
+        "bankability_actions": bank_actions,
+        "milestones_30_60_90": ["30 days: Update GST filings", "60 days: Re-sync bank", "90 days: Re-apply"],
+        "reconsideration_requirements": ["Provide missing evidence"] if missing else [],
+        "english_text": "Your application has been processed. Check actions required.",
+        "hindi_text": "आपके आवेदन पर कार्रवाई की गई है। कृपया आवश्यक कार्रवाई देखें।"
     }
