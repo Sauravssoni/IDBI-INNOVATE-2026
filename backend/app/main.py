@@ -136,19 +136,7 @@ def health() -> dict:
     return {"status": "ok", "service": API_SERVICE_NAME, "version": API_VERSION, "sha": get_git_sha()}
 
 
-@app.get("/migrate")
-def run_migrations():
-    from alembic.config import Config
-    from alembic import command
-    import os
-    try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        alembic_cfg = Config(os.path.join(base_dir, "alembic.ini"))
-        alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
-        command.upgrade(alembic_cfg, "head")
-        return {"status": "success", "message": "Migrated successfully"}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+
 
 @app.get("/ready")
 def ready() -> Any:
