@@ -1,4 +1,3 @@
-
 import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Any, List
@@ -10,22 +9,28 @@ class ScoringEngine:
     def compute_all_scores(self) -> Dict[str, Any]:
         from app.domain.financial.engine import FinancialCapacityEngine
         
-        # We will directly compute the exact points per pillar instead of passing through _compute functions.
-        # This guarantees exact 1-to-1 ledger reconciliation.
+        # 1. Capacity Bridge: Delegate to authoritative engine instead of guessing
+        cap = FinancialCapacityEngine.compute_capacity_from_features(self.features)
         
-        bank = self.features.get("bank_metrics", {})
-        inflows = Decimal(str(bank.get("operating_inflows_monthly", "0")))
-        outflows = Decimal(str(bank.get("operating_outflows_monthly", "0")))
-        existing_ds = Decimal(str(bank.get("verified_debt_service_monthly", "0")))
-        operating_cash = max(Decimal("0"), inflows - outflows)
+        inflows = cap["observed_operating_inflows_monthly"]
+        operating_cash = cap["operating_cash_available_for_debt_service_monthly"]
+        existing_ds = cap["verified_existing_debt_service_monthly"]
+        obligation_state = cap["obligation_verification_state"]
+        cash_flow_status = cap["cash_flow_status"]
         
-        missing_core = []
-        if inflows == 0 and outflows == 0:
-            missing_core.append("operating_cash_flow")
-            
-        obligation_state = self.features.get("obligation_verification_state", "UNKNOWN")
+        evd = cap["calculation_evidence_ids"]
+        inflow_evd = evd.get("inflows", [])
+        outflow_evd = evd.get("outflows", [])
+        obligation_evd = evd.get("obligations", [])
+        gst_metrics = self.features.get("gst_metrics", {})
+        gst_evd = gst_metrics.get("gst_evidence_ids", [])
+        
         ASSESSABLE_OBLIGATION_STATES = ["VERIFIED_OBLIGATIONS", "VERIFIED_ZERO_DEBT"]
         
+        missing_core = []
+        if cash_flow_status == "INSUFFICIENT_CASH_FLOW_DATA":
+            missing_core.append("operating_cash_flow")
+            
         ledger = []
         running = Decimal("300.0")
         
@@ -48,7 +53,7 @@ class ScoringEngine:
         })
         
         # 2. Liquidity (Max 120 pts)
-        if inflows > 0:
+        if inflows > 0 and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA":
             margin = operating_cash / inflows
             liq_pts = Decimal("120") if margin >= Decimal("0.2") else Decimal("80") if margin >= Decimal("0.1") else Decimal("40") if margin > 0 else Decimal("0")
             running += liq_pts
@@ -59,7 +64,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if liq_pts > 40 else "NEGATIVE",
                 "reason_code": "LIQ_MARGIN", "technical_explanation": "Operating margin points",
                 "applicant_explanation_en": "Healthy cash buffer.", "applicant_explanation_hi": "स्वस्थ नकदी बफर।",
-                "evidence_ids": [self.features.get("bank_metrics", {}).get("evidence_id", "MISSING_BANK_EVD")], "running_score": float(running)
+                "evidence_ids": inflow_evd + outflow_evd, "running_score": float(running)
             })
             liq_status, liq_missing = "VERIFIED", []
         else:
@@ -67,7 +72,7 @@ class ScoringEngine:
             
         # 3. Cash Flow Capacity (Max 150 pts)
         existing_dscr = None
-        if obligation_state in ASSESSABLE_OBLIGATION_STATES and operating_cash > 0:
+        if obligation_state in ASSESSABLE_OBLIGATION_STATES and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA" and operating_cash > 0:
             
             existing_dscr = operating_cash / max(Decimal("1"), existing_ds)
             cf_pts = Decimal("150") if existing_dscr >= Decimal("2.0") else Decimal("100") if existing_dscr >= Decimal("1.5") else Decimal("50") if existing_dscr >= Decimal("1.1") else Decimal("0")
@@ -79,16 +84,15 @@ class ScoringEngine:
                 "direction": "POSITIVE" if cf_pts > 50 else "NEGATIVE",
                 "reason_code": "CF_DSCR", "technical_explanation": "DSCR points",
                 "applicant_explanation_en": "Strong debt coverage.", "applicant_explanation_hi": "मजबूत ऋण कवरेज।",
-                "evidence_ids": [self.features.get("bank_metrics", {}).get("evidence_id", "MISSING_BANK_EVD"), self.features.get("bureau_metrics", {}).get("evidence_id", "MISSING_BUREAU_EVD")], "running_score": float(running)
+                "evidence_ids": inflow_evd + outflow_evd + obligation_evd, "running_score": float(running)
             })
             cf_status, cf_missing = "VERIFIED", []
         else:
             cf_pts, cf_status, cf_missing = None, "MISSING_DATA", ["verified_existing_debt_service_monthly"]
 
         # 4. Revenue Stability (Max 90 pts)
-        gst = self.features.get("gst_metrics", {})
-        months = int(gst.get("months_filed", 0))
-        cv_val = gst.get("revenue_cv", "UNKNOWN")
+        months = int(gst_metrics.get("months_filed", 0))
+        cv_val = gst_metrics.get("revenue_cv", "UNKNOWN")
         if months >= 6 and cv_val != "UNKNOWN":
             cv = Decimal(str(cv_val))
             rev_pts = Decimal("90") if cv <= Decimal("0.15") else Decimal("60") if cv <= Decimal("0.30") else Decimal("20")
@@ -100,14 +104,14 @@ class ScoringEngine:
                 "direction": "POSITIVE" if rev_pts > 20 else "NEGATIVE",
                 "reason_code": "REV_STAB", "technical_explanation": "Revenue CV points",
                 "applicant_explanation_en": "Stable revenue.", "applicant_explanation_hi": "स्थिर राजस्व।",
-                "evidence_ids": [self.features.get("gst_metrics", {}).get("evidence_id", "MISSING_GST_EVD")], "running_score": float(running)
+                "evidence_ids": gst_evd, "running_score": float(running)
             })
             rev_status, rev_missing = "VERIFIED", []
         else:
             rev_pts, rev_status, rev_missing = None, "MISSING_DATA", ["six_month_revenue_series"]
 
         # 5. Repayment Burden (Max 120 pts)
-        if obligation_state in ASSESSABLE_OBLIGATION_STATES and operating_cash > 0:
+        if obligation_state in ASSESSABLE_OBLIGATION_STATES and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA" and operating_cash > 0:
             burden = existing_ds / operating_cash
             rep_pts = Decimal("120") if burden <= Decimal("0.25") else Decimal("80") if burden <= Decimal("0.45") else Decimal("30") if burden <= Decimal("0.70") else Decimal("0")
             running += rep_pts
@@ -118,7 +122,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if rep_pts > 30 else "NEGATIVE",
                 "reason_code": "REP_BURD", "technical_explanation": "Repayment burden points",
                 "applicant_explanation_en": "Low existing debt.", "applicant_explanation_hi": "कम मौजूदा कर्ज।",
-                "evidence_ids": [self.features.get("bureau_metrics", {}).get("evidence_id", "MISSING_BUREAU_EVD")], "running_score": float(running)
+                "evidence_ids": obligation_evd + inflow_evd, "running_score": float(running)
             })
             rep_status, rep_missing = "VERIFIED", []
         else:
@@ -138,7 +142,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if comp_pts > 0 else "NEGATIVE",
                 "reason_code": "COMP_RECON", "technical_explanation": "GST vs Bank reconciliation",
                 "applicant_explanation_en": "Strong compliance.", "applicant_explanation_hi": "मजबूत अनुपालन।",
-                "evidence_ids": [self.features.get("gst_metrics", {}).get("evidence_id", "MISSING_GST_EVD"), self.features.get("bank_metrics", {}).get("evidence_id", "MISSING_BANK_EVD")], "running_score": float(running)
+                "evidence_ids": gst_evd + inflow_evd, "running_score": float(running)
             })
             comp_status, comp_missing = "VERIFIED", []
         else:
@@ -158,7 +162,7 @@ class ScoringEngine:
                 "direction": "POSITIVE" if res_pts > 0 else "NEGATIVE",
                 "reason_code": "RES_CONC", "technical_explanation": "Buyer concentration points",
                 "applicant_explanation_en": "Diversified buyers.", "applicant_explanation_hi": "विविध खरीदार।",
-                "evidence_ids": [self.features.get("gst_metrics", {}).get("evidence_id", "MISSING_GST_EVD")], "running_score": float(running)
+                "evidence_ids": gst_evd, "running_score": float(running)
             })
             res_status, res_missing = "VERIFIED", []
         else:
@@ -228,5 +232,5 @@ class ScoringEngine:
             "score_range": score_range,
             "credit_health_disclaimer": disclaimer,
             "credit_score_disclaimer": disclaimer,
-            "scoring_version": "3.0-EVIDENCE-CONDITIONED-FHI",
+            "scoring_version": "3.1-EVIDENCE-LINKED-FHI",
         }

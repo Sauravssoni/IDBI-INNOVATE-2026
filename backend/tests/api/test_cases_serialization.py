@@ -238,7 +238,7 @@ def test_decision_package_cd_fields(setup_data):
         "concentration_resilience",
     ]:
         assert pillar in data["fhi_breakdown"]
-    assert data.get("scoring_version") == "3.0-EVIDENCE-CONDITIONED-FHI"
+    assert data.get("scoring_version") == "3.1-EVIDENCE-LINKED-FHI"
     assert "calculation_evidence_ids" in data
     assert isinstance(data["calculation_evidence_ids"], dict)
 
