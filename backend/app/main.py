@@ -127,7 +127,10 @@ def ready() -> Any:
         current_revision = db.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar()
-        alembic_cfg = Config("alembic.ini")
+        import os
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        alembic_cfg = Config(os.path.join(base_dir, "alembic.ini"))
+        alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
         script = ScriptDirectory.from_config(alembic_cfg)
         heads = script.get_heads()
         if len(heads) != 1:

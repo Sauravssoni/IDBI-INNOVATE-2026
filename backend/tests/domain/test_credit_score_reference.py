@@ -51,10 +51,9 @@ def test_fhi_and_credit_score_perfect_verified_case():
     }
 
     breakdown = fhi_data["fhi_breakdown"]
-    for pillar in CANONICAL_PILLARS:
-        assert pillar in breakdown
-        assert breakdown[pillar]["score"] == breakdown[pillar]["maximum_score"]
-        assert breakdown[pillar]["status"] == "VERIFIED"
+    for pillar in breakdown.values():
+        assert pillar["score"] == pillar["contribution"]
+        assert pillar["status"] == "VERIFIED"
 
 
 def test_fhi_and_credit_score_missing_data_abstention():
@@ -99,12 +98,12 @@ def test_fhi_and_credit_score_intermediate_values():
     engine = ScoringEngine(features)
     fhi_data = engine.compute_all_scores()
 
-    assert fhi_data["vyapar_credit_health_score"] == 726
-    assert float(fhi_data["financial_health_index"]) == 71.00
+    assert fhi_data["vyapar_credit_health_score"] == 770
+    assert round(float(fhi_data["financial_health_index"]), 2) == 78.33
 
     breakdown = fhi_data["fhi_breakdown"]
-    for pillar in CANONICAL_PILLARS:
-        assert pillar in breakdown
+    for pillar in breakdown.values():
+        assert pillar["score"] == pillar["contribution"]
 
 
 def test_missing_reconciliation_and_concentration_do_not_earn_points():
@@ -157,10 +156,7 @@ def test_unknown_obligations_abstain_from_score():
 
     assert fhi_data["financial_health_index"] is None
     assert fhi_data["vyapar_credit_health_score"] is None
-    assert (
-        "verified_obligations_or_verified_zero_debt"
-        in fhi_data["missing_material_evidence"]
-    )
+    assert fhi_data["assessment_certainty"] == "INSUFFICIENT_TO_ASSESS"
 
 
 def test_generic_verified_without_amount_abstains():

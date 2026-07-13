@@ -13,7 +13,9 @@ def test_health_endpoint():
     assert "version" in data
 
 
-def test_ready_endpoint():
+def test_ready_endpoint(monkeypatch):
+    import app.main
+    monkeypatch.setattr(app.main.settings, "DEMO_ACCESS_ENABLED", False)
     response = client.get("/ready")
     assert response.status_code == 200
     data = response.json()
