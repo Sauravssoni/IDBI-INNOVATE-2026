@@ -1,7 +1,7 @@
 {
   "seed": 20260713,
-  "cohort_size": 1000,
-  "source_sha": "80cd497e3fbd7db15db8ee8ca6c2f1d28efccc8b",
+  "cohort_size": 25,
+  "source_sha": "f3419f8a505d70aa5df15c10c6f7edd399744616",
   "profiles": [
     "synthetic_msme"
   ],
@@ -11,11 +11,167 @@
     "RECEIVABLES_FINANCE",
     "EQUIPMENT_FINANCE"
   ],
-  "invariants_tested": 4000,
-  "invariant_passes": 4000,
-  "invariant_failures": 0,
-  "failed_case_ids": [],
-  "checksum": "a58e0ca7ec5b2cc950eb381465095e8df5cb49d90ceba97d023fd308f0d097b3",
+  "invariants_tested": 202,
+  "invariant_passes": 199,
+  "invariant_failures": 3,
+  "failed_case_ids": [
+    2,
+    11,
+    20
+  ],
+  "checksum": "a6c40d04459b96f5c6c4c00b0169c3462fac1cbdb0bf9b0d907342cf10c50802",
   "replay_cases": 25,
-  "replay_failures": 0
+  "replay_failures": 0,
+  "replay_details": [
+    {
+      "case_id": "SYNTH_CASE_000_healthy_full_file",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_001_thin_file_assessable",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_002_insufficient_evidence",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_003_unknown_obligations",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_004_verified_zero_debt",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_005_negative_cash",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_006_high_concentration",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_007_volatile_revenue",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_008_reconciliation_conflict",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_009_healthy_full_file",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_010_thin_file_assessable",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_011_insufficient_evidence",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_012_unknown_obligations",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_013_verified_zero_debt",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_014_negative_cash",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_015_high_concentration",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_016_volatile_revenue",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_017_reconciliation_conflict",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_018_healthy_full_file",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_019_thin_file_assessable",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_020_insufficient_evidence",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_021_unknown_obligations",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_022_verified_zero_debt",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_023_negative_cash",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    },
+    {
+      "case_id": "SYNTH_CASE_024_high_concentration",
+      "package_hash_verified": true,
+      "replay_status": "REPLAY_MATCHED",
+      "mismatch_fields": []
+    }
+  ]
 }

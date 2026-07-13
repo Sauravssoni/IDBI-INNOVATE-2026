@@ -25,6 +25,7 @@ export default function DecisionRoomPage() {
   const [stressData, setStressData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [humanContext, setHumanContext] = useState<any | null>(null);
   
   const [currentStep, setCurrentStep] = useState(0);
   const [decision, setDecision] = useState<string | null>(null);
@@ -64,6 +65,11 @@ export default function DecisionRoomPage() {
               setStressData(stressRes.data);
             }
           });
+          apiFetch(`/api/cases/${caseId}/human-decision-context`).then(hcRes => {
+            if (hcRes.status === 200 && hcRes.data) {
+              setHumanContext(hcRes.data);
+            }
+          });
         } else {
           setError(res.error || "Failed to load decision package");
         }
@@ -85,7 +91,7 @@ export default function DecisionRoomPage() {
     }
   };
 
-  const submitDecision = async (status: "APPROVE_AS_REQUESTED" | "DECLINE_AFTER_HUMAN_REVIEW") => {
+  const submitDecision = async (status: string) => {
     setSubmitting(true);
     setSanctionError(null);
     try {
@@ -547,7 +553,7 @@ export default function DecisionRoomPage() {
                 </div>
                 <div className="bg-black border border-white/10 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 mb-1">Mandate Ceiling</p>
-                  <p className="text-sm font-bold text-gray-300 font-mono">MANDATE NOT AVAILABLE</p>
+                  <p className="text-sm font-bold text-gray-300 font-mono">{humanContext?.mandate_ceiling ? formatCurrency(humanContext.mandate_ceiling) : "MANDATE NOT AVAILABLE — APPROVAL DISABLED"}</p>
                 </div>
                 <div className="bg-black border border-white/10 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 mb-1">Analyst Rec / Case Version</p>
@@ -596,8 +602,8 @@ export default function DecisionRoomPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <button 
-                      onClick={() => submitDecision("APPROVE_AS_REQUESTED")}
-                      disabled={submitting || !approvedAmount || !reason}
+                      onClick={() => submitDecision(Number(approvedAmount) === data.requested_amount ? "APPROVE_AS_REQUESTED" : "APPROVE_ALTERNATIVE_STRUCTURE")}
+                      disabled={submitting || !approvedAmount || !reason || !humanContext?.maximum_permitted_amount}
                       className="px-6 py-4 bg-emerald-600 rounded-lg text-white font-bold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
                     >
                       <ThumbsUp className="w-5 h-5" />
@@ -651,9 +657,9 @@ export default function DecisionRoomPage() {
                    {verificationError && <p className="text-red-400 text-sm">{verificationError}</p>}
                    {verificationResult && (
                      <div className="p-3 bg-black rounded-lg border border-white/10 text-sm font-mono space-y-2">
-                       <p className="text-emerald-400 font-bold">Verification: {verificationResult.is_valid ? "SEALED / VERIFIED" : "MISMATCH"}</p>
-                       <p className="text-gray-400 break-all text-xs">Calculated: {verificationResult.calculated_hash}</p>
-                       <p className="text-gray-400 break-all text-xs">Stored: {verificationResult.stored_hash}</p>
+                       <p className="text-emerald-400 font-bold">Verification: {verificationResult.valid === true ? "HASH VERIFIED" : "HASH MISMATCH"}</p>
+                       <p className="text-gray-400 break-all text-xs">Expected Hash: {verificationResult.expected_hash}</p>
+                       <p className="text-gray-400 break-all text-xs">Actual Hash: {verificationResult.actual_hash}</p>
                      </div>
                    )}
                  </div>
@@ -672,10 +678,9 @@ export default function DecisionRoomPage() {
                    {replayError && <p className="text-red-400 text-sm">{replayError}</p>}
                    {replayResult && (
                      <div className="p-3 bg-black rounded-lg border border-white/10 text-sm font-mono space-y-2">
-                       <p className="text-emerald-400 font-bold">Replay: {replayResult.mismatch_count === 0 ? "EXACT MATCH" : "MISMATCH"}</p>
-                       <p className="text-gray-400">Time taken: {replayResult.time_ms} ms</p>
-                       {replayResult.mismatch_count > 0 && (
-                         <p className="text-red-400 text-xs">Mismatches: {JSON.stringify(replayResult.mismatches)}</p>
+                       <p className="text-emerald-400 font-bold">Replay: {replayResult.status === "INDEPENDENTLY_REPRODUCED" ? "REPLAY MATCHED" : (replayResult.status === "VERSION_UNAVAILABLE" ? "VERSION UNAVAILABLE" : (replayResult.status === "FEATURE_SNAPSHOT_INCOMPLETE" ? "FEATURE SNAPSHOT INCOMPLETE" : "REPLAY MISMATCHED"))}</p>
+                       {replayResult.differences && Object.keys(replayResult.differences).length > 0 && (
+                         <p className="text-red-400 text-xs">Differences: {JSON.stringify(replayResult.differences)}</p>
                        )}
                      </div>
                    )}
@@ -732,9 +737,9 @@ export default function DecisionRoomPage() {
       */}
       <div className="bg-black border-t border-white/10 p-4 shrink-0 text-xs text-gray-500 flex justify-between items-center px-8">
         <div className="flex gap-6 items-center">
-          <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> Provenance Verified</span>
+          <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> {verificationResult ? (verificationResult.valid === true ? "PACKAGE HASH VERIFIED" : "PACKAGE HASH MISMATCH") : (data.package_hash ? "PACKAGE SEALED — NOT VERIFIED" : "PACKAGE NOT SEALED")}</span>
+          <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4 text-purple-500" /> {replayResult ? (replayResult.status === "INDEPENDENTLY_REPRODUCED" ? "REPLAY MATCHED" : "REPLAY MISMATCHED") : "REPLAY NOT RUN"}</span>
           <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> Policy: {data.policy_version}</span>
-          <span className="flex items-center gap-2"><Lock className="w-4 h-4" /> Package Sealed</span>
         </div>
         <div className="font-mono text-gray-600">
           Hash: {data.package_hash?.substring(0, 16)}...

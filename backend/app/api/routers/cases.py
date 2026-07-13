@@ -720,6 +720,92 @@ def record_analyst_recommendation(
         raise HTTPException(status_code=500, detail="Internal processing error")
 
 
+class HumanDecisionContextResponse(BaseModel):
+    case_version: int
+    requested_amount: Decimal
+    supportable_amount: Optional[Decimal] = None
+    mandate_ceiling: Optional[Decimal] = None
+    capacity_cap: Optional[Decimal] = None
+    maximum_permitted_amount: Optional[Decimal] = None
+    analyst_recommendation: Optional[str] = None
+    allowed_actions: list[str]
+    blocked_reason_code: Optional[str] = None
+    message: Optional[str] = None
+
+@router.get("/{case_id}/human-decision-context", response_model=HumanDecisionContextResponse)
+def get_human_decision_context(
+    case_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    case = can_view_case(db, user, case_id)
+    ctx = can_record_human_decision(db, case, user)
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    from app.db.orm.org import SanctioningMandate, Branch
+    from sqlalchemy import or_
+    mandates = (
+        db.query(SanctioningMandate)
+        .filter(
+            SanctioningMandate.user_id == user.id,
+            SanctioningMandate.active.is_(True),
+            or_(
+                SanctioningMandate.valid_from.is_(None),
+                SanctioningMandate.valid_from <= now,
+            ),
+            or_(
+                SanctioningMandate.valid_until.is_(None),
+                SanctioningMandate.valid_until >= now,
+            ),
+        )
+        .all()
+    )
+
+    case_branch = db.query(Branch).filter(Branch.id == case.originating_branch_id).first()
+    max_amount_limit = Decimal("0")
+    if case_branch:
+        for m in mandates:
+            if m.product_type == case.requested_product and m.currency == case.currency:
+                if (m.branch_id and m.branch_id == case.originating_branch_id) or (
+                    m.region_id and m.region_id == case_branch.region_id
+                ):
+                    if m.maximum_amount > max_amount_limit:
+                        max_amount_limit = m.maximum_amount
+
+    from app.db.orm.cases import AssessmentSnapshot
+    snapshot = (
+        db.query(AssessmentSnapshot)
+        .filter(
+            AssessmentSnapshot.case_id == case.id,
+            AssessmentSnapshot.case_version == case.version,
+        )
+        .first()
+    )
+
+    supportable = None
+    if snapshot and snapshot.canonical_assessment_json:
+        supp = snapshot.canonical_assessment_json.get("supportable_amount")
+        if supp is not None:
+            supportable = Decimal(str(supp))
+
+    mandate_ceiling = max_amount_limit if max_amount_limit > 0 else None
+    capacity_cap = ctx.maximum_approved_amount if ctx.maximum_approved_amount is not None else mandate_ceiling
+    if capacity_cap == Decimal("0") and mandate_ceiling is None:
+        capacity_cap = None
+
+    return HumanDecisionContextResponse(
+        case_version=case.version,
+        requested_amount=case.requested_amount,
+        supportable_amount=supportable,
+        mandate_ceiling=mandate_ceiling,
+        capacity_cap=capacity_cap,
+        maximum_permitted_amount=capacity_cap,
+        analyst_recommendation=case.analyst_recommendation.value if case.analyst_recommendation else None,
+        allowed_actions=ctx.allowed_human_actions or [],
+        blocked_reason_code=ctx.blocked_reason_code,
+        message=ctx.message
+    )
+
 class HumanDecisionRequest(BaseModel):
     decision: HumanDecisionAction
     reason: str
