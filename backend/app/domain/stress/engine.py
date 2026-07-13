@@ -557,10 +557,30 @@ def run_case_stress_lab(
     custom_dscr = get_effective_dscr(custom_cap)
     custom_limit = custom_policy.get("binding_limit", Decimal("0.00"))
     if custom_limit > base_limit:
-        custom_limit = base_limit
-    assert custom_limit <= base_limit, (
-        "adverse_supportable_amount <= baseline_supportable_amount"
-    )
+        baseline_status = get_custom_status(base_dscr, base_inflows - base_outflows)
+        return {
+            "overall_stress_status": "INVARIANT_VIOLATION",
+            "base_dscr": float(base_dscr),
+            "base_binding_limit": float(base_limit),
+            "scenarios": scenarios,
+            "authoritative_engine": "Vyapar Pulse Stress Lab Engine v2.0",
+            "calculation_version": "2.0-STRESS-CANONICAL",
+            "scenario": {
+                "revenue_drop_pct": revenue_drop_pct,
+                "interest_rate_hike_bps": interest_rate_hike_bps,
+            },
+            "baseline": {
+                "dscr": float(base_dscr),
+                "max_loan_amount": float(base_limit),
+                "status": baseline_status,
+            },
+            "stressed": {
+                "dscr": float(custom_dscr),
+                "max_loan_amount": float(custom_limit),
+                "status": "INVARIANT_VIOLATION",
+                "message": "adverse_supportable_amount > baseline_supportable_amount"
+            }
+        }
     custom_status = get_custom_status(custom_dscr, custom_inflows - base_outflows)
     baseline_status = get_custom_status(base_dscr, base_inflows - base_outflows)
 
