@@ -60,8 +60,7 @@ The system operates a deterministic 25-case cryptographic verification loop buil
 
 This loop demonstrates deterministic reproduction for the tested synthetic cases and the payload disclosure is an exact match to the engine's real-time state.
 
-- 1,000 deterministic synthetic cases
-- zero executed invariant failures
+- 1,000 deterministic synthetic cases completed with zero recorded case-level invariant failures.
 - 25 production-serializer engine replay checks
 - no real-world predictive-performance claim
 

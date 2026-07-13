@@ -23,14 +23,21 @@ def generate_validation():
         "cohort_size": results["total_cases"],
         "profile_distribution": profile_distribution,
         "product_distribution": product_distribution,
-        "invariant_results": results["invariants_passed"] + results["invariants_failed"],
-        "invariant_passes": results["invariants_passed"],
-        "invariant_failures": results["invariants_failed"],
+        "case_invariant_executions": results["invariants_passed"] + results["invariants_failed"],
+        "cases_with_no_recorded_failure": results["invariants_passed"],
+        "case_level_failures": results["invariants_failed"],
         "failed_case_ids": [f["case_index"] for f in results["failures"]],
         "checksum": results["deterministic_checksum"],
         "engine_replay_cases": len(results.get("replay_results", [])),
         "engine_replay_failures": sum(1 for r in results.get("replay_results", []) if r["replay_status"] != "REPLAY_MATCHED"),
-        "replay_details": "25 deterministic production-serializer engine replay checks",
+        "replay_details": [
+            {
+                "case_id": r["case_id"],
+                "package_hash_verified": r["package_hash_verified"],
+                "replay_status": r["replay_status"],
+                "mismatch_fields": r["mismatch_fields"]
+            } for r in results.get("replay_results", [])
+        ],
         "generator_version": "v2.0"
     }
     

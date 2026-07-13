@@ -112,15 +112,15 @@ jobs:
         tar -xzf gitleaks_8.18.2_linux_x64.tar.gz
         ./gitleaks detect -v
 
-    - name: Validation Artifact Generation and Checksum Verification
+    - name: Validation Artifact Deterministic Regeneration
       env:
         DATABASE_URL: postgresql+psycopg2://vyapar_local:change-this-local-development-password@localhost:5432/vyapar_test
         DEMO_USER_PASSWORD: testpassword123
       run: |
-        cd backend
-        source .venv/bin/activate
-        python scripts/build_release_assurance.py
+        source backend/.venv/bin/activate
+        python backend/scripts/build_release_assurance.py
         cat artifacts/validation/release_assurance.json
+        git diff --exit-code artifacts/validation/release_assurance.json
 
   frontend-quality:
     runs-on: ubuntu-latest
