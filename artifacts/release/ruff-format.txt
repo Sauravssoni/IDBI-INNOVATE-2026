@@ -1,0 +1,5 @@
+Would reformat: app/api/routers/cases.py
+Would reformat: app/core/decision/policy.py
+Would reformat: app/core/scoring/scorer.py
+Would reformat: app/validation/invariant_checker.py
+4 files would be reformatted, 103 files already formatted

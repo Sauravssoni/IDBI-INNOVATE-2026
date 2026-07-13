@@ -1,0 +1,24 @@
+F401 [*] `app.api.routers.cases._canonical_package_json` imported but unused
+  --> app/validation/invariant_checker.py:8:55
+   |
+ 6 | from app.core.scoring.scorer import ScoringEngine
+ 7 | from app.core.decision.limits import SafeLimitEngine
+ 8 | from app.api.routers.cases import _hash_package_data, _canonical_package_json
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^
+ 9 |
+10 | def generate_synthetic_features(seed: int = 20260713) -> List[Dict[str, Any]]:
+   |
+help: Remove unused import: `app.api.routers.cases._canonical_package_json`
+
+E741 Ambiguous variable name: `l`
+   --> app/validation/invariant_checker.py:166:34
+    |
+164 |             obs_state = features.get("obligation_verification_state")
+165 |             if obs_state == "UNKNOWN":
+166 |                 if any(l > 0 for l in limit_dict.values()):
+    |                                  ^
+167 |                     raise ValueError("Unknown obligations => limits must be 0")
+    |
+
+Found 2 errors.
+[*] 1 fixable with the `--fix` option.

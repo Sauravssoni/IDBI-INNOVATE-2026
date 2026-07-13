@@ -1,0 +1,20 @@
+
+> frontend@1.3.4 type-check
+> tsc --noEmit
+
+app/decision-room/[caseId]/page.tsx(125,16): error TS2339: Property 'package_id' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(130,80): error TS2339: Property 'package_id' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(144,16): error TS2339: Property 'package_id' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(149,80): error TS2339: Property 'package_id' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(195,42): error TS2339: Property 'assessment_certainty' does not exist on type 'AssessmentResultResponse'.
+app/decision-room/[caseId]/page.tsx(199,34): error TS2339: Property 'dscr_metrics' does not exist on type 'AssessmentResultResponse'.
+app/decision-room/[caseId]/page.tsx(199,81): error TS2339: Property 'dscr_metrics' does not exist on type 'AssessmentResultResponse'.
+app/decision-room/[caseId]/page.tsx(200,35): error TS2339: Property 'dscr_metrics' does not exist on type 'AssessmentResultResponse'.
+app/decision-room/[caseId]/page.tsx(200,84): error TS2339: Property 'dscr_metrics' does not exist on type 'AssessmentResultResponse'.
+app/decision-room/[caseId]/page.tsx(633,86): error TS2339: Property 'package_hash' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(708,19): error TS2339: Property 'monitoring_status' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(714,21): error TS2339: Property 'monitoring_status' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(714,55): error TS2339: Property 'monitoring_status' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(727,67): error TS2339: Property 'generated_at' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(740,224): error TS2339: Property 'package_hash' does not exist on type 'DecisionPackageResponse'.
+app/decision-room/[caseId]/page.tsx(745,23): error TS2339: Property 'package_hash' does not exist on type 'DecisionPackageResponse'.
