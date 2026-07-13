@@ -883,38 +883,34 @@ def get_case_monitoring(
         {
             "alert_code": "ALT-INFLOW-01",
             "rule_name": "Cash Inflow Decline Check",
-            "status": "NORMAL",
-            "threshold": "-15% vs Assessed Baseline",
-            "observed_metric": "+3.2% vs Baseline",
-            "detail": "Trailing 30d cash inflows show stable collection trends across linked bank accounts.",
+            "status": "NOT AVAILABLE",
+            "threshold": "NOT AVAILABLE — NOT USED",
+            "observed_metric": "NOT AVAILABLE — NOT USED",
+            "detail": "Data mode restricted. Engine baseline unavailable.",
         },
         {
             "alert_code": "ALT-BOUNCE-02",
             "rule_name": "Cheque / ECS Bounce Frequency",
-            "status": "NORMAL",
-            "threshold": "> 2 technical/financial bounces in 30 days",
-            "observed_metric": "0 bounces",
-            "detail": "Zero inward or outward cheque/ECS bounces observed across active accounts.",
+            "status": "NOT AVAILABLE",
+            "threshold": "NOT AVAILABLE — NOT USED",
+            "observed_metric": "NOT AVAILABLE — NOT USED",
+            "detail": "Data mode restricted. Engine baseline unavailable.",
         },
         {
             "alert_code": "ALT-GST-03",
             "rule_name": "GST Filing Regularity & Drop Check",
-            "status": "NORMAL",
-            "threshold": "Missed GSTR-3B > 10 days post due date",
-            "observed_metric": "All filings on time",
-            "detail": "GSTR-1 and GSTR-3B filings verified accurate up to current cycle without filing drops.",
+            "status": "NOT AVAILABLE",
+            "threshold": "NOT AVAILABLE — NOT USED",
+            "observed_metric": "NOT AVAILABLE — NOT USED",
+            "detail": "Data mode restricted. Engine baseline unavailable.",
         },
         {
             "alert_code": "ALT-CONC-04",
             "rule_name": "Top Payer Concentration Deterioration",
-            "status": "TRIGGERED" if is_elevated else "NORMAL",
-            "threshold": "Top 2 debtors accounting for > 60% inflows",
-            "observed_metric": "68.4% concentration"
-            if is_elevated
-            else "34.2% concentration",
-            "detail": "High customer concentration risk detected; top 2 buyers account for over 68% of inflows."
-            if is_elevated
-            else "Debtor concentration well diversified across 15+ recurring buyers (<40% concentration).",
+            "status": "NOT AVAILABLE",
+            "threshold": "NOT AVAILABLE — NOT USED",
+            "observed_metric": "NOT AVAILABLE — NOT USED",
+            "detail": "Data mode restricted. Engine baseline unavailable.",
         },
     ]
 
@@ -1113,27 +1109,27 @@ def get_decision_package(
     peer_context = {
         "peer_sector": case.business.sector
         if case.business
-        else "Manufacturing — Auto Ancillary",
-        "peer_sample_size": 48,
-        "sample_status": "VALID_PEER_SAMPLE",
+        else "NOT AVAILABLE — NOT USED",
+        "peer_sample_size": "NOT AVAILABLE — NOT USED",
+        "sample_status": "NOT AVAILABLE — NOT USED",
         "metrics_comparison": {
             "revenue_stability": {
-                "case_score": 85,
-                "sector_median": 72,
-                "percentile": 78,
-                "status": "ABOVE_MEDIAN",
+                "case_score": "NOT AVAILABLE — NOT USED",
+                "sector_median": "NOT AVAILABLE — NOT USED",
+                "percentile": "NOT AVAILABLE — NOT USED",
+                "status": "NOT AVAILABLE — NOT USED",
             },
             "dscr": {
-                "case_value": float(case.dscr) if case.dscr else 1.35,
-                "sector_median": 1.35,
-                "percentile": 82,
-                "status": "ABOVE_MEDIAN",
+                "case_value": "NOT AVAILABLE — NOT USED",
+                "sector_median": "NOT AVAILABLE — NOT USED",
+                "percentile": "NOT AVAILABLE — NOT USED",
+                "status": "NOT AVAILABLE — NOT USED",
             },
             "filing_regularity": {
-                "case_score": 100,
-                "sector_median": 88,
-                "percentile": 90,
-                "status": "ABOVE_MEDIAN",
+                "case_score": "NOT AVAILABLE — NOT USED",
+                "sector_median": "NOT AVAILABLE — NOT USED",
+                "percentile": "NOT AVAILABLE — NOT USED",
+                "status": "NOT AVAILABLE — NOT USED",
             },
         },
     }
@@ -2080,6 +2076,9 @@ def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
         "analyst_explanation": "The business shares its bank account with a supplier, indicating potential circular cash flows or non-arm's length transactions.",
         "evidence_ids": ["EVID-BANK-001", "EVID-GST-002"],
         "synthetic_demonstration": True,
+        "data_mode": "SEEDED_DEMONSTRATION",
+        "data_source": "STATIC_SCENARIO",
+        "limitations": "Graph is not cryptographically hashed; relationships are demonstrative only.",
         "nodes": nodes,
         "edges": edges,
     }

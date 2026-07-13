@@ -454,6 +454,9 @@ class IntegrityGraphResult(BaseModel):
     analyst_explanation: str
     evidence_ids: List[str]
     synthetic_demonstration: bool
+    data_mode: Optional[str] = None
+    data_source: Optional[str] = None
+    limitations: Optional[str] = None
     nodes: List[IntegrityNode]
     edges: List[IntegrityEdge]
 

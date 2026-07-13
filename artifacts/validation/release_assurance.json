@@ -1,0 +1,21 @@
+{
+  "seed": 20260713,
+  "cohort_size": 1000,
+  "source_sha": "80cd497e3fbd7db15db8ee8ca6c2f1d28efccc8b",
+  "profiles": [
+    "synthetic_msme"
+  ],
+  "products": [
+    "WORKING_CAPITAL_LINE",
+    "TERM_LOAN",
+    "RECEIVABLES_FINANCE",
+    "EQUIPMENT_FINANCE"
+  ],
+  "invariants_tested": 4000,
+  "invariant_passes": 4000,
+  "invariant_failures": 0,
+  "failed_case_ids": [],
+  "checksum": "a58e0ca7ec5b2cc950eb381465095e8df5cb49d90ceba97d023fd308f0d097b3",
+  "replay_cases": 25,
+  "replay_failures": 0
+}
