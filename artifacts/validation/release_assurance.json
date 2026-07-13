@@ -1,7 +1,7 @@
 {
   "seed": 20260713,
   "cohort_size": 25,
-  "source_sha": "f3419f8a505d70aa5df15c10c6f7edd399744616",
+  "source_sha": "c977ce8a52f4fb0a564447761d0cea18acfbf76a",
   "profiles": [
     "synthetic_msme"
   ],
@@ -11,15 +11,11 @@
     "RECEIVABLES_FINANCE",
     "EQUIPMENT_FINANCE"
   ],
-  "invariants_tested": 202,
-  "invariant_passes": 199,
-  "invariant_failures": 3,
-  "failed_case_ids": [
-    2,
-    11,
-    20
-  ],
-  "checksum": "a6c40d04459b96f5c6c4c00b0169c3462fac1cbdb0bf9b0d907342cf10c50802",
+  "invariants_tested": 226,
+  "invariant_passes": 226,
+  "invariant_failures": 0,
+  "failed_case_ids": [],
+  "checksum": "b91015a56810e4ca41f7cc05164d40c073ea15fbf706f414e239346d8f7355a1",
   "replay_cases": 25,
   "replay_failures": 0,
   "replay_details": [

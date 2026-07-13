@@ -59,6 +59,16 @@ class DecisionPolicy:
                 "post_loan_dscr": None,
             }
 
+        assessment_certainty = self.scores.get("assessment_certainty")
+        if assessment_certainty == "INSUFFICIENT_TO_ASSESS":
+            return {
+                "decision": SystemRecommendation.ADDITIONAL_EVIDENCE_REQUIRED.value,
+                "reasons": ["Insufficient evidence to compute a reliable financial score"],
+                "offers": [],
+                "binding_limit": Decimal("0"),
+                "post_loan_dscr": None,
+            }
+
         # 1.5 Basic DSCR Check from computed features
         bank_metrics = self.features.get("bank_metrics", {})
         dscr_str = bank_metrics.get("dscr")

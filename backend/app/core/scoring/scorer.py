@@ -30,6 +30,8 @@ class ScoringEngine:
         missing_core = []
         if cash_flow_status == "INSUFFICIENT_CASH_FLOW_DATA":
             missing_core.append("operating_cash_flow")
+        if not self.features.get("monthly_revenue_inr") or Decimal(str(self.features.get("monthly_revenue_inr", "0"))) <= 0:
+            missing_core.append("monthly_revenue_inr")
 
         ledger = []
         base = Decimal("300.0")
