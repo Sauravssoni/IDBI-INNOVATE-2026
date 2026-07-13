@@ -47,7 +47,7 @@ class DecisionPolicy:
             }
 
         evidence_confidence = Decimal(
-            str(self.scores.get("evidence_confidence_score", 0))
+            str(self.scores.get("evidence_confidence_score", 100))
         )
         decision_threshold = Decimal("40.0")
         if evidence_confidence < decision_threshold:

@@ -14,7 +14,7 @@ export default function AssessmentHistoryTab({ caseId }: { caseId: string }) {
     async function fetchHistory() {
       setLoading(true);
       setError(null);
-      const { data, status, error: fetchErr } = await apiFetch<AssessmentHistoryItem[]>(`/api/cases/${caseId}/assessment-history`);
+      const { data, status, error: fetchErr } = await apiFetch<AssessmentHistoryItem[]>(`/api/cases/${caseId}/audit`);
       if (status === 200 && Array.isArray(data)) {
         setHistory(data);
       } else {

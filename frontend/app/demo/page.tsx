@@ -189,15 +189,20 @@ export default function GuidedDemoPage() {
     setStatus("SUBMITTING_DECISION");
     const idempotencyKey = crypto.randomUUID();
     const limit = creditTwin?.binding_limit;
+    const payload = {
+      decision: decision === "APPROVED" ? "APPROVE_ALTERNATIVE_STRUCTURE" : "DECLINE_AFTER_HUMAN_REVIEW",
+      approved_amount: limit,
+      reason: `Approved alternative structure for ${limit}. Reconciled evidence supports repayment capacity. DSCR Sandbox V1 limits apply.`,
+      expected_version: caseData.version || 1,
+    };
+    console.log(`Sending human-decision payload:`, JSON.stringify(payload));
     const { status: fetchStatus } = await apiFetch(`/api/cases/${caseData.id}/human-decision`, {
       method: "POST",
-      headers: { "Idempotency-Key": idempotencyKey },
-      body: JSON.stringify({
-        decision: decision === "APPROVED" ? "APPROVE_ALTERNATIVE_STRUCTURE" : "DECLINE_ALTERNATIVE_STRUCTURE",
-        approved_amount: limit,
-        reason: `Approved alternative structure for ${limit}. Reconciled evidence supports repayment capacity. DSCR Sandbox V1 limits apply.`,
-        expected_version: caseData.version || 1,
-      }),
+      headers: { 
+        "Idempotency-Key": idempotencyKey,
+        "X-Expected-Version": String(caseData.version || 1)
+      },
+      body: JSON.stringify(payload),
     });
     if (fetchStatus === 200 || fetchStatus === 201) {
       await loadShaktiCase();

@@ -34,14 +34,14 @@ def test_score_ledger_reconciliation():
     }
 
     engine = ScoringEngine(features)
-    result = engine.compute_fhi_and_credit_score()
+    result = engine.compute_all_scores()
     
     assert "score_contribution_ledger" in result
     ledger = result["score_contribution_ledger"]
     
     assert len(ledger) > 1
-    assert ledger[0]["component"] == "Base Score"
-    assert ledger[0]["running_score"] == 300
+    assert ledger[0]["pillar"] == "Base Score"
+    assert ledger[0]["raw_points"] == 300.0
     
     # Check that final running score matches vyapar_credit_health_score
     final_running = ledger[-1]["running_score"]

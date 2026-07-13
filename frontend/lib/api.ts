@@ -32,6 +32,7 @@ export async function apiFetch<T = unknown>(
 
   try {
     const res = await fetch(url, {
+      cache: "no-store",
       ...options,
       headers,
       credentials: "include", // Essential for sending/receiving cookies
@@ -88,6 +89,9 @@ export async function apiFetch<T = unknown>(
         }
       } else if (typeof data === "string" && data.trim()) {
         errorMsg = data;
+      }
+      if (res.status === 422) {
+        console.error("422 Error Payload:", JSON.stringify(data));
       }
       return {
         error: errorMsg,

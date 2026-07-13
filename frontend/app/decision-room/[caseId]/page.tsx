@@ -182,13 +182,13 @@ export default function DecisionRoomPage() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white mb-2">3. Four-Product Comparison</h2>
             <div className="grid grid-cols-2 gap-4">
-              {data.assessment?.product_capacities?.map((pc: any, i: number) => (
+              {data.assessment?.product_capacities && Object.values(data.assessment.product_capacities).map((pc: any, i: number) => (
                 <div key={i} className="bg-black/30 p-4 rounded-xl border border-white/5">
-                  <p className="text-sm text-gray-400">{pc.product_name}</p>
-                  <p className="text-2xl font-bold text-white">{formatCurrency(Number(pc.capacity))}</p>
+                  <p className="text-sm text-gray-400">{pc.product || pc.product_name}</p>
+                  <p className="text-2xl font-bold text-white">{formatCurrency(Number(pc.binding_limit || pc.capacity))}</p>
                 </div>
               ))}
-              {(!data.assessment?.product_capacities || data.assessment.product_capacities.length === 0) && (
+              {(!data.assessment?.product_capacities || Object.keys(data.assessment.product_capacities).length === 0) && (
                 <p className="text-gray-500">Product capacities missing.</p>
               )}
             </div>

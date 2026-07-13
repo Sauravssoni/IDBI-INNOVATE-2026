@@ -35,7 +35,7 @@ def test_fhi_and_credit_score_perfect_verified_case():
         "verified_existing_debt_service_monthly": "0",
     }
     engine = ScoringEngine(features)
-    fhi_data = engine.compute_fhi_and_credit_score()
+    fhi_data = engine.compute_all_scores()
 
     assert (
         fhi_data["financial_health_index"] == Decimal("100.00")
@@ -60,7 +60,7 @@ def test_fhi_and_credit_score_perfect_verified_case():
 def test_fhi_and_credit_score_missing_data_abstention():
     features = {}
     engine = ScoringEngine(features)
-    fhi_data = engine.compute_fhi_and_credit_score()
+    fhi_data = engine.compute_all_scores()
 
     assert fhi_data["financial_health_index"] is None
     assert fhi_data["vyapar_credit_health_score"] is None
@@ -97,7 +97,7 @@ def test_fhi_and_credit_score_intermediate_values():
         "verified_existing_debt_service_monthly": "25000",
     }
     engine = ScoringEngine(features)
-    fhi_data = engine.compute_fhi_and_credit_score()
+    fhi_data = engine.compute_all_scores()
 
     assert fhi_data["vyapar_credit_health_score"] == 726
     assert float(fhi_data["financial_health_index"]) == 71.00
@@ -126,7 +126,7 @@ def test_missing_reconciliation_and_concentration_do_not_earn_points():
         "verified_existing_debt_service_monthly": "100000",
     }
 
-    fhi_data = ScoringEngine(features).compute_fhi_and_credit_score()
+    fhi_data = ScoringEngine(features).compute_all_scores()
 
     assert fhi_data["financial_health_index"] is not None
     assert fhi_data["fhi_breakdown"]["compliance_formalisation"]["score"] is None
@@ -153,7 +153,7 @@ def test_unknown_obligations_abstain_from_score():
         "obligation_verification_state": "UNKNOWN_OBLIGATIONS",
     }
 
-    fhi_data = ScoringEngine(features).compute_fhi_and_credit_score()
+    fhi_data = ScoringEngine(features).compute_all_scores()
 
     assert fhi_data["financial_health_index"] is None
     assert fhi_data["vyapar_credit_health_score"] is None
@@ -183,7 +183,7 @@ def test_generic_verified_without_amount_abstains():
         "obligation_verification_state": "VERIFIED",
     }
 
-    fhi_data = ScoringEngine(features).compute_fhi_and_credit_score()
+    fhi_data = ScoringEngine(features).compute_all_scores()
 
     assert fhi_data["assessment_certainty"] == "INSUFFICIENT_TO_ASSESS"
     assert fhi_data["financial_health_index"] is None
