@@ -106,12 +106,14 @@ def seed_shakti(db_session=None):
 
     rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
     ca_user = db.query(User).filter(User.email == "credit@bank.example").first()
-    if not rm_user or not ca_user:
+    sa_user = db.query(User).filter(User.email == "sa@bank.example").first()
+    if not rm_user or not ca_user or not sa_user:
         from app.seed.seed_demo_principals import seed_demo_principals
 
         seed_demo_principals(db)
         rm_user = db.query(User).filter(User.email == "rm@bank.example").first()
         ca_user = db.query(User).filter(User.email == "credit@bank.example").first()
+        sa_user = db.query(User).filter(User.email == "sa@bank.example").first()
 
     # Seed deterministic random for reproducibility
     random.seed(42)
@@ -349,11 +351,13 @@ def seed_shakti(db_session=None):
         business_id_fk=shakti.id,
         requested_product=ProductType.WORKING_CAPITAL_LINE,
         requested_amount=Decimal("5000000.00"),
+        monthly_revenue_inr=Decimal("1477000.00"),
         currency="INR",
         status=CaseStatus.INITIATED,
         originating_branch_id=malviya_nagar_branch.id,
         assigned_relationship_manager_id=rm_user.id,
         assigned_credit_analyst_id=ca_user.id,
+        assigned_sanctioning_authority_id=sa_user.id,
     )
     db.add(case)
     db.commit()

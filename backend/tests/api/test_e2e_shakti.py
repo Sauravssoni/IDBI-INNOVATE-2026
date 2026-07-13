@@ -1,4 +1,5 @@
 import pytest
+import json
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -115,6 +116,8 @@ def test_shakti_end_to_end(client: TestClient, db: Session):
         print("EVALUATION FAILED:", eval_res.text)
     assert eval_res.status_code == 200
     eval_data = eval_res.json()
+    if eval_data["policy_recommendation"] != "CONDITIONAL_OFFER":
+        print(f"\nEVAL DATA: {json.dumps(eval_data, indent=2)}")
     assert eval_data["policy_recommendation"] == "CONDITIONAL_OFFER"
 
     # Validate Shakti winning outcome
