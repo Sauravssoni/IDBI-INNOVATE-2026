@@ -1,0 +1,148 @@
+Working... ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:00:02
+Run started:2026-07-13 18:48:08.172692+00:00
+
+Test results:
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: backend/app/api/routers/cases.py:1137:8
+1136	            scores_meta = scorer.compute_all_scores()
+1137	        except Exception:
+1138	            pass
+1139	
+
+--------------------------------------------------
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b110_try_except_pass.html
+   Location: backend/app/api/routers/cases.py:1354:8
+1353	                binding_limit = float(policy_res["binding_limit"])
+1354	        except Exception:
+1355	            pass
+1356	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
+   Location: backend/app/domain/stress/engine.py:120:8
+119	            result["supportable_amount"] = float(base_limit)
+120	        assert result["supportable_amount"] <= float(base_limit), (
+121	            "adverse_supportable_amount <= baseline_supportable_amount"
+122	        )
+123	
+
+--------------------------------------------------
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+   Severity: Low   Confidence: High
+   CWE: CWE-703 (https://cwe.mitre.org/data/definitions/703.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b101_assert_used.html
+   Location: backend/app/domain/stress/engine.py:561:4
+560	        custom_limit = base_limit
+561	    assert custom_limit <= base_limit, (
+562	        "adverse_supportable_amount <= baseline_supportable_amount"
+563	    )
+564	    custom_status = get_custom_status(custom_dscr, custom_inflows - base_outflows)
+
+--------------------------------------------------
+>> Issue: [B605:start_process_with_a_shell] Starting a process with a shell: Seems safe, but may be changed in the future, consider rewriting without shell
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b605_start_process_with_a_shell.html
+   Location: backend/app/main.py:135:15
+134	            or os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+135	            or os.popen("git rev-parse HEAD").read().strip()
+136	            or "unknown"
+
+--------------------------------------------------
+>> Issue: [B607:start_process_with_partial_path] Starting a process with a partial executable path
+   Severity: Low   Confidence: High
+   CWE: CWE-78 (https://cwe.mitre.org/data/definitions/78.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/plugins/b607_start_process_with_partial_path.html
+   Location: backend/app/main.py:135:15
+134	            or os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+135	            or os.popen("git rev-parse HEAD").read().strip()
+136	            or "unknown"
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: backend/app/seed/seed_navprerna.py:123:46
+122	
+123	        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.1, 0.1), 4)))
+124	        monthly_rev = round(base_revenue * fluctuation, 2)
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: backend/app/seed/seed_navprerna.py:145:44
+144	        bank_credits = round(
+145	            monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2
+146	        )
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: backend/app/seed/seed_nirmaan.py:126:46
+125	
+126	        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.1, 0.1), 4)))
+127	        monthly_rev = round(base_revenue * fluctuation, 2)
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: backend/app/seed/seed_nirmaan.py:137:48
+136	            bank_credits = round(
+137	                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2
+138	            )
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: backend/app/seed/seed_rangrez.py:145:44
+144	        bank_credits = round(
+145	            monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2
+146	        )
+
+--------------------------------------------------
+>> Issue: [B311:blacklist] Standard pseudo-random generators are not suitable for security/cryptographic purposes.
+   Severity: Low   Confidence: High
+   CWE: CWE-330 (https://cwe.mitre.org/data/definitions/330.html)
+   More Info: https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b311-random
+   Location: backend/app/seed/seed_shakti.py:185:44
+184	        bank_credits = round(
+185	            monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))),
+186	            2,  # nosec B311
+
+--------------------------------------------------
+
+Code scanned:
+	Total lines of code: 11601
+	Total lines skipped (#nosec): 0
+	Total potential issues skipped due to specifically being disabled (e.g., #nosec BXXX): 8
+
+Run metrics:
+	Total issues (by severity):
+		Undefined: 0
+		Low: 12
+		Medium: 0
+		High: 0
+	Total issues (by confidence):
+		Undefined: 0
+		Low: 0
+		Medium: 0
+		High: 12
+Files skipped (0):
