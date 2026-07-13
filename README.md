@@ -3,11 +3,11 @@
 # VYAPAR PULSE
 ### The Governed Evidence-to-Sanction Operating System for Indian MSME Credit
 
-[![CI/CD Status](https://img.shields.io/badge/CI%2FCD-Passing-00C853?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Sauravssoni/IDBI-INNOVATE-2026/actions)
+
 [![Invariance Assurance](https://img.shields.io/badge/Invariance%20Assurance-1%2C000%20Cases%20Passed-00C853?style=for-the-badge&logo=checkmarx&logoColor=white)](artifacts/validation/release_assurance.json)
-[![Test Coverage](https://img.shields.io/badge/Backend%20Tests-112%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
+[![Test Coverage](https://img.shields.io/badge/Backend%20Tests-112%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
 [![Deterministic Replay](https://img.shields.io/badge/Cryptographic%20Seal-SHA--256%20Verified-2962FF?style=for-the-badge&logo=auth0&logoColor=white)](docs/DECISION_ASSURANCE.md)
-[![OCEN 4.0 Compliance](https://img.shields.io/badge/OCEN%204.0-Ready-AA00FF?style=for-the-badge&logo=dataversioncontrol&logoColor=white)](docs/architecture/)
+[![OCEN-aligned / adapter-ready](https://img.shields.io/badge/OCEN%204.0-Ready-AA00FF?style=for-the-badge&logo=dataversioncontrol&logoColor=white)](docs/architecture/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-37474F?style=for-the-badge)](LICENSE)
 
 <p align="center">
@@ -20,7 +20,7 @@
 
 ---
 
-## 🌐 Live Production Environments
+## 🌐 Live Submission Environment
 
 Vyapar Pulse is fully deployed and verified across production environments with zero horizontal overflow on mobile devices (390px viewport certified) and complete end-to-end cryptographic integrity.
 
@@ -83,45 +83,21 @@ Auditors and regulators access a continuous, tamper-evident hash chain (`audit_h
 
 ---
 
-## ⚡ Our Genius Architectural & Mathematical Feats
+## ⚡ Design Principles and Verified Properties
 
 Vyapar Pulse introduces several fundamental engineering breakthroughs that eliminate model hallucinations, tampering risks, and opaque AI scoring in institutional credit underwriting.
 
 ```mermaid
 graph TD
-    subgraph Ingestion ["1. Evidence Ingestion & Integrity Graph"]
-        AA[Account Aggregator / FIP] --> N[Normalization Engine]
-        GST[GST Returns & Invoices] --> N
-        BNK[Bank Statement Analysis] --> N
-        N --> IG[Reconciliation & Integrity Graph]
-    end
-
-    subgraph Engine ["2. Deterministic Mathematical Hierarchy"]
-        IG --> SE[Scoring Engine<br/>Score Ledger & Lineage]
-        IG --> FCE[Financial Capacity Engine<br/>Authoritative DSCR & Limit Calculations]
-        SE --> DP[Decision Policy Gateway<br/>Hard Gating & Monotonicity Enforcer]
-        FCE --> DP
-    end
-
-    subgraph Governance ["3. Cryptographic Sealing & Stress Lab"]
-        DP --> PKG[Decision Package Sealing<br/>SHA-256 Tamper-Evident Hash]
-        DP --> SL[Stress Lab Engine v2.0<br/>Adverse Monotonicity Validation]
-    end
-
-    subgraph Sanction ["4. Human Sanction & Audit Replay"]
-        PKG --> SA[Sanctioning Authority Review<br/>Strict Mandate & RBAC Checks]
-        PKG --> AUD[Auditor Verification Loop<br/>Byte-for-Byte Replay Engine]
-    end
-
-    classDef ing fill:#0D2538,stroke:#1E88E5,stroke-width:2px,color:#fff;
-    classDef eng fill:#1B3B2B,stroke:#43A047,stroke-width:2px,color:#fff;
-    classDef gov fill:#311B3E,stroke:#8E24AA,stroke-width:2px,color:#fff;
-    classDef san fill:#3E2723,stroke:#6D4C41,stroke-width:2px,color:#fff;
-
-    class AA,GST,BNK,N,IG ing;
-    class SE,FCE,DP eng;
-    class PKG,SL gov;
-    class SA,AUD san;
+    Evidence --> Integrity
+    Integrity --> Score_and_Capacity["Score and Capacity"]
+    Score_and_Capacity --> Stress
+    Stress --> Policy
+    Policy --> Analyst_Recommendation["Analyst Recommendation"]
+    Analyst_Recommendation --> Human_Sanction["Human Sanction"]
+    Human_Sanction --> Final_Seal["Final Seal"]
+    Final_Seal --> Verify
+    Verify --> Replay
 ```
 
 ### 1. Strict Computational Isolation & Zero Human-Math Interference
@@ -173,7 +149,7 @@ The platform implements granular Role-Based Access Control (RBAC) across 5 disti
 
 ---
 
-### 6. OCEN 4.0 Protocol Readiness & Account Aggregator Ingestion
+### 6. OCEN-aligned / adapter-ready & Account Aggregator Ingestion
 Vyapar Pulse natively implements data contracts aligned with **Open Credit Enablement Network (OCEN 4.0)** specifications (`test_ocen.py`). The system consumes canonical Account Aggregator (AA) banking flows, checks digital signatures, performs automated GST turnover cross-verification, and formats output payloads ready for FIP/FIU disbursement networks.
 
 ---
@@ -233,6 +209,7 @@ cd backend && pytest tests/ -v
 | **Stress Monotonicity** | `tests/domain/test_financial_capacity_reference.py`<br/>`tests/api/test_api_stress_lab.py` | Asserts `adverse_supportable_amount <= baseline_supportable_amount` across `FinancialCapacityEngine` and `Stress Lab Engine v2.0`. |
 | **Bankability & Sandbox** | `tests/domain/test_bankability.py`<br/>`tests/services/test_credit_twin.py` | Proves deterministic milestone generation (`compute_bankability_path`) and live sandbox DSCR calculations without fabricating loan targets. |
 | **OCEN & Idempotency** | `tests/api/test_ocen.py`<br/>`tests/api/test_e2e_shakti.py` | Validates OCEN 4.0 JSON export structure, concurrent request idempotency (`pg_try_advisory_lock`), and end-to-end multi-persona workflows. |
+| **Vulnerability Analysis** | `pip-audit` | Evaluated environment dependencies. Identified unresolved known CVEs in 35+ data science and utility libraries (e.g. `torch`, `transformers`, `nltk`, `lxml`, `python-jose`). **Accepted Limitation:** These dependencies are maintained for AI/OCR feature readiness and are isolated from untrusted serialized payload ingestion at runtime. |
 
 ### 1,000-Case Deterministic Cryptographic Assurance Loop
 The release pipeline executes an automated verification run across 1,000 synthetic MSME scenarios:

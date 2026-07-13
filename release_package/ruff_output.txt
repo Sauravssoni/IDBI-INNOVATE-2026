@@ -1,1 +1,29 @@
-All checks passed!
+app/api/routers/cases.py:50:36: F401 [*] `app.db.orm.users.UserRole` imported but unused
+   |
+48 | from app.core.audit import calculate_audit_hash
+49 | from app.domain.audit.verification import verify_audit_chain
+50 | from app.db.orm.users import User, UserRole
+   |                                    ^^^^^^^^ F401
+51 | from app.services.assessment_service import AssessmentService
+52 | from app.services.authz import (
+   |
+   = help: Remove unused import: `app.db.orm.users.UserRole`
+
+app/seed/seed_shakti.py:5:58: F401 [*] `app.db.orm.cases.DecisionPackage` imported but unused
+  |
+3 | from dateutil.relativedelta import relativedelta
+4 | from decimal import Decimal
+5 | from app.db.orm.cases import Business, Case, CaseStatus, DecisionPackage
+  |                                                          ^^^^^^^^^^^^^^^ F401
+6 | from app.db.orm.consents import Consent, DataConnection, ConsentStatus
+7 | from app.db.orm.evidence import (
+  |
+  = help: Remove unused import: `app.db.orm.cases.DecisionPackage`
+
+Found 2 errors.
+[*] 2 fixable with the `--fix` option.
+Would reformat: app/api/routers/cases.py
+Would reformat: app/domain/financial/engine.py
+Would reformat: app/services/assessment_service.py
+Would reformat: tests/api/test_cases_serialization.py
+4 files would be reformatted, 103 files already formatted

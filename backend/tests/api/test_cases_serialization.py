@@ -288,6 +288,29 @@ def test_seal_rejects_incomplete_snapshot_without_persisting(setup_data, db_sess
     assert after_count == before_count
 
 
+@pytest.mark.parametrize(
+    "role",
+    [
+        UserRole.CREDIT_ANALYST,
+        UserRole.AUDITOR,
+        UserRole.RISK_ADMIN,
+    ],
+)
+def test_seal_denied_for_invalid_roles(setup_data, role):
+    user = setup_data["users"][role]
+    res = login(user.email, "securepass123")
+    client.cookies.clear()
+    client.cookies.set("vyapar_session_token", res.cookies.get("vyapar_session_token"))
+    csrf_token = res.cookies.get("vyapar_csrf_token")
+
+    res = client.post(
+        f"/api/cases/{setup_data['case_id']}/decision-package",
+        headers={"x-csrf-token": csrf_token},
+    )
+    assert res.status_code == 403
+    assert "Only Sanctioning Authority can explicitly seal" in res.json().get("detail", "")
+
+
 def test_audit_verifier_reports_actual_authorization_scope(setup_data, db_session):
     system_admin = setup_data["users"][UserRole.SYSTEM_ADMIN]
     result = verify_audit_chain(db_session, setup_data["case_id"], system_admin)
