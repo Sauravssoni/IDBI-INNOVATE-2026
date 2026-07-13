@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { SimulatorResponse } from "@/types";
 import { Calculator, Play, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export default function SimulatorTab({ caseId }: { caseId: string }) {
@@ -9,12 +10,12 @@ export default function SimulatorTab({ caseId }: { caseId: string }) {
   const [amount, setAmount] = useState(1000000);
   const [tenure, setTenure] = useState(36);
   const [rate, setRate] = useState(10.5);
-  const [simResult, setSimResult] = useState<any>(null);
+  const [simResult, setSimResult] = useState<SimulatorResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSimulate = async () => {
     setLoading(true);
-    const res = await apiFetch<any>(`/api/cases/${caseId}/simulate`, {
+    const res = await apiFetch<SimulatorResponse>(`/api/cases/${caseId}/simulate`, {
       method: "POST",
       body: JSON.stringify({
         product_type: productType,
@@ -23,7 +24,7 @@ export default function SimulatorTab({ caseId }: { caseId: string }) {
         interest_rate: rate
       })
     });
-    if (res.status === 200) {
+    if (res.status === 200 && res.data) {
       setSimResult(res.data);
     }
     setLoading(false);

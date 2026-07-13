@@ -24,11 +24,15 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'mobile',
+      use: { ...devices['iPhone 12'] },
+    },
   ],
   ...(useLocalServer ? {
     webServer: [
       {
-        command: 'cd ../backend && uvicorn app.main:app --host 0.0.0.0 --port 8000',
+        command: 'cd ../backend && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000',
         env: {
           APP_ENV: 'development',
           DATABASE_URL: process.env.DATABASE_URL || 'postgresql://vyapar_local:change-this-local-development-password@127.0.0.1:5433/vyapar_pulse_test',

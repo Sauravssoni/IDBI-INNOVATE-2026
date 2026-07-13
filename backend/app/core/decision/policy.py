@@ -18,11 +18,13 @@ class DecisionPolicy:
         scores: Dict[str, Any],
         requested_amount: Decimal,
         requested_product: str,
+        custom_annual_rate: Optional[Decimal] = None,
     ):
         self.features = features
         self.scores = scores
         self.requested_amount = requested_amount
         self.requested_product = requested_product
+        self.custom_annual_rate = custom_annual_rate
 
     def evaluate(self) -> Dict[str, Any]:
         # 1. Base Checks (Precedence)
@@ -93,7 +95,10 @@ class DecisionPolicy:
         from app.domain.financial.engine import FinancialCapacityEngine
 
         cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
-            self.features, self.requested_amount, self.requested_product
+            self.features, 
+            self.requested_amount, 
+            self.requested_product,
+            custom_annual_rate=self.custom_annual_rate
         )
 
         # Check for material unresolved credit/debit activity first

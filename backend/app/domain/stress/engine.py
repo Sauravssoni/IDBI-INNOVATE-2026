@@ -74,7 +74,11 @@ def run_case_stress_lab(
             custom_annual_rate=rate,
         )
         scenario_policy = DecisionPolicy(
-            scenario_features, scenario_scores, requested_amount, requested_product
+            scenario_features, 
+            scenario_scores, 
+            requested_amount, 
+            requested_product,
+            custom_annual_rate=rate
         ).evaluate()
         binding_details = scenario_policy.get("limit_details") or [
             scenario_cap.get("product_limits", {}).get(
@@ -109,6 +113,11 @@ def run_case_stress_lab(
         rate: Decimal = Decimal("0.135"),
     ) -> Dict[str, Any]:
         result = recompute_scenario(scenario_features, rate)
+        
+        # Enforce invariant: stressed_limit <= baseline_limit
+        if result["supportable_amount"] > float(base_limit):
+            result["supportable_amount"] = float(base_limit)
+
         dscr_dec = (
             Decimal(str(result["post_loan_dscr"]))
             if result["post_loan_dscr"] is not None
@@ -536,6 +545,8 @@ def run_case_stress_lab(
     )
     custom_dscr = get_effective_dscr(custom_cap)
     custom_limit = custom_cap.get("binding_product_limit", Decimal("0.00"))
+    if custom_limit > base_limit:
+        custom_limit = base_limit
     custom_status = get_custom_status(custom_dscr, custom_inflows - base_outflows)
     baseline_status = get_custom_status(base_dscr, base_inflows - base_outflows)
 

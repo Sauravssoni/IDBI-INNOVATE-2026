@@ -31,6 +31,7 @@ export default function DecisionRoomPage() {
   
   const [currentStep, setCurrentStep] = useState(0);
   const [decision, setDecision] = useState<string | null>(null);
+  const [isOffline, setIsOffline] = useState(false);
   
   // Human Sanction Form State
   const [approvedAmount, setApprovedAmount] = useState<string>("");
@@ -39,6 +40,10 @@ export default function DecisionRoomPage() {
   const [sanctionError, setSanctionError] = useState<string | null>(null);
 
   // Verification & Replay State
+  const [packageId, setPackageId] = useState<string | null>(null);
+  const [sealing, setSealing] = useState(false);
+  const [sealError, setSealError] = useState<string | null>(null);
+
   const [verifying, setVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
@@ -56,11 +61,15 @@ export default function DecisionRoomPage() {
         const casesRes = await apiFetch<Record<string, unknown>[]>("/api/cases");
         if (casesRes.status === 200 && casesRes.data) {
           setAllCases(casesRes.data);
+          if (casesRes.offline) setIsOffline(true);
         }
 
-        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`);
+        // Call POST to either get the existing package or seal a new one
+        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`, { method: "POST" });
         if (res.status === 200 && res.data) {
           setData(res.data);
+          if (res.data.package_id) setPackageId(res.data.package_id);
+          if (res.offline) setIsOffline(true);
           // Fetch stress data concurrently
           apiFetch(`/api/cases/${caseId}/stress-lab`).then(stressRes => {
             if (stressRes.status === 200) {
@@ -123,13 +132,31 @@ export default function DecisionRoomPage() {
     }
   };
 
+  const handleSeal = async () => {
+    setSealing(true);
+    setSealError(null);
+    try {
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package`, { method: "POST" });
+      if (res.status === 200 && res.data) {
+        setPackageId(res.data.package_id || (res.data as unknown as { id: string }).id);
+        setData(res.data as DecisionPackageResponse);
+      } else {
+        setSealError(res.error || "Failed to seal package");
+      }
+    } catch (err: unknown) {
+      setSealError((err as Error).message);
+    } finally {
+      setSealing(false);
+    }
+  };
+
   const handleVerify = async () => {
-    if (!data?.package_id) return;
+    if (!packageId) return;
     setVerifying(true);
     setVerificationError(null);
     setVerificationResult(null);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.case_id}/verify`, { method: "POST" });
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${packageId}/verify`, { method: "POST" });
       if (res.status === 200) {
         setVerificationResult(res.data as import('@/types').VerificationResult);
       } else {
@@ -143,12 +170,12 @@ export default function DecisionRoomPage() {
   };
 
   const handleReplay = async () => {
-    if (!data?.package_id) return;
+    if (!packageId) return;
     setReplaying(true);
     setReplayError(null);
     setReplayResult(null);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.case_id}/replay`, { method: "POST" });
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${packageId}/replay`, { method: "POST" });
       if (res.status === 200) {
         setReplayResult(res.data as import('@/types').ReplayResult);
       } else {
@@ -198,8 +225,8 @@ export default function DecisionRoomPage() {
   const integrityState = assessment.integrity_state || "N/A";
   const fhi = assessment.financial_health_index !== undefined ? Number(assessment.financial_health_index).toFixed(2) : "N/A";
   const vyaparScore = assessment.vyapar_credit_health_score ?? "N/A";
-  const currentDSCR = assessment.current_dscr ? Number(assessment.dscr_metrics?.current_dscr).toFixed(2) + "x" : "N/A";
-  const postLoanDSCR = assessment.post_loan_dscr ? Number(assessment.dscr_metrics?.post_loan_dscr).toFixed(2) + "x" : "N/A";
+  const currentDSCR = assessment.current_dscr ? Number(assessment.current_dscr).toFixed(2) + "x" : "N/A";
+  const postLoanDSCR = assessment.post_loan_dscr ? Number(assessment.post_loan_dscr).toFixed(2) + "x" : "N/A";
   const supportableAmt = assessment.limit_bridge?.final_supportable_amount || assessment.supportable_amount || 0;
   const bindingConstraint = assessment.limit_bridge?.binding_constraint || assessment.binding_constraint || "N/A";
   const stressVerdict = stressData?.overall_stress_status || "PENDING";
@@ -218,7 +245,14 @@ export default function DecisionRoomPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-1">Command Centre</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-white mb-1">Command Centre</h1>
+                {isOffline && (
+                  <span className="bg-red-500/20 text-red-400 text-xs font-bold px-2 py-1 rounded border border-red-500/30">
+                    OFFLINE SNAPSHOT — READ ONLY
+                  </span>
+                )}
+              </div>
               <p className="text-gray-400">Credit Committee evaluation for {data.business_name}</p>
             </div>
             
@@ -491,7 +525,7 @@ export default function DecisionRoomPage() {
                          <p className="text-sm text-gray-400 mb-4">{scen.description || "Boundaries at which DSCR falls below 1.0"}</p>
                          {scen.reverse_stress_details && (
                            <div className="space-y-3">
-                              {Object.entries(scen.reverse_stress_details).map(([key, val]: any, i) => (
+                              {Object.entries(scen.reverse_stress_details).map(([key, val], i) => (
                                 <div key={i} className="flex justify-between items-center border-b border-white/5 pb-2">
                                   <span className="text-sm text-gray-300 capitalize">{key.replace(/_/g, ' ')}</span>
                                   <span className="font-mono text-red-400 text-sm font-bold">{val}</span>
@@ -605,7 +639,7 @@ export default function DecisionRoomPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <button 
                       onClick={() => submitDecision(Number(approvedAmount) === data.requested_amount ? "APPROVE_AS_REQUESTED" : "APPROVE_ALTERNATIVE_STRUCTURE")}
-                      disabled={submitting || !approvedAmount || !reason || !humanContext?.maximum_permitted_amount}
+                      disabled={submitting || !approvedAmount || !reason || !humanContext?.maximum_permitted_amount || isOffline}
                       className="px-6 py-4 bg-emerald-600 rounded-lg text-white font-bold hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
                     >
                       <ThumbsUp className="w-5 h-5" />
@@ -613,7 +647,7 @@ export default function DecisionRoomPage() {
                     </button>
                     <button 
                       onClick={() => submitDecision("DECLINE_AFTER_HUMAN_REVIEW")}
-                      disabled={submitting || !reason}
+                      disabled={submitting || !reason || isOffline}
                       className="px-6 py-4 bg-red-600 rounded-lg text-white font-bold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
                     >
                       <ThumbsDown className="w-5 h-5" />
@@ -649,14 +683,29 @@ export default function DecisionRoomPage() {
                    <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                      <ShieldCheck className="w-5 h-5 text-blue-400" /> Verify Seal
                    </h3>
-                   <button 
-                     onClick={handleVerify}
-                     disabled={verifying}
-                     className="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 transition disabled:opacity-50 text-sm mb-4"
-                   >
-                     {verifying ? "Verifying..." : "Verify Package Signature"}
-                   </button>
-                   {verificationError && <p className="text-red-400 text-sm">{verificationError}</p>}
+                   {!packageId ? (
+                     <>
+                       <button 
+                         onClick={handleSeal}
+                         disabled={sealing || isOffline}
+                         className="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 transition disabled:opacity-50 text-sm mb-4"
+                       >
+                         {sealing ? "Sealing..." : "Seal Package"}
+                       </button>
+                       {sealError && <p className="text-red-400 text-sm">{sealError}</p>}
+                     </>
+                   ) : (
+                     <>
+                       <button 
+                         onClick={handleVerify}
+                         disabled={verifying || isOffline}
+                         className="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 transition disabled:opacity-50 text-sm mb-4"
+                       >
+                         {verifying ? "Verifying..." : "Verify Package Signature"}
+                       </button>
+                       {verificationError && <p className="text-red-400 text-sm">{verificationError}</p>}
+                     </>
+                   )}
                    {verificationResult && (
                      <div className="p-3 bg-black rounded-lg border border-white/10 text-sm font-mono space-y-2">
                        <p className="text-emerald-400 font-bold">Verification: {verificationResult.valid === true ? "HASH VERIFIED" : "HASH MISMATCH"}</p>
@@ -672,7 +721,7 @@ export default function DecisionRoomPage() {
                    </h3>
                    <button 
                      onClick={handleReplay}
-                     disabled={replaying}
+                     disabled={replaying || !packageId || isOffline}
                      className="px-4 py-2 bg-purple-600 rounded-lg text-white font-bold hover:bg-purple-700 transition disabled:opacity-50 text-sm mb-4"
                    >
                      {replaying ? "Replaying..." : "Execute Full Engine Replay"}
@@ -739,7 +788,7 @@ export default function DecisionRoomPage() {
       */}
       <div className="bg-black border-t border-white/10 p-4 shrink-0 text-xs text-gray-500 flex justify-between items-center px-8">
         <div className="flex gap-6 items-center">
-          <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> {verificationResult ? (verificationResult.valid === true ? "PACKAGE HASH VERIFIED" : "PACKAGE HASH MISMATCH") : (data.package_hash ? "PACKAGE SEALED — NOT VERIFIED" : "PACKAGE NOT SEALED")}</span>
+          <span className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" /> {verificationResult ? (verificationResult.valid === true ? "PACKAGE HASH VERIFIED" : "PACKAGE HASH MISMATCH") : (packageId ? "PACKAGE SEALED — NOT VERIFIED" : "PACKAGE NOT SEALED")}</span>
           <span className="flex items-center gap-2"><RefreshCw className="w-4 h-4 text-purple-500" /> {replayResult ? (replayResult.status === "INDEPENDENTLY_REPRODUCED" ? "REPLAY MATCHED" : "REPLAY MISMATCHED") : "REPLAY NOT RUN"}</span>
           <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> Policy: {data.policy_version}</span>
         </div>

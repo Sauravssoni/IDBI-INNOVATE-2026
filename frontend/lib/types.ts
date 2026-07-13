@@ -144,7 +144,9 @@ export interface BankabilityPath {
 }
 
 export interface DecisionPackageResponse {
+  package_id: string;
   case_id: string;
+  case_version?: number;
   business_name: string;
   requested_amount: number;
   requested_product?: string | null;
@@ -239,7 +241,7 @@ export interface AssessmentResultResponse {
   policy_recommendation?: string;
   bankability_interventions?: BankabilityIntervention[];
   assessment_certainty?: string;
-  dscr_metrics?: { historical_dscr?: number; max_dscr?: number; min_dscr?: number; volatility?: number; current_dscr?: number; post_loan_dscr?: number };
+
 }
 
 export interface ApplicantViewResponse {

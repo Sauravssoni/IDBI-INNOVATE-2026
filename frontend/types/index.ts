@@ -314,3 +314,25 @@ export interface StressResponse {
 export interface HumanContext {
   [key: string]: unknown; // Replaced 'any'
 }
+
+export interface SimulatorResponse {
+  simulated_emi: number;
+  simulated_dscr: number;
+  viable: boolean;
+  policy_breaches: string[];
+  error?: string;
+}
+
+export interface MonitoringAlert {
+  alert_code: string;
+  rule_name: string;
+  status: string;
+  threshold: string;
+  observed_metric: string;
+  detail: string;
+}
+
+export interface MonitoringResponse {
+  overall_risk_state: string;
+  deterioration_alerts: MonitoringAlert[];
+}

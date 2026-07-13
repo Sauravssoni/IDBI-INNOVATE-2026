@@ -1,0 +1,1 @@
+{"case_version": 3, "requested_amount": "4500000.00", "supportable_amount": null, "mandate_ceiling": null, "capacity_cap": null, "maximum_permitted_amount": null, "analyst_recommendation": "RECOMMEND_ALTERNATIVE_STRUCTURE", "allowed_actions": [], "blocked_reason_code": "ROLE_NOT_AUTHORIZED", "message": "Only sanctioning authorities can record decisions"}

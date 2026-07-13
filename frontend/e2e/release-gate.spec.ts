@@ -237,4 +237,27 @@ test.describe('Vyapar Pulse Release Gate', () => {
     await page.click('a[href="/cases"]');
     await expect(page.locator('table')).toBeVisible();
   });
+
+  test('Decision package seal, verify, replay lifecycle', async ({ page }) => {
+    await page.goto('/login');
+    await page.click('button:has-text("System Admin")'); // Sysadmin or any authorized
+    await page.click('button:has-text("Credit Analyst")');
+    const row = page.locator('table tbody tr').filter({ hasText: 'Rangrez' }).first(); // Any case
+    await row.getByRole('link').click();
+
+    // Verify initial unsealed state
+    await expect(page.locator('text=PACKAGE NOT SEALED')).toBeVisible();
+    
+    // Seal package
+    await page.click('button:has-text("Seal Package")');
+    await expect(page.locator('text=PACKAGE SEALED — NOT VERIFIED')).toBeVisible({ timeout: 15000 });
+    
+    // Verify Package Signature
+    await page.click('button:has-text("Verify Package Signature")');
+    await expect(page.locator('text=PACKAGE HASH VERIFIED')).toBeVisible({ timeout: 15000 });
+    
+    // Independent Replay
+    await page.click('button:has-text("Execute Full Engine Replay")');
+    await expect(page.locator('text=REPLAY MATCHED')).toBeVisible({ timeout: 30000 });
+  });
 });

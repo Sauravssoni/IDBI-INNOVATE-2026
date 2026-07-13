@@ -27,6 +27,14 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [gitSha, setGitSha] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/health`)
+      .then(res => res.json())
+      .then(data => setGitSha(data.sha))
+      .catch(() => {});
+  }, []);
 
   const getRoleBadge = (role?: string) => {
     switch (role) {
@@ -245,6 +253,7 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
           <footer className="mt-12 pt-6 border-t border-light-border text-center text-sm text-light-muted font-medium space-y-1">
             <div>Built for IDBI Innovate 2026 • Hackathon prototype—not an official IDBI Bank production system</div>
             <div>Illustrative prototype policy thresholds • Tamper-evident prototype audit chain</div>
+            {gitSha && <div>Release SHA: <span className="font-mono text-xs text-white/50">{gitSha}</span></div>}
           </footer>
         </main>
       </div>

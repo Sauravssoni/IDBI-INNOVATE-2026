@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { MonitoringResponse, MonitoringAlert } from "@/types";
 import { AlertTriangle, TrendingDown, Activity, CheckCircle2 } from "lucide-react";
 
 export default function MonitoringTab({ caseId }: { caseId: string }) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<MonitoringResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
-      const res = await apiFetch(`/api/cases/${caseId}/monitoring`);
+      const res = await apiFetch<MonitoringResponse>(`/api/cases/${caseId}/monitoring`);
       if (res.status === 200 && res.data) {
         setData(res.data);
       }
@@ -40,7 +41,7 @@ export default function MonitoringTab({ caseId }: { caseId: string }) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {data.deterioration_alerts?.map((alert: any, idx: number) => (
+        {data.deterioration_alerts?.map((alert: MonitoringAlert, idx: number) => (
           <div key={idx} className={`glass-card p-5 border shadow-sm ${
             alert.status === 'TRIGGERED' ? 'border-brand-red bg-rose-50' : 'border-light-border bg-white'
           }`}>

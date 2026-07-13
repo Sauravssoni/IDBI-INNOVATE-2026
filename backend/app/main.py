@@ -124,9 +124,16 @@ app.include_router(ocen.router)
 app.include_router(validation.router)
 
 
+def get_git_sha() -> str:
+    try:
+        import os
+        return os.popen('git rev-parse HEAD').read().strip() or "unknown"
+    except Exception:
+        return "unknown"
+
 @app.get("/health")
 def health() -> dict:
-    return {"status": "ok", "service": API_SERVICE_NAME, "version": API_VERSION}
+    return {"status": "ok", "service": API_SERVICE_NAME, "version": API_VERSION, "sha": get_git_sha()}
 
 
 @app.get("/ready")
@@ -184,6 +191,7 @@ def ready() -> Any:
             "service": API_SERVICE_NAME,
             "version": API_VERSION,
             "schema_version": SCHEMA_VERSION,
+            "sha": get_git_sha(),
         }
     except Exception:
         return JSONResponse(
