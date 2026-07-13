@@ -49,6 +49,7 @@ class HumanActionContext(BaseModel):
     allowed_human_actions: Optional[List[str]] = None
     blocked_reason_code: Optional[str] = None
     message: Optional[str] = None
+    maximum_approved_amount: Optional[Decimal] = None
 
 
 class AllowedActionsResponse(BaseModel):

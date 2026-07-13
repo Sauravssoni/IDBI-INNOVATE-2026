@@ -36,7 +36,7 @@ export default defineConfig({
           DEMO_USER_PASSWORD: process.env.DEMO_USER_PASSWORD || 'VyaparPulseDemo2026!',
           DEMO_ACCESS_ENABLED: 'true',
           DEMO_RESET_ENABLED: 'true',
-          DEMO_RESET_TOKEN: 'dummy',
+          DEMO_RESET_TOKEN: 'secret',
           DEMO_DATABASE_FINGERPRINT: 'BYPASS'
         },
         port: 8000,
