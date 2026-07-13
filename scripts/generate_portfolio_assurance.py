@@ -13,7 +13,7 @@ from app.core.scoring.scorer import ScoringEngine
 from app.core.decision.policy import DecisionPolicy
 from app.domain.financial.engine import FinancialCapacityEngine
 
-def generate_cohort(cohort_size=500, seed=42):
+def generate_cohort(cohort_size=1000, seed=42):
     random.seed(seed)
     
     results = {
@@ -144,7 +144,7 @@ def generate_cohort(cohort_size=500, seed=42):
     results["checksum"] = hashlib.sha256(json.dumps(results["metrics"], sort_keys=True).encode()).hexdigest()
     
     os.makedirs(os.path.join(os.path.dirname(__file__), "..", "artifacts"), exist_ok=True)
-    with open(os.path.join(os.path.dirname(__file__), "..", "artifacts", "portfolio_assurance_500.json"), "w") as f:
+    with open(os.path.join(os.path.dirname(__file__), "..", "artifacts", "portfolio_assurance_1000.json"), "w") as f:
         json.dump(results, f, indent=2)
 
 if __name__ == "__main__":
