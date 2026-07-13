@@ -154,7 +154,7 @@ def test_scoring_engine_returns_replayable_score_metadata():
         "scoring_version",
     }
     assert "band" not in scores
-    assert scores["scoring_version"] == "3.0-EVIDENCE-CONDITIONED-FHI"
+    assert scores["scoring_version"] == "3.1-EVIDENCE-LINKED-FHI"
 
 
 def test_generate_offers_no_percentage_fallbacks():
