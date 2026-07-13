@@ -138,7 +138,7 @@ export default function DecisionRoomPage() {
     try {
       const res = await apiFetch(`/api/cases/${caseId}/decision-package`, { method: "POST" });
       if (res.status === 200 && res.data) {
-        setPackageId(res.data.package_id || (res.data as unknown as { id: string }).id);
+        setPackageId((res.data as DecisionPackageResponse).package_id || (res.data as unknown as { id: string }).id);
         setData(res.data as DecisionPackageResponse);
       } else {
         setSealError(res.error || "Failed to seal package");

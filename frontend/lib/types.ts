@@ -174,11 +174,9 @@ export interface DecisionPackageResponse {
   calculation_evidence_ids?: Record<string, string[]> | null;
   analyst_action?: string | null;
   human_action?: string | null;
-  case_version: number;
   audit_chain: DecisionPackageAuditItem[];
   bankability_path?: BankabilityPath | null;
   assessment?: AssessmentResultResponse | null;
-  package_id?: string;
   monitoring_status?: { alerts?: { severity: string; message: string; date: string }[] };
   generated_at?: string;
   package_hash?: string;

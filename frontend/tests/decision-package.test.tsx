@@ -16,6 +16,7 @@ describe('DecisionPackageTab UI & Contract', () => {
 
   it('renders non-zero offer amount correctly', async () => {
     const mockData: DecisionPackageResponse = {
+      package_id: 'PKG-001',
       case_id: 'CASE-001',
       business_name: 'Test Business',
       requested_amount: 5000000,
@@ -90,6 +91,7 @@ describe('DecisionPackageTab UI & Contract', () => {
 
   it('renders zero offer as Not Applicable', async () => {
     const mockData: DecisionPackageResponse = {
+      package_id: 'PKG-002',
       case_id: 'CASE-001',
       business_name: 'Test Business',
       requested_amount: 5000000,
