@@ -413,6 +413,7 @@ def can_record_human_decision(
         allowed=True,
         suggested_human_action=suggested_human,
         allowed_human_actions=allowed_actions,
+        maximum_approved_amount=capacity_cap,
     )
 
 
