@@ -1,4 +1,3 @@
-from decimal import Decimal
 import uuid
 from app.services.assessment_service import AssessmentService
 from app.db.orm.cases import Case

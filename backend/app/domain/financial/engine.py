@@ -639,7 +639,7 @@ class FinancialCapacityEngine:
             "evidence_ids": calculation_evidence_ids.get("inflows", []) + calculation_evidence_ids.get("obligations", []),
             "confidence": 0.85 if eq_limit > 0 else 0.0,
             "warnings": eq_warnings,
-            "limitations": [f"Calculated using exact reducing-balance amortization."]
+            "limitations": ["Calculated using exact reducing-balance amortization."]
         }
 
         return {

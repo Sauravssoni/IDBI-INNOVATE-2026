@@ -1,6 +1,5 @@
-import datetime
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Dict, Any, List
+from decimal import Decimal
+from typing import Dict, Any
 
 class ScoringEngine:
     def __init__(self, features: Dict[str, Any]):

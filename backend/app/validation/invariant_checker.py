@@ -5,7 +5,6 @@ from typing import Dict, Any, List
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.core.scoring.scorer import ScoringEngine
-from app.domain.financial.engine import FinancialCapacityEngine
 from app.core.decision.limits import SafeLimitEngine
 
 def generate_synthetic_features(seed: int = 20260713) -> List[Dict[str, Any]]:

@@ -1,6 +1,5 @@
 import json
 import os
-from decimal import Decimal
 
 def generate_manifest():
     os.makedirs("artifacts/validation", exist_ok=True)
@@ -59,7 +58,7 @@ def generate_manifest():
     with open("artifacts/validation/cohort_manifest.json", "w") as f:
         json.dump(cases, f, indent=2)
         
-    print(f"Generated 10 deterministic cases in artifacts/validation/cohort_manifest.json")
+    print("Generated 10 deterministic cases in artifacts/validation/cohort_manifest.json")
 
 if __name__ == "__main__":
     generate_manifest()

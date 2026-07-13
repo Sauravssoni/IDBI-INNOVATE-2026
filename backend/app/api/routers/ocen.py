@@ -63,7 +63,7 @@ def get_ocen_export(
     # Extract values
     supportable = Decimal(str(assessment.get("supportable_amount", 0.0)))
     status_str = case_db.status.value if hasattr(case_db.status, "value") else str(case_db.status)
-    sanctioned = Decimal(str(case_db.approved_amount)) if status_str == "SANCTIONED" and case_db.approved_amount else None
+    _sanctioned = Decimal(str(case_db.approved_amount)) if status_str == "SANCTIONED" and case_db.approved_amount else None
 
         
     conditions = [c.get("condition_text") for c in assessment.get("conditions", [])] if assessment.get("conditions") else []

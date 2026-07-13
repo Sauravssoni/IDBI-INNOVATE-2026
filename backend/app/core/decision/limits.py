@@ -69,7 +69,8 @@ class SafeLimitEngine:
         serviceable_emi = max(Decimal("0.00"), max_ds - ver_ds)
         cash_cap = cls._calculate_loan_from_emi(serviceable_emi, annual_rate, tenure_months)
         applied = bool(cash_cap < current_limit)
-        if applied: current_limit = cash_cap
+        if applied:
+            current_limit = cash_cap
         
         stages.append({
             "stage_id": "CASH_SERVICEABILITY_CAP",
@@ -87,7 +88,8 @@ class SafeLimitEngine:
         max_leverage = op_cash * Decimal("24") # Arbitrary policy heuristic for obligation cap
         obl_cap = max(Decimal("0.00"), max_leverage - (ver_ds * 12 * 3)) # rough conversion
         applied = bool(obl_cap < current_limit)
-        if applied: current_limit = obl_cap
+        if applied:
+            current_limit = obl_cap
         stages.append({
             "stage_id": "VERIFIED_OBLIGATION_CAP",
             "calculated_value": float(obl_cap),
@@ -102,7 +104,8 @@ class SafeLimitEngine:
         # 4. Product-Policy Cap
         prod_cap = Decimal("50000000.00")
         applied = bool(prod_cap < current_limit)
-        if applied: current_limit = prod_cap
+        if applied:
+            current_limit = prod_cap
         stages.append({
             "stage_id": "PRODUCT_POLICY_CAP",
             "calculated_value": float(prod_cap),
@@ -129,7 +132,8 @@ class SafeLimitEngine:
                 "explanation": "Maximum advance against eligible receivables.",
                 "applied": bool(col_cap < current_limit)
             })
-            if col_cap < current_limit: current_limit = col_cap
+            if col_cap < current_limit:
+                current_limit = col_cap
         elif requested_product == "EQUIPMENT_FINANCE":
             eq_val = Decimal(str(features.get("equipment_value", 0)))
             col_cap = eq_val * Decimal("0.80")
@@ -143,13 +147,15 @@ class SafeLimitEngine:
                 "explanation": "Maximum Loan-To-Value against equipment.",
                 "applied": bool(col_cap < current_limit)
             })
-            if col_cap < current_limit: current_limit = col_cap
+            if col_cap < current_limit:
+                current_limit = col_cap
 
         # 6. Concentration Cap
         conc_val = Decimal(str(features.get("invoice_metrics", {}).get("concentration_haircut", "1.00")))
         conc_cap = current_limit * conc_val
         applied = bool(conc_cap < current_limit)
-        if applied: current_limit = conc_cap
+        if applied:
+            current_limit = conc_cap
         stages.append({
             "stage_id": "CONCENTRATION_CAP",
             "calculated_value": float(conc_cap),
@@ -167,7 +173,8 @@ class SafeLimitEngine:
         stress_emi = max(Decimal("0.00"), stress_ds - ver_ds)
         stress_cap = cls._calculate_loan_from_emi(stress_emi, annual_rate, tenure_months)
         applied = bool(stress_cap < current_limit)
-        if applied: current_limit = stress_cap
+        if applied:
+            current_limit = stress_cap
         stages.append({
             "stage_id": "STRESS_CAP",
             "calculated_value": float(stress_cap),

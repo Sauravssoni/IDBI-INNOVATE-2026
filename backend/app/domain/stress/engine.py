@@ -311,7 +311,8 @@ def run_case_stress_lab(
         if test_cash > 0 and (test_cash / test_post_ds) < policy_dscr_floor:
             max_rate_hike_bps = max(0, hike - 50)
             break
-    if max_rate_hike_bps == 0: max_rate_hike_bps = 950
+    if max_rate_hike_bps == 0:
+        max_rate_hike_bps = 950
     
     s15_bank = dict(features.get("bank_metrics", {}))
     s15_bank["operating_inflows_monthly"] = str(s15_inflows)
