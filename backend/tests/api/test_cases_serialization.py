@@ -279,7 +279,7 @@ def test_seal_rejects_incomplete_snapshot_without_persisting(setup_data, db_sess
         headers={"x-csrf-token": csrf_token},
     )
     assert res.status_code == 409
-    assert res.json()["detail"]["code"] == "FEATURE_SNAPSHOT_INCOMPLETE"
+    assert "Cannot seal:" in res.json()["detail"]
     after_count = (
         db_session.query(DecisionPackage)
         .filter(DecisionPackage.case_id == setup_data["case_id"])

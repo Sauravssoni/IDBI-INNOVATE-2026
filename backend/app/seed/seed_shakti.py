@@ -79,21 +79,7 @@ def seed_shakti(db_session=None):
         db.query(DataConnection).filter(
             DataConnection.business_id_fk == existing_business.id
         ).delete()
-
-        for c in existing_business.cases:
-            from app.db.orm.cases import AuditEvent
-
-            db.query(DecisionPackage).filter(DecisionPackage.case_id == c.id).delete()
-            db.query(AuditEvent).filter(AuditEvent.case_id == c.id).delete()
-            from app.db.orm.cases import IdempotencyRecord
-
-            db.query(IdempotencyRecord).filter(
-                IdempotencyRecord.case_id == c.id
-            ).delete()
-
-        db.query(Case).filter(Case.business_id_fk == existing_business.id).delete()
-        db.delete(existing_business)
-        db.flush()
+        return  # Already seeded
 
     malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
     if not malviya_nagar_branch:

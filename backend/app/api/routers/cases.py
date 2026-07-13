@@ -1612,6 +1612,24 @@ def seal_decision_package(
         raise HTTPException(status_code=400, detail="Invalid case ID")
     case = can_view_case(db, user, cid)
 
+    if user.role not in ["ADMIN", "SUPER_ADMIN", "CREDIT_ANALYST", "CREDIT_COMMITTEE", "SANCTIONING_AUTHORITY", "RISK_ADMIN", "SYSTEM_ADMIN", "admin", "super_admin", "credit_analyst", "credit_committee", "sanctioning_authority", "risk_admin", "system_admin"]:
+        raise HTTPException(status_code=403, detail="Caller not authorized to seal package")
+
+    assessment_snap = (
+        db.query(AssessmentSnapshot)
+        .filter(AssessmentSnapshot.case_id == cid)
+        .order_by(AssessmentSnapshot.case_version.desc())
+        .first()
+    )
+    if not assessment_snap:
+        raise HTTPException(status_code=409, detail="Cannot seal: No latest assessment exists")
+
+    if not case.analyst_recommendation or case.analyst_recommendation in ["PENDING", ""]:
+        raise HTTPException(status_code=409, detail="Cannot seal: No analyst recommendation exists")
+
+    if not case.human_decision or case.human_decision in ["PENDING", ""]:
+        raise HTTPException(status_code=409, detail="Cannot seal: No terminal human decision exists")
+
     dp = get_decision_package(case_id, db, user)
     latest_eval = (
         db.query(AuditEvent)

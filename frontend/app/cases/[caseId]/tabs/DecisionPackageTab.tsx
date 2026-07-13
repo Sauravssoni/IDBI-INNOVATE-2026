@@ -204,11 +204,11 @@ export default function DecisionPackageTab({ caseId, assessment, decisionPackage
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-light-secondary">Multi-Rail Coverage Score:</span>{" "}
-                <strong className="text-black">{Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length / 5 * 100}%</strong>
+                <strong className="text-black">{Math.round(Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length / Object.keys(data.evidence_passport.rail_coverage).length * 100)}%</strong>
               </div>
               <div>
                 <span className="text-light-secondary">Freshness Decay Score:</span>{" "}
-                <strong className="text-black">{data.evidence_passport.freshness_depth.composite_freshness_index}%</strong>
+                <strong className="text-black">{Number(data.evidence_passport.freshness_depth.composite_freshness_index).toFixed(1)}%</strong>
               </div>
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function DecisionPackageTab({ caseId, assessment, decisionPackage
             </div>
             <div>
               <span className="text-light-secondary">Financial Health Index (FHI):</span>{" "}
-              <strong className="text-black">{(assessment?.financial_health_index || data?.financial_health_index) !== undefined && (assessment?.financial_health_index || data?.financial_health_index) !== null ? typeof (assessment?.financial_health_index || data?.financial_health_index) === 'number' ? (assessment?.financial_health_index || data?.financial_health_index).toFixed(2) : (assessment?.financial_health_index || data?.financial_health_index) : "N/A"} / 100</strong>
+              <strong className="text-black">{(assessment?.financial_health_index ?? data?.financial_health_index) !== undefined && (assessment?.financial_health_index ?? data?.financial_health_index) !== null ? Number(assessment?.financial_health_index ?? data?.financial_health_index).toFixed(2) : "N/A"} / 100</strong>
             </div>
             <div>
               <span className="text-light-secondary">Scoring Version:</span>{" "}
@@ -317,7 +317,7 @@ export default function DecisionPackageTab({ caseId, assessment, decisionPackage
               <div className="text-right">
                 <p className="text-sm text-light-secondary mb-1">Financial Health Index (FHI)</p>
                 <p className="text-2xl font-bold text-light-text">
-                  {(assessment?.financial_health_index || data?.financial_health_index) !== undefined && (assessment?.financial_health_index || data?.financial_health_index) !== null ? typeof (assessment?.financial_health_index || data?.financial_health_index) === 'number' ? (assessment?.financial_health_index || data?.financial_health_index).toFixed(2) : (assessment?.financial_health_index || data?.financial_health_index) : "N/A"}
+                  {(assessment?.financial_health_index ?? data?.financial_health_index) !== undefined && (assessment?.financial_health_index ?? data?.financial_health_index) !== null ? Number(assessment?.financial_health_index ?? data?.financial_health_index).toFixed(2) : "N/A"}
                 </p>
                 <p className="text-xs text-light-secondary mt-1">Range: 0 - 100</p>
               </div>
@@ -438,13 +438,13 @@ export default function DecisionPackageTab({ caseId, assessment, decisionPackage
               <div className="bg-light-elevated rounded-xl p-4 border border-light-border">
                 <p className="text-xs text-light-secondary mb-1">Multi-Rail Coverage</p>
                 <p className="text-2xl font-bold text-teal-400 font-mono">
-                  {`${Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length / 5 * 100}%`}
+                  {`${Math.round(Object.values(data.evidence_passport.rail_coverage).filter(Boolean).length / Object.keys(data.evidence_passport.rail_coverage).length * 100)}%`}
                 </p>
               </div>
               <div className="bg-light-elevated rounded-xl p-4 border border-light-border">
                 <p className="text-xs text-light-secondary mb-1">Composite Freshness Index</p>
                 <p className="text-2xl font-bold text-light-text font-mono">
-                  {`${data.evidence_passport.freshness_depth.composite_freshness_index}%`}
+                  {`${Number(data.evidence_passport.freshness_depth.composite_freshness_index).toFixed(1)}%`}
                 </p>
               </div>
               <div className="bg-light-elevated rounded-xl p-4 border border-light-border">

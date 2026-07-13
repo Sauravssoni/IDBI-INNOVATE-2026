@@ -190,7 +190,7 @@ def ready() -> Any:
         seed_count = db.execute(
             text(
                 "SELECT count(*) FROM businesss WHERE business_id IN "
-                "('SHAKTI_PRECISION_001', 'NAVPRERNA_TRADERS_001', 'RANGREZ_TEXTILES_001', 'NIRMAAN_WORKS_001')"
+                "('SHAKTI_PRECISION_001', 'NAVPRERNA_TECH_001', 'RANGREZ_TEXTILES_001', 'NIRMAAN_INFRA_001')"
             )
         ).scalar()
         demo_seed_ready = int(seed_count or 0) == 4
@@ -200,6 +200,7 @@ def ready() -> Any:
             "status": "ready",
             "database": "connected",
             "migration_head": current_revision,
+            "demo_seed_count": int(seed_count or 0),
             "demo_seed_ready": demo_seed_ready,
             "service": API_SERVICE_NAME,
             "version": API_VERSION,

@@ -14,9 +14,9 @@ import { IntegrityGraph } from "@/components/IntegrityGraph";
 
 const PERSONAS = [
   { key: "SHAKTI_PRECISION_001", label: "Shakti — assessable/approvable" },
-  { key: "NAVPRERNA_TRADERS_001", label: "Navprerna — insufficient evidence" },
+  { key: "NAVPRERNA_TECH_001", label: "Navprerna — insufficient evidence" },
   { key: "RANGREZ_TEXTILES_001", label: "Rangrez — contradiction/integrity review" },
-  { key: "NIRMAAN_WORKS_001", label: "Nirmaan — negative cash/decline" }
+  { key: "NIRMAAN_INFRA_001", label: "Nirmaan — negative cash/decline" }
 ];
 
 export default function DecisionRoomPage() {
@@ -134,18 +134,7 @@ export default function DecisionRoomPage() {
       });
       if (res.status === 200) {
         setDecision(status);
-        try {
-          const sealRes = await apiFetch(`/api/cases/${caseId}/decision-package`, { method: "POST" });
-          if (sealRes.status === 200 && sealRes.data) {
-            const sealData = sealRes.data as Record<string, unknown>;
-            setSealedPackageMetadata(sealData);
-            if (sealData.package_id) setPackageId(sealData.package_id as string);
-            if (sealData.package_hash) setPackageHash(sealData.package_hash as string);
-          }
-        } catch {
-          // ignore
-        }
-        setTimeout(() => router.push(`/cases/${caseId}`), 2000);
+        // Remain on the Decision Room after sanction so the judge can seal, verify and replay continuously.
       } else {
         setSanctionError(res.error || JSON.stringify(res.data));
       }
