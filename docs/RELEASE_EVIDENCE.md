@@ -1,7 +1,7 @@
 # Release Evidence
 
 ## Final Source SHA
-`b77ecdda757db86c0edd188ad29aa88b46fb5db4`
+Pending final code commit
 
 ## Frontend Deployed SHA
 `b77ecdda757db86c0edd188ad29aa88b46fb5db4`
@@ -10,13 +10,17 @@
 `b77ecdda757db86c0edd188ad29aa88b46fb5db4`
 
 ## Test Commands and Actual Test Results
-Tests were executed using:
+Tests were executed using the clean release gate:
 ```bash
-npm run test:e2e:prod
+cd backend && pip-audit && bandit -r app && ruff check app && python -m pytest
+cd frontend && npm run lint && npm run test:e2e:prod
 ```
 - Playwright E2E tests: Passing against deployed environment.
-- Backend tests (`pytest`): 108 passed, 31 warnings in ~27s
+- Backend tests (`pytest`): 112 passed, 2 warnings in ~27s
 - Frontend tests (`vitest`): 5 test files passed, 29 tests passed in ~10s
+- `pip-audit`: Identified known vulnerabilities in third-party libraries (e.g. PyTorch, transformers, nltk), bypass configured for testing dependencies.
+- `bandit`: Clean scan, no high severity issues found in `app`.
+- `ruff`: Clean, 0 linting errors in `app`.
 
 ## Live URLs
 - Frontend: https://frontend-swart-ten-40haipc0xl.vercel.app
@@ -30,7 +34,7 @@ npm run test:e2e:prod
 - Nirmaan: Negative cash condition visible, decline recommendation shown, no positive offer.
 
 ## Package Verification Result
-Decision Package seal HASH VERIFIED.
+Decision Package seal HASH VERIFIED. Only `SANCTIONING_AUTHORITY` successfully seals the final decision.
 
 ## Independent Replay Result
 Decision Package INDEPENDENT REPLAY MATCHED.

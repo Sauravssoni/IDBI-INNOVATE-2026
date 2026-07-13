@@ -263,7 +263,7 @@ def test_decision_package_cd_fields(setup_data):
 
 
 def test_seal_rejects_incomplete_snapshot_without_persisting(setup_data, db_session):
-    user = setup_data["users"][UserRole.CREDIT_ANALYST]
+    user = setup_data["users"][UserRole.SANCTIONING_AUTHORITY]
     res = login(user.email, "securepass123")
     client.cookies.clear()
     client.cookies.set("vyapar_session_token", res.cookies.get("vyapar_session_token"))

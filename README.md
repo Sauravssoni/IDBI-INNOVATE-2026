@@ -5,7 +5,7 @@
 
 [![CI/CD Status](https://img.shields.io/badge/CI%2FCD-Passing-00C853?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/Sauravssoni/IDBI-INNOVATE-2026/actions)
 [![Invariance Assurance](https://img.shields.io/badge/Invariance%20Assurance-1%2C000%20Cases%20Passed-00C853?style=for-the-badge&logo=checkmarx&logoColor=white)](artifacts/validation/release_assurance.json)
-[![Test Coverage](https://img.shields.io/badge/Backend%20Tests-111%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
+[![Test Coverage](https://img.shields.io/badge/Backend%20Tests-112%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](tests/)
 [![Deterministic Replay](https://img.shields.io/badge/Cryptographic%20Seal-SHA--256%20Verified-2962FF?style=for-the-badge&logo=auth0&logoColor=white)](docs/DECISION_ASSURANCE.md)
 [![OCEN 4.0 Compliance](https://img.shields.io/badge/OCEN%204.0-Ready-AA00FF?style=for-the-badge&logo=dataversioncontrol&logoColor=white)](docs/architecture/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-37474F?style=for-the-badge)](LICENSE)
@@ -26,8 +26,8 @@ Vyapar Pulse is fully deployed and verified across production environments with 
 
 | Component | Live Production URL | Description | Verified Status |
 | :--- | :--- | :--- | :---: |
-| 🖥️ **Frontend App** | [frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app) | Executive Command Center, Decision Room, & Credit Twin Sandbox | `ONLINE (SHA: b77ecdd)` |
-| ⚡ **Backend API** | [vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app) | Governed Scoring, Financial Capacity Engine, & Stress Lab v2.0 | `ONLINE (SHA: b77ecdd)` |
+| 🖥️ **Frontend App** | [frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app) | Executive Command Center, Decision Room, & Credit Twin Sandbox | `ONLINE (SHA: adfc472)` |
+| ⚡ **Backend API** | [vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app) | Governed Scoring, Financial Capacity Engine, & Stress Lab v2.0 | `ONLINE (SHA: adfc472)` |
 | 📖 **OpenAPI / Swagger** | [vyapar-pulse-backend.vercel.app/docs](https://vyapar-pulse-backend.vercel.app/docs) | Interactive API documentation, schemas, and live test client | `ONLINE (v2.0.0)` |
 | 🔒 **Assurance Proof** | [artifacts/validation/release_assurance.json](artifacts/validation/release_assurance.json) | Deterministic 1,000-case verification and 25-case replay ledger | `100% PASSED` |
 
@@ -219,7 +219,7 @@ graph LR
 
 Vyapar Pulse enforces 100% test pass rates across both automated CI/CD checks and deterministic mathematical verification runs before any release deployment.
 
-### Backend Assurance Suite (`111 / 111 Tests Passing`)
+### Backend Assurance Suite (`112 / 112 Tests Passing`)
 Our backend pytest suite rigorously validates domain invariants, mathematical boundary conditions, and organizational security:
 
 ```bash

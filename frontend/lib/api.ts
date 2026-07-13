@@ -59,6 +59,10 @@ export async function apiFetch<T = unknown>(
     }
 
     if (!res.ok) {
+      if (isSafeGet && retries > 0 && [502, 503, 504].includes(res.status)) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        return apiFetch(endpoint, options, retries - 1);
+      }
       if (res.status === 401) {
         if (typeof localStorage !== "undefined") {
           localStorage.removeItem("vyapar_user");
@@ -111,6 +115,7 @@ export async function apiFetch<T = unknown>(
   } catch (err) {
     clearTimeout(timeoutId);
     if (isSafeGet && retries > 0) {
+      await new Promise(resolve => setTimeout(resolve, 300));
       return apiFetch(endpoint, options, retries - 1);
     }
     return handleOfflineFallback(endpoint, options);

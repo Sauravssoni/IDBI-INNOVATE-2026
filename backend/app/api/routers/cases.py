@@ -47,7 +47,7 @@ from app.domain.financial.engine import FinancialCapacityEngine
 from app.api.dependencies import get_current_user
 from app.core.audit import calculate_audit_hash
 from app.domain.audit.verification import verify_audit_chain
-from app.db.orm.users import User
+from app.db.orm.users import User, UserRole
 from app.services.assessment_service import AssessmentService
 from app.services.authz import (
     apply_case_list_scope,
@@ -1612,7 +1612,8 @@ def seal_decision_package(
         raise HTTPException(status_code=400, detail="Invalid case ID")
     case = can_view_case(db, user, cid)
 
-    if user.role not in ["ADMIN", "SUPER_ADMIN", "CREDIT_ANALYST", "CREDIT_COMMITTEE", "SANCTIONING_AUTHORITY", "RISK_ADMIN", "SYSTEM_ADMIN", "admin", "super_admin", "credit_analyst", "credit_committee", "sanctioning_authority", "risk_admin", "system_admin"]:
+    role_val = getattr(user.role, "value", user.role)
+    if role_val != "SANCTIONING_AUTHORITY":
         raise HTTPException(status_code=403, detail="Caller not authorized to seal package")
 
     assessment_snap = (
