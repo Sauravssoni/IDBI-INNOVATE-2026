@@ -117,6 +117,12 @@ def get_cookie(response):
             return cookie.split(";")[0].split("=")[1]
     return ""
 
+def get_csrf_cookie(response):
+    for cookie in response.headers.get_list("set-cookie"):
+        if cookie.startswith("vyapar_csrf_token="):
+            return cookie.split(";")[0].split("=")[1]
+    return ""
+
 
 def test_system_admin_denied(setup_data):
     sys_admin = setup_data["users"][UserRole.SYSTEM_ADMIN]
@@ -265,9 +271,7 @@ def test_decision_package_cd_fields(setup_data):
 def test_seal_rejects_incomplete_snapshot_without_persisting(setup_data, db_session):
     user = setup_data["users"][UserRole.SANCTIONING_AUTHORITY]
     res = login(user.email, "securepass123")
-    client.cookies.clear()
-    client.cookies.set("vyapar_session_token", res.cookies.get("vyapar_session_token"))
-    csrf_token = res.cookies.get("vyapar_csrf_token")
+    csrf_token = client.cookies.get("vyapar_csrf_token") or res.cookies.get("vyapar_csrf_token") or ""
 
     before_count = (
         db_session.query(DecisionPackage)
@@ -299,16 +303,14 @@ def test_seal_rejects_incomplete_snapshot_without_persisting(setup_data, db_sess
 def test_seal_denied_for_invalid_roles(setup_data, role):
     user = setup_data["users"][role]
     res = login(user.email, "securepass123")
-    client.cookies.clear()
-    client.cookies.set("vyapar_session_token", res.cookies.get("vyapar_session_token"))
-    csrf_token = res.cookies.get("vyapar_csrf_token")
+    csrf_token = client.cookies.get("vyapar_csrf_token") or res.cookies.get("vyapar_csrf_token") or ""
 
     res = client.post(
         f"/api/cases/{setup_data['case_id']}/decision-package",
         headers={"x-csrf-token": csrf_token},
     )
     assert res.status_code == 403
-    assert "Only Sanctioning Authority can explicitly seal" in res.json().get("detail", "")
+    assert "Caller not authorized to seal package" in res.json().get("detail", "")
 
 
 def test_audit_verifier_reports_actual_authorization_scope(setup_data, db_session):

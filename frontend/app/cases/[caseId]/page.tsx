@@ -516,7 +516,7 @@ export default function CaseEvaluationPage() {
               </div>
               <div className="glass-card p-4">
                 <span className="text-xs text-light-secondary uppercase font-medium">Evidence Confidence</span>
-                <div className="font-bold text-light-text mt-1 text-lg">{assessmentResult?.evidence_certainty ?? "-"}%</div>
+                <div className="font-bold text-light-text mt-1 text-lg">{assessmentResult?.evidence_certainty !== undefined && assessmentResult?.evidence_certainty !== null ? Number(assessmentResult.evidence_certainty).toFixed(1) : "-"}%</div>
               </div>
             </div>
           ) : (
@@ -557,7 +557,7 @@ export default function CaseEvaluationPage() {
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
                       <span className="text-light-secondary font-medium">Source Coverage</span>
                       <div className="text-right">
-                        {assessmentResult?.source_coverage !== undefined && assessmentResult?.source_coverage !== null ? `${assessmentResult.source_coverage}%` : "-"}
+                        {assessmentResult?.source_coverage !== undefined && assessmentResult?.source_coverage !== null ? `${Number(assessmentResult.source_coverage).toFixed(1)}%` : "-"}
                       </div>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
@@ -572,7 +572,7 @@ export default function CaseEvaluationPage() {
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
                       <span className="text-light-secondary font-medium">Evidence Confidence</span>
                       <span className="font-bold text-light-text">
-                        {assessmentResult?.evidence_certainty !== undefined && assessmentResult?.evidence_certainty !== null ? `${assessmentResult.evidence_certainty}%` : "-"}
+                        {assessmentResult?.evidence_certainty !== undefined && assessmentResult?.evidence_certainty !== null ? `${Number(assessmentResult.evidence_certainty).toFixed(1)}%` : "-"}
                       </span>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
@@ -587,7 +587,7 @@ export default function CaseEvaluationPage() {
                     <div className="flex justify-between items-center p-3 rounded-lg bg-light-bg">
                       <span className="text-light-secondary font-medium">Reconciliation Quality</span>
                       <span className="font-bold text-light-text">
-                        {assessmentResult?.integrity_state !== undefined && assessmentResult?.integrity_state !== null ? `${assessmentResult.integrity_state}%` : "-"}
+                        {assessmentResult?.integrity_state !== undefined && assessmentResult?.integrity_state !== null ? `${Number(assessmentResult.integrity_state).toFixed(1)}%` : "-"}
                       </span>
                     </div>
                     <div className="w-full bg-light-border h-2 rounded-full overflow-hidden">
