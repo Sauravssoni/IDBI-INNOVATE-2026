@@ -45,6 +45,8 @@ def get_cookie_from_response(response, cookie_name):
 
 
 def get_auth_kwargs(client: TestClient, email: str):
+    from app.api.auth import login_rate_limits
+    login_rate_limits.clear()
     password = os.environ.get("DEMO_USER_PASSWORD", "testpassword123")
     response = client.post(
         "/api/auth/login",

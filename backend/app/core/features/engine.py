@@ -42,9 +42,13 @@ class FeatureEngine:
 
         receivable_metrics = self._derive_receivable_metrics()
         obligation_metrics = self._derive_obligation_metrics()
+        gst_metrics = self._derive_gst_metrics()
+        bank_metrics = self._derive_bank_metrics()
+
         return {
-            "gst_metrics": self._derive_gst_metrics(),
-            "bank_metrics": self._derive_bank_metrics(),
+            "monthly_revenue_inr": gst_metrics.get("avg_monthly_revenue", "0"),
+            "gst_metrics": gst_metrics,
+            "bank_metrics": bank_metrics,
             **obligation_metrics,
             "reconciliation_metrics": self._derive_reconciliation_metrics(),
             "employment_metrics": self._derive_employment_metrics(),
