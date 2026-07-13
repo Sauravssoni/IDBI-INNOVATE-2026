@@ -48,9 +48,7 @@ def reset_demo(
 
     # Check if authorized via token
     token_authorized = False
-    if client_token:
-        if not settings.DEMO_RESET_TOKEN or not hmac.compare_digest(client_token, settings.DEMO_RESET_TOKEN):
-            raise HTTPException(status_code=403, detail="Invalid demo reset token.")
+    if client_token and settings.DEMO_RESET_TOKEN and hmac.compare_digest(client_token, settings.DEMO_RESET_TOKEN):
         token_authorized = True
 
     if not token_authorized:
