@@ -1,0 +1,9 @@
+◇ injected env (0) from .env.local.vercel // tip: ⌘ override existing { override: true }
+
+
+
+
+
+
+Error: Process from config.webServer was not able to start. Exit code: 1
+
