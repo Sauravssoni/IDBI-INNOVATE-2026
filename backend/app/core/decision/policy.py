@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from decimal import Decimal, ROUND_HALF_UP
 from app.core.decision.limits import SafeLimitEngine
 from app.db.orm.cases import SystemRecommendation
