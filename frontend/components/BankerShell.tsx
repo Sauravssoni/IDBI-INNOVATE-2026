@@ -235,7 +235,15 @@ export const BankerShell: React.FC<{ children: React.ReactNode }> = ({ children 
             </div>
             <p className="text-xs text-white/70 leading-relaxed font-medium">
               Role-Scoped Access enforced. Tamper-evident prototype audit chain.
+              Not for production banking operations without final validation.
             </p>
+            <div className="flex justify-between items-center text-[10px] text-gray-500 font-mono mt-4">
+              <span>Vyapar Pulse Starter © 2026</span>
+              <span>
+                Frontend SHA: {process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.substring(0, 7) || process.env.NEXT_PUBLIC_RENDER_GIT_COMMIT?.substring(0, 7) || 'local'} 
+                | Backend SHA: {gitSha ? gitSha.substring(0, 7) : 'loading...'}
+              </span>
+            </div>
           </div>
         </aside>
 

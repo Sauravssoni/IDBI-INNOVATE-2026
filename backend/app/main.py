@@ -127,7 +127,7 @@ app.include_router(validation.router)
 def get_git_sha() -> str:
     try:
         import os
-        return os.popen('git rev-parse HEAD').read().strip() or "unknown"
+        return os.environ.get("VERCEL_GIT_COMMIT_SHA") or os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or os.popen('git rev-parse HEAD').read().strip() or "unknown"
     except Exception:
         return "unknown"
 
