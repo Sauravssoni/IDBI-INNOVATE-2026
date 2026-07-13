@@ -143,7 +143,7 @@ test.describe('Vyapar Pulse Release Gate', () => {
     if (await runEngine.isVisible()) {
       await runEngine.click();
     }
-    await expect(page.locator('text=CONDITIONAL OFFER').or(page.locator('text=CONDITIONAL_OFFER'))).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('text=Additional Evidence Required').or(page.locator('text=EVIDENCE_REQUEST'))).toBeVisible({ timeout: 15000 });
   });
 
   test('Nirmaan decline/decline-after-review path', async ({ page }) => {
