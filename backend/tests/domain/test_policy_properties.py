@@ -139,18 +139,18 @@ def test_scoring_engine_returns_replayable_score_metadata():
     )
     scores = engine.compute_all_scores()
     assert set(scores.keys()) == {
-        "financial_health_score",
-        "evidence_confidence_score",
-        "resilience_score",
         "financial_health_index",
+        "vyapar_credit_health_score",
         "fhi_breakdown",
         "score_contribution_ledger",
-        "vyapar_credit_health_score",
-        "credit_health_disclaimer",
-        "credit_score_disclaimer",
+        "base_score",
+        "positive_contributions",
+        "adverse_contributions",
+        "final_financial_score",
         "assessment_certainty",
         "score_range",
-        "missing_material_evidence",
+        "credit_health_disclaimer",
+        "credit_score_disclaimer",
         "scoring_version",
     }
     assert "band" not in scores
