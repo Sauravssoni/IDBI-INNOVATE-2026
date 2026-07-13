@@ -59,6 +59,8 @@ The system operates a deterministic 25-case cryptographic verification loop buil
 
 This loop guarantees that the calculation engine is deterministic and the payload disclosure is an exact match to the engine's real-time state.
 
+[Deterministic Validation and Replay Proof (25 Cases)](artifacts/validation/release_assurance.json)
+
 ## Explicit Limitations
 - The integrity graph relationships used for demonstration are seeded.
 - The validation cohort uses bounded synthetic profiles designed specifically for invariant testing.
