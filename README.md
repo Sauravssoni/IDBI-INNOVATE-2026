@@ -35,6 +35,10 @@ Vyapar Pulse is fully deployed and verified across production environments with 
 
 ## 🏛️ Visual Product Showcase
 
+### 🎥 Live Video Demonstrations
+- **[Final Live Demo Video (Google Drive)](https://drive.google.com/file/d/1io4_vgZD4rxJGTCxyfSXwrNyHEbiVFOT/view?usp=sharing)**
+- **[Final Live Demo Video (Local Repo)](docs/assets/video_demo.mov)**
+
 Vyapar Pulse turns complex, fragmented MSME financial data into clean, actionable, and cryptographically sealed decision packages. Below is the operational workflow across the platform's core interfaces:
 
 ### 1. Executive Command Center & Portfolio Monitoring

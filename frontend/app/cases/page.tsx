@@ -287,13 +287,24 @@ export default function CaseInventoryPage() {
                         </div>
                       </td>
                       <td className="py-4 px-6 text-right">
-                        <Link
-                          href={`/cases/${c.id}`}
-                          className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-white hover:bg-light-elevated text-sm font-medium text-brand-teal border border-light-border transition-all shadow-sm"
-                        >
-                          <span>{getActionLabel(user?.role)}</span>
-                          <ArrowUpRight className="w-3.5 h-3.5" />
-                        </Link>
+                        <div className="flex items-center justify-end gap-2">
+                          <Link
+                            href={`/cases/${c.id}`}
+                            className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-white hover:bg-light-elevated text-sm font-medium text-brand-teal border border-light-border transition-all shadow-sm"
+                          >
+                            <span>{getActionLabel(user?.role)}</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                          </Link>
+                          {c.id === "SHAKTI_PRECISION_001" && (
+                            <Link
+                              href="/demo"
+                              className="inline-flex items-center gap-1 px-4 py-2 rounded-lg bg-brand-softTeal hover:bg-brand-teal hover:text-white text-sm font-medium text-brand-teal border border-brand-teal/30 transition-all shadow-sm"
+                            >
+                              <span>View Judge Demo</span>
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </Link>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
