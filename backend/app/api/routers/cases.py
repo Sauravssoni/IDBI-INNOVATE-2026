@@ -303,7 +303,7 @@ def get_portfolio_command_centre(
 
     active_cases_count = len(cases)
     total_requested_exposure = sum((c.requested_amount or Decimal(0)) for c in cases)
-    
+
     # Calculate supportable exposure approximation from cases
     total_supportable_exposure = Decimal("0")
     status_counts: Dict[str, int] = {}
@@ -312,35 +312,48 @@ def get_portfolio_command_centre(
     for c in cases:
         st_str = c.status.value if hasattr(c.status, "value") else str(c.status)
         status_counts[st_str] = status_counts.get(st_str, 0) + 1
-        
+
         # Determine priority and action
         priority_level = "MEDIUM"
         action_required = "Review case details and verify uploaded evidence."
-        if c.recommendation == "CONDITIONAL_OFFER" or c.status == CaseStatus.ASSESSMENT_COMPLETED:
+        if (
+            c.recommendation == "CONDITIONAL_OFFER"
+            or c.status == CaseStatus.ASSESSMENT_COMPLETED
+        ):
             priority_level = "HIGH"
             action_required = "High-priority: Review alternative structuring and Bankability Path actions."
-            total_supportable_exposure += (c.requested_amount or Decimal(0)) * Decimal("0.80")
+            total_supportable_exposure += (c.requested_amount or Decimal(0)) * Decimal(
+                "0.80"
+            )
         elif c.recommendation == "APPROVE":
             priority_level = "HIGH"
             action_required = "Ready for Sanctioning Authority final approval and disbursement checklist."
-            total_supportable_exposure += (c.requested_amount or Decimal(0))
+            total_supportable_exposure += c.requested_amount or Decimal(0)
         elif c.recommendation == "DECLINE_RECOMMENDED":
             priority_level = "LOW"
             action_required = "Review deterministic reason codes and convey 30/60/90-day improvement milestones."
             total_supportable_exposure += Decimal("0")
         else:
-            total_supportable_exposure += (c.requested_amount or Decimal(0)) * Decimal("0.50")
+            total_supportable_exposure += (c.requested_amount or Decimal(0)) * Decimal(
+                "0.50"
+            )
 
-        work_queue.append({
-            "case_id": str(c.id),
-            "business_name": c.business.legal_name if c.business else "Unknown MSME",
-            "requested_amount": float(c.requested_amount or 0),
-            "status": st_str,
-            "recommendation": str(c.recommendation or "PENDING"),
-            "priority_level": priority_level,
-            "action_required": action_required,
-            "updated_at": c.updated_at.isoformat() if c.updated_at else now.isoformat()
-        })
+        work_queue.append(
+            {
+                "case_id": str(c.id),
+                "business_name": c.business.legal_name
+                if c.business
+                else "Unknown MSME",
+                "requested_amount": float(c.requested_amount or 0),
+                "status": st_str,
+                "recommendation": str(c.recommendation or "PENDING"),
+                "priority_level": priority_level,
+                "action_required": action_required,
+                "updated_at": c.updated_at.isoformat()
+                if c.updated_at
+                else now.isoformat(),
+            }
+        )
 
     # Sort work_queue by priority (HIGH first)
     priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
@@ -602,6 +615,7 @@ def evaluate_case(
         raise
     except Exception as exc:
         import traceback
+
         traceback.print_exc()
         db.rollback()
 
@@ -726,11 +740,14 @@ def record_human_decision(
 ):
     if req.expected_version != x_expected_version:
         raise HTTPException(status_code=409, detail="Version mismatch in CAS")
-        
+
     case = can_view_case(db, user, case_id)
-    if getattr(case, "version", 0) != req.expected_version and getattr(case, "version", None) is not None:
+    if (
+        getattr(case, "version", 0) != req.expected_version
+        and getattr(case, "version", None) is not None
+    ):
         raise HTTPException(status_code=409, detail="Stale case version. Refresh case.")
-        
+
     if len(req.reason) < 10:
         raise HTTPException(
             status_code=422,
@@ -827,6 +844,7 @@ def record_human_decision(
         raise
     except Exception:
         import traceback
+
         traceback.print_exc()
         db.rollback()
 
@@ -856,7 +874,10 @@ def get_case_monitoring(
     if not case:
         raise HTTPException(status_code=404, detail="Case not found or access denied")
 
-    is_elevated = (case.recommendation in ["DECLINE_RECOMMENDED", "ADDITIONAL_EVIDENCE_REQUIRED"])
+    is_elevated = case.recommendation in [
+        "DECLINE_RECOMMENDED",
+        "ADDITIONAL_EVIDENCE_REQUIRED",
+    ]
 
     alerts = [
         {
@@ -888,7 +909,9 @@ def get_case_monitoring(
             "rule_name": "Top Payer Concentration Deterioration",
             "status": "TRIGGERED" if is_elevated else "NORMAL",
             "threshold": "Top 2 debtors accounting for > 60% inflows",
-            "observed_metric": "68.4% concentration" if is_elevated else "34.2% concentration",
+            "observed_metric": "68.4% concentration"
+            if is_elevated
+            else "34.2% concentration",
             "detail": "High customer concentration risk detected; top 2 buyers account for over 68% of inflows."
             if is_elevated
             else "Debtor concentration well diversified across 15+ recurring buyers (<40% concentration).",
@@ -955,9 +978,17 @@ def get_decision_package(
         .order_by(AuditEvent.created_at.desc())
         .first()
     )
-    metadata = latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
-    decision_meta = metadata.get("decision", {}) if isinstance(metadata.get("decision"), dict) else {}
-    scores_meta = metadata.get("scores", {}) if isinstance(metadata.get("scores"), dict) else {}
+    metadata = (
+        latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
+    )
+    decision_meta = (
+        metadata.get("decision", {})
+        if isinstance(metadata.get("decision"), dict)
+        else {}
+    )
+    scores_meta = (
+        metadata.get("scores", {}) if isinstance(metadata.get("scores"), dict) else {}
+    )
 
     offers = decision_meta.get("offers", [])
     binding_limit = decision_meta.get("binding_limit")
@@ -967,21 +998,32 @@ def get_decision_package(
 
     try:
         from app.domain.evidence.passport import generate_evidence_passport
+
         passport = generate_evidence_passport(db, str(case.id))
     except Exception:
         passport = None
 
     try:
         from app.services.reconciliation import run_reconciliation
+
         recon = run_reconciliation(db, str(cid))
-        recon_quality = Decimal(str(recon["reconciliation_match_percent"])) if recon and recon.get("reconciliation_match_percent") is not None else case.data_confidence_score
+        recon_quality = (
+            Decimal(str(recon["reconciliation_match_percent"]))
+            if recon and recon.get("reconciliation_match_percent") is not None
+            else case.data_confidence_score
+        )
     except Exception:
         recon_quality = case.data_confidence_score
 
-    features_dict = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
+    features_dict = (
+        metadata.get("features", {})
+        if isinstance(metadata.get("features"), dict)
+        else {}
+    )
     if not features_dict:
         try:
             from app.core.features.engine import FeatureEngine
+
             fe = FeatureEngine(db, str(case.business_id_fk))
             features_dict = fe.derive_all_features()
         except Exception:
@@ -994,12 +1036,17 @@ def get_decision_package(
     ):
         try:
             from app.core.scoring.scorer import ScoringEngine
+
             scorer = ScoringEngine(features_dict)
             scores_meta = scorer.compute_all_scores()
         except Exception:
             pass
 
-    evidence_confidence = Decimal(str(scores_meta["evidence_confidence_score"])) if scores_meta.get("evidence_confidence_score") is not None else case.data_confidence_score
+    evidence_confidence = (
+        Decimal(str(scores_meta["evidence_confidence_score"]))
+        if scores_meta.get("evidence_confidence_score") is not None
+        else case.data_confidence_score
+    )
 
     fhi_val = scores_meta.get("financial_health_index")
     fhi_dec = Decimal(str(fhi_val)) if fhi_val is not None else None
@@ -1010,6 +1057,7 @@ def get_decision_package(
 
     try:
         from app.domain.financial.engine import FinancialCapacityEngine
+
         cap_summary = FinancialCapacityEngine.compute_capacity_from_features(
             features_dict,
             Decimal(str(case.requested_amount)),
@@ -1040,44 +1088,84 @@ def get_decision_package(
         missing_material = scores_meta.get("missing_material_evidence") or []
         if missing_material:
             certainty_reasons.append(
-                "Material evidence gaps remain: " + ", ".join(str(item) for item in missing_material)
+                "Material evidence gaps remain: "
+                + ", ".join(str(item) for item in missing_material)
             )
         else:
-            certainty_reasons.append("Scoring engine found complete material evidence for this assessment.")
+            certainty_reasons.append(
+                "Scoring engine found complete material evidence for this assessment."
+            )
     elif coverage_score < 50:
         assessment_certainty = "INSUFFICIENT_TO_ASSESS"
-        certainty_reasons.append("Multi-rail evidence coverage below minimum threshold (<50%).")
+        certainty_reasons.append(
+            "Multi-rail evidence coverage below minimum threshold (<50%)."
+        )
     elif coverage_score < 80:
         assessment_certainty = "MODERATE_CERTAINTY"
         certainty_reasons.append("Partial rail coverage across banking or tax returns.")
     else:
         assessment_certainty = "HIGH_CERTAINTY"
-        certainty_reasons.append("Comprehensive multi-rail coverage across Banking, GST, Bureau, and Financials.")
+        certainty_reasons.append(
+            "Comprehensive multi-rail coverage across Banking, GST, Bureau, and Financials."
+        )
 
     # CD-002: Synthetic peer context
     peer_context = {
-        "peer_sector": case.business.sector if case.business else "Manufacturing — Auto Ancillary",
+        "peer_sector": case.business.sector
+        if case.business
+        else "Manufacturing — Auto Ancillary",
         "peer_sample_size": 48,
         "sample_status": "VALID_PEER_SAMPLE",
         "metrics_comparison": {
-            "revenue_stability": {"case_score": 85, "sector_median": 72, "percentile": 78, "status": "ABOVE_MEDIAN"},
-            "dscr": {"case_value": float(case.dscr) if case.dscr else 1.35, "sector_median": 1.35, "percentile": 82, "status": "ABOVE_MEDIAN"},
-            "filing_regularity": {"case_score": 100, "sector_median": 88, "percentile": 90, "status": "ABOVE_MEDIAN"},
-        }
+            "revenue_stability": {
+                "case_score": 85,
+                "sector_median": 72,
+                "percentile": 78,
+                "status": "ABOVE_MEDIAN",
+            },
+            "dscr": {
+                "case_value": float(case.dscr) if case.dscr else 1.35,
+                "sector_median": 1.35,
+                "percentile": 82,
+                "status": "ABOVE_MEDIAN",
+            },
+            "filing_regularity": {
+                "case_score": 100,
+                "sector_median": 88,
+                "percentile": 90,
+                "status": "ABOVE_MEDIAN",
+            },
+        },
     }
 
     try:
         from app.domain.bankability.path import compute_bankability_path
-        req_product_str = str(getattr(case, "requested_product", "WORKING_CAPITAL_LINE") or "WORKING_CAPITAL_LINE")
+
+        req_product_str = str(
+            getattr(case, "requested_product", "WORKING_CAPITAL_LINE")
+            or "WORKING_CAPITAL_LINE"
+        )
         if hasattr(req_product_str, "value"):
             req_product_str = req_product_str.value
         bankability_path = compute_bankability_path(
             features_dict,
             scores_meta,
-            Decimal(str(getattr(case, "requested_amount", getattr(case, "requested_amount_inr", "2500000")))),
+            Decimal(
+                str(
+                    getattr(
+                        case,
+                        "requested_amount",
+                        getattr(case, "requested_amount_inr", "2500000"),
+                    )
+                )
+            ),
             req_product_str,
         )
-        if case.recommendation in ("CONDITIONAL_OFFER", "DECLINE_RECOMMENDED", "ADDITIONAL_EVIDENCE_REQUIRED"):
+        if case.recommendation in (
+            "CONDITIONAL_OFFER",
+            "DECLINE_RECOMMENDED",
+            "ADDITIONAL_EVIDENCE_REQUIRED",
+        ):
             conditions = [
                 f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> Transitions decision to {m['target_state']} ({m['impact_on_score']})"
                 for m in bankability_path.get("milestones", [])
@@ -1098,17 +1186,30 @@ def get_decision_package(
         "APPROVE": "स्वीकृत (Approved)",
         "ADDITIONAL_EVIDENCE_REQUIRED": "अतिरिक्त साक्ष्य की आवश्यकता (Additional Evidence Required)",
     }
-    missing_checklist_hindi = [
-        f"{src}: {src} साक्ष्य सत्यापित या ताज़ा नहीं है (Evidence unverified/missing)"
-        for src in (passport.get("missing_sources", []) + passport.get("unverified_sources", []))
-    ] if passport else []
-    path_actions_hindi = [
-        f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> {m['target_state']} के लिए प्रयास करें"
-        for m in bankability_path.get("milestones", [])
-    ] if bankability_path else []
+    missing_checklist_hindi = (
+        [
+            f"{src}: {src} साक्ष्य सत्यापित या ताज़ा नहीं है (Evidence unverified/missing)"
+            for src in (
+                passport.get("missing_sources", [])
+                + passport.get("unverified_sources", [])
+            )
+        ]
+        if passport
+        else []
+    )
+    path_actions_hindi = (
+        [
+            f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> {m['target_state']} के लिए प्रयास करें"
+            for m in bankability_path.get("milestones", [])
+        ]
+        if bankability_path
+        else []
+    )
 
     hindi_summary = {
-        "decision_label": hindi_rec_map.get(str(case.recommendation), "समीक्षा के लिए तैयार (Ready for Review)"),
+        "decision_label": hindi_rec_map.get(
+            str(case.recommendation), "समीक्षा के लिए तैयार (Ready for Review)"
+        ),
         "reason_explanation": "आवेदक का ऋण सेवा अनुपात (DSCR) और वित्तीय साक्ष्य अनुशंसित कार्यशील पूंजी सीमा की पुष्टि करते हैं।"
         if str(case.recommendation) in ["CONDITIONAL_OFFER", "APPROVE"]
         else "वित्तीय साक्ष्य और नकदी प्रवाह वर्तमान ऋण आवेदन का समर्थन करने में असमर्थ हैं।",
@@ -1117,7 +1218,7 @@ def get_decision_package(
     }
 
     latest_assessment = AssessmentService.get_latest_assessment(db, case.id)
-    
+
     if latest_assessment:
         if binding_limit is None and latest_assessment.supportable_amount is not None:
             binding_limit = float(latest_assessment.supportable_amount)
@@ -1127,31 +1228,40 @@ def get_decision_package(
             reason_codes = latest_assessment.policy_reason_codes
         if not offers and latest_assessment.offers:
             offers = latest_assessment.offers
-            
+
         if not offers and latest_assessment.product_capacities:
             offers = []
             for cap in latest_assessment.product_capacities:
-                t = getattr(case, 'proposed_tenor_months', None)
-                r = getattr(case, 'proposed_annual_rate', None)
+                t = getattr(case, "proposed_tenor_months", None)
+                r = getattr(case, "proposed_annual_rate", None)
                 tenor = int(t) if t else None
                 rate = float(r) if r else None
                 emi = float(cap.capacity) / tenor if tenor else None
-                
-                offers.append({
-                    "product_type": cap.product_name,
-                    "amount": float(cap.capacity),
-                    "interest_rate_pct": rate,
-                    "tenure_months": tenor,
-                    "estimated_repayment": emi,
-                    "post_loan_dscr": post_loan_dscr,
-                    "collateral_structure": "First charge on current assets",
-                    "covenants": [c.covenant_text for c in latest_assessment.covenants]
-                })
+
+                offers.append(
+                    {
+                        "product_type": cap.product_name,
+                        "amount": float(cap.capacity),
+                        "interest_rate_pct": rate,
+                        "tenure_months": tenor,
+                        "estimated_repayment": emi,
+                        "post_loan_dscr": post_loan_dscr,
+                        "collateral_structure": "First charge on current assets",
+                        "covenants": [
+                            c.covenant_text for c in latest_assessment.covenants
+                        ],
+                    }
+                )
 
     if not offers or not reason_codes or binding_limit is None:
         try:
             from app.core.decision.policy import DecisionPolicy
-            req_prod_str = case.requested_product.value if hasattr(case.requested_product, "value") else str(case.requested_product)
+
+            req_prod_str = (
+                case.requested_product.value
+                if hasattr(case.requested_product, "value")
+                else str(case.requested_product)
+            )
             policy_inst = DecisionPolicy(
                 features_dict,
                 scores_meta,
@@ -1161,8 +1271,12 @@ def get_decision_package(
             policy_res = policy_inst.evaluate()
             if not offers and policy_res.get("offers"):
                 offers = policy_res["offers"]
-            if not reason_codes and (policy_res.get("reasons") or policy_res.get("reason_codes")):
-                reason_codes = policy_res.get("reasons") or policy_res.get("reason_codes") or []
+            if not reason_codes and (
+                policy_res.get("reasons") or policy_res.get("reason_codes")
+            ):
+                reason_codes = (
+                    policy_res.get("reasons") or policy_res.get("reason_codes") or []
+                )
             if binding_limit is None and policy_res.get("binding_limit") is not None:
                 binding_limit = float(policy_res["binding_limit"])
         except Exception:
@@ -1183,7 +1297,11 @@ def get_decision_package(
         proposed_emi_val = Decimal(str(cap_summary.get("proposed_emi")))
 
     stressed_dscr_val = None
-    if latest_assessment and hasattr(latest_assessment, "stressed_dscr") and latest_assessment.stressed_dscr is not None:
+    if (
+        latest_assessment
+        and hasattr(latest_assessment, "stressed_dscr")
+        and latest_assessment.stressed_dscr is not None
+    ):
         stressed_dscr_val = latest_assessment.stressed_dscr
     elif cap_summary and cap_summary.get("stressed_dscr") is not None:
         stressed_dscr_val = Decimal(str(cap_summary.get("stressed_dscr")))
@@ -1209,7 +1327,9 @@ def get_decision_package(
         proposed_emi=proposed_emi_val,
         post_loan_dscr=post_loan_dscr_dec,
         stressed_dscr=stressed_dscr_val,
-        binding_limit=Decimal(str(binding_limit)) if binding_limit is not None else None,
+        binding_limit=Decimal(str(binding_limit))
+        if binding_limit is not None
+        else None,
         recommendation=case.recommendation,
         reason_codes=reason_codes,
         conditions=conditions,
@@ -1225,7 +1345,6 @@ def get_decision_package(
         scoring_version=scoring_ver_val,
         financial_health_index=fhi_dec,
         vyapar_credit_health_score=credit_score_val,
-
         fhi_breakdown=fhi_breakdown_val,
         score_range=scores_meta.get("score_range"),
         credit_score_disclaimer=disclaimer_val,
@@ -1235,13 +1354,13 @@ def get_decision_package(
         case_version=case.version,
         audit_chain=audit_chain,
         bankability_path=bankability_path,
-        assessment=latest_assessment
+        assessment=latest_assessment,
     )
-    
+
     # Calculate package hash deterministically
     package_data = dp.model_dump(exclude={"package_hash"})
     dp.package_hash = _hash_package_data(package_data)
-    
+
     return dp
 
 
@@ -1289,7 +1408,9 @@ def _canonical_package_value(value: Any, *, exclude_package_hash: bool = False) 
 
 
 def _hash_package_data(package_data: dict[str, Any]) -> str:
-    return hashlib.sha256(_canonical_package_json(package_data).encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        _canonical_package_json(package_data).encode("utf-8")
+    ).hexdigest()
 
 
 REQUIRED_ENGINE_VERSIONS = {
@@ -1308,7 +1429,11 @@ def _build_replay_feature_snapshot(
     evidence_snapshot: dict[str, Any],
     package_data: dict[str, Any],
 ) -> dict[str, Any]:
-    bank_metrics = features.get("bank_metrics") if isinstance(features.get("bank_metrics"), dict) else {}
+    bank_metrics = (
+        features.get("bank_metrics")
+        if isinstance(features.get("bank_metrics"), dict)
+        else {}
+    )
     return {
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
         "raw_features": features,
@@ -1328,7 +1453,8 @@ def _build_replay_feature_snapshot(
         "calculation_inputs": {
             "requested_amount": package_data.get("requested_amount"),
             "requested_product": package_data.get("requested_product"),
-            "calculation_evidence_ids": package_data.get("calculation_evidence_ids") or {},
+            "calculation_evidence_ids": package_data.get("calculation_evidence_ids")
+            or {},
             "bank_metrics": bank_metrics,
             "obligation_state": features.get("obligation_verification_state"),
         },
@@ -1384,7 +1510,9 @@ def _semantically_equal_for_replay(original: Any, replayed: Any) -> bool:
         return Decimal(str(original)) == Decimal(str(replayed))
     except Exception:
         if isinstance(original, str) and isinstance(replayed, str):
-            return _normalize_numeric_text(original) == _normalize_numeric_text(replayed)
+            return _normalize_numeric_text(original) == _normalize_numeric_text(
+                replayed
+            )
         return original == replayed
 
 
@@ -1434,14 +1562,18 @@ def seal_decision_package(
 
     package_id = f"pkg_{uuid.uuid4()}"
     package_data = dp.model_dump(exclude={"package_hash"})
-    package_data.update({
-        "package_id": package_id,
-        "assessment_id": str(assessment_snap.assessment_id) if assessment_snap else f"case-{case.id}-v{case.version}",
-        "audit_tip_hash": audit_tip.event_hash if audit_tip else None,
-        "evidence_passport_version": PASSPORT_ENGINE_VERSION,
-        "feature_schema_version": FEATURE_SCHEMA_VERSION,
-        "package_schema_version": PACKAGE_SCHEMA_VERSION,
-    })
+    package_data.update(
+        {
+            "package_id": package_id,
+            "assessment_id": str(assessment_snap.assessment_id)
+            if assessment_snap
+            else f"case-{case.id}-v{case.version}",
+            "audit_tip_hash": audit_tip.event_hash if audit_tip else None,
+            "evidence_passport_version": PASSPORT_ENGINE_VERSION,
+            "feature_schema_version": FEATURE_SCHEMA_VERSION,
+            "package_schema_version": PACKAGE_SCHEMA_VERSION,
+        }
+    )
 
     existing = (
         db.query(DecisionPackage)
@@ -1459,21 +1591,34 @@ def seal_decision_package(
     package_data["package_hash"] = package_hash
     stored_package_data = _canonical_package_value(package_data)
 
-    metadata = latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
+    metadata = (
+        latest_eval.metadata_json if latest_eval and latest_eval.metadata_json else {}
+    )
     evidence_snapshot = package_data.get("evidence_passport") or {}
-    raw_features = metadata.get("features", {}) if isinstance(metadata.get("features"), dict) else {}
+    raw_features = (
+        metadata.get("features", {})
+        if isinstance(metadata.get("features"), dict)
+        else {}
+    )
     if not raw_features:
         latest_snapshot = AssessmentService.get_latest_assessment(db, case.id)
         if latest_snapshot and latest_snapshot.feature_snapshot:
-            raw_features = latest_snapshot.feature_snapshot if isinstance(latest_snapshot.feature_snapshot, dict) else {}
+            raw_features = (
+                latest_snapshot.feature_snapshot
+                if isinstance(latest_snapshot.feature_snapshot, dict)
+                else {}
+            )
     if not raw_features:
         try:
             from app.core.features.engine import FeatureEngine
+
             fe = FeatureEngine(db, str(case.business_id_fk))
             raw_features = fe.derive_all_features()
         except Exception:
             raw_features = {}
-    feature_snapshot = _build_replay_feature_snapshot(raw_features, evidence_snapshot, package_data)
+    feature_snapshot = _build_replay_feature_snapshot(
+        raw_features, evidence_snapshot, package_data
+    )
     missing_snapshot_fields = _missing_replay_snapshot_fields(feature_snapshot)
     if missing_snapshot_fields:
         raise HTTPException(
@@ -1537,7 +1682,9 @@ def verify_decision_package_hash(
     case = can_view_case(db, user, UUID(case_id))
     record = (
         db.query(DecisionPackage)
-        .filter(DecisionPackage.case_id == case.id, DecisionPackage.package_id == package_id)
+        .filter(
+            DecisionPackage.case_id == case.id, DecisionPackage.package_id == package_id
+        )
         .first()
     )
     if not record:
@@ -1562,7 +1709,9 @@ def replay_decision_package(
     case = can_view_case(db, user, UUID(case_id))
     record = (
         db.query(DecisionPackage)
-        .filter(DecisionPackage.case_id == case.id, DecisionPackage.package_id == package_id)
+        .filter(
+            DecisionPackage.case_id == case.id, DecisionPackage.package_id == package_id
+        )
         .first()
     )
     if not record:
@@ -1583,7 +1732,11 @@ def replay_decision_package(
 
     snapshot = record.feature_snapshot or {}
     if _missing_replay_snapshot_fields(snapshot):
-        return {"status": "FEATURE_SNAPSHOT_INCOMPLETE", "package_id": package_id, "differences": []}
+        return {
+            "status": "FEATURE_SNAPSHOT_INCOMPLETE",
+            "package_id": package_id,
+            "differences": [],
+        }
     features = snapshot.get("raw_features") or {}
     scores = ScoringEngine(features).compute_all_scores()
     cap = FinancialCapacityEngine.compute_capacity_from_features(
@@ -1607,30 +1760,45 @@ def replay_decision_package(
             Decimal(str(record.canonical_json.get("requested_amount", "0"))),
             record.canonical_json.get("requested_product") or "WORKING_CAPITAL_LINE",
         )
-        replay_conditions = [
-            f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> Transitions decision to {m['target_state']} ({m['impact_on_score']})"
-            for m in replay_bankability_path.get("milestones", [])
-        ] if policy.get("decision") in ("CONDITIONAL_OFFER", "DECLINE_RECOMMENDED", "ADDITIONAL_EVIDENCE_REQUIRED") else [
-            f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']}"
-            for m in replay_bankability_path.get("milestones", [])
-        ]
+        replay_conditions = (
+            [
+                f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']} -> Transitions decision to {m['target_state']} ({m['impact_on_score']})"
+                for m in replay_bankability_path.get("milestones", [])
+            ]
+            if policy.get("decision")
+            in (
+                "CONDITIONAL_OFFER",
+                "DECLINE_RECOMMENDED",
+                "ADDITIONAL_EVIDENCE_REQUIRED",
+            )
+            else [
+                f"{m['milestone_id']} ({m['timeline_tier']}): {m['action']}"
+                for m in replay_bankability_path.get("milestones", [])
+            ]
+        )
     except Exception:
         replay_bankability_path = {}
         replay_conditions = []
 
     selected_offer = next(
         (
-            offer for offer in policy.get("offers", [])
-            if offer.get("product_type") == record.canonical_json.get("requested_product")
+            offer
+            for offer in policy.get("offers", [])
+            if offer.get("product_type")
+            == record.canonical_json.get("requested_product")
         ),
         (policy.get("offers") or [{}])[0] if policy.get("offers") else {},
     )
     original_selected_offer = next(
         (
-            offer for offer in record.canonical_json.get("offers", [])
-            if offer.get("product_type") == record.canonical_json.get("requested_product")
+            offer
+            for offer in record.canonical_json.get("offers", [])
+            if offer.get("product_type")
+            == record.canonical_json.get("requested_product")
         ),
-        (record.canonical_json.get("offers") or [{}])[0] if record.canonical_json.get("offers") else {},
+        (record.canonical_json.get("offers") or [{}])[0]
+        if record.canonical_json.get("offers")
+        else {},
     )
     comparisons = {
         "financial_health_index": scores.get("financial_health_index"),
@@ -1645,17 +1813,21 @@ def replay_decision_package(
         "supportable_amount": float(Decimal(str(policy.get("binding_limit", 0) or 0))),
         "selected_product": record.canonical_json.get("requested_product"),
         "policy_recommendation": policy.get("decision"),
-        "binding_rule": policy.get("missing_verification_state") or policy.get("reasons", [None])[0],
+        "binding_rule": policy.get("missing_verification_state")
+        or policy.get("reasons", [None])[0],
         "conditions": replay_conditions,
         "covenants": selected_offer.get("covenants", []),
     }
     original = {
         "financial_health_index": record.canonical_json.get("financial_health_index"),
-        "vyapar_credit_health_score": record.canonical_json.get("vyapar_credit_health_score"),
+        "vyapar_credit_health_score": record.canonical_json.get(
+            "vyapar_credit_health_score"
+        ),
         "assessment_certainty": record.canonical_json.get("assessment_certainty"),
         "score_range": record.canonical_json.get("score_range"),
         "integrity_state": record.canonical_json.get("integrity_state", "UNKNOWN"),
-        "current_dscr": record.canonical_json.get("current_dscr") or record.canonical_json.get("dscr"),
+        "current_dscr": record.canonical_json.get("current_dscr")
+        or record.canonical_json.get("dscr"),
         "proposed_emi": record.canonical_json.get("proposed_emi"),
         "post_loan_dscr": record.canonical_json.get("post_loan_dscr"),
         "stressed_dscr": record.canonical_json.get("stressed_dscr"),
@@ -1678,16 +1850,15 @@ def replay_decision_package(
         "replayed": comparisons,
     }
 
+
 @router.post("/{case_id}/verify-audit", response_model=AuditVerificationResponse)
 def verify_audit_chain_endpoint(
-    case_id: str,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user)
+    case_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     case = can_view_case(db, user, UUID(case_id))
-        
+
     result = verify_audit_chain(db, str(case.id), user)
-    
+
     latest_package = (
         db.query(DecisionPackage)
         .filter(DecisionPackage.case_id == case.id)
@@ -1696,43 +1867,59 @@ def verify_audit_chain_endpoint(
     )
     if latest_package:
         package_hash = latest_package.package_hash
-        package_hash_valid = package_hash == _hash_package_data(latest_package.canonical_json)
+        package_hash_valid = package_hash == _hash_package_data(
+            latest_package.canonical_json
+        )
     else:
         package_hash = ""
         package_hash_valid = False
-    
+
     return AuditVerificationResponse(
         bola_verification_status=result["bola_verification_status"],
         cas_verification_status=result["cas_verification_status"],
         audit_chain_valid=result["audit_chain_valid"],
         analyst_event_status=result.get("analyst_event_status", "NOT VERIFIED"),
-        human_decision_event_status=result.get("human_decision_event_status", "NOT VERIFIED"),
+        human_decision_event_status=result.get(
+            "human_decision_event_status", "NOT VERIFIED"
+        ),
         package_hash_valid=package_hash_valid,
         authorization_scope_valid=result["authorization_scope_valid"],
         package_hash=package_hash,
         audit_tip_hash=result["audit_tip_hash"],
         verified_at=result["verified_at"],
         verification_version=result["verification_version"],
-        reason=result.get("reason")
+        reason=result.get("reason"),
     )
 
+
 @router.get("/{case_id}/assessment-result")
-def get_assessment_result(case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_assessment_result(
+    case_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+):
     can_view_case(db, user, case_id)
     assessment = AssessmentService.get_latest_assessment(db, case_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="No assessment found")
     return assessment
 
+
 @router.get("/{case_id}/assessments/{assessment_id}")
-def get_assessment_by_id(case_id: UUID, assessment_id: UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def get_assessment_by_id(
+    case_id: UUID,
+    assessment_id: UUID,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
     can_view_case(db, user, case_id)
     assessment = AssessmentService.get_assessment_by_id(db, assessment_id)
     if not assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     if str(assessment.case_id) != str(case_id):
-        raise HTTPException(status_code=400, detail="Assessment does not belong to this case")
+        raise HTTPException(
+            status_code=400, detail="Assessment does not belong to this case"
+        )
     return assessment
+
 
 class SimulationRequest(BaseModel):
     product_type: str
@@ -1740,35 +1927,50 @@ class SimulationRequest(BaseModel):
     tenure_months: int
     interest_rate: float
 
+
 @router.post("/{case_id}/simulate")
 def simulate_product_structure(
-    case_id: UUID, req: SimulationRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)
+    case_id: UUID,
+    req: SimulationRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
     case = can_view_case(db, user, case_id)
     from app.services.assessment_service import AssessmentService
+
     assessment = AssessmentService.get_latest_assessment(db, case_id)
     if not assessment:
         return {"error": "No assessment exists to simulate against."}
-        
-    features = assessment.feature_snapshot.model_dump(mode="json") if hasattr(assessment.feature_snapshot, "model_dump") else assessment.feature_snapshot
+
+    features = (
+        assessment.feature_snapshot.model_dump(mode="json")
+        if hasattr(assessment.feature_snapshot, "model_dump")
+        else assessment.feature_snapshot
+    )
     if not isinstance(features, dict):
         features = dict(features) if features else {}
-    if isinstance(features, dict) and features.get("obligation_verification_state") in ["UNKNOWN_OBLIGATIONS", "UNVERIFIED"]:
+    if isinstance(features, dict) and features.get("obligation_verification_state") in [
+        "UNKNOWN_OBLIGATIONS",
+        "UNVERIFIED",
+    ]:
         return {"error": "NOT_ASSESSABLE", "decision": "ADDITIONAL_EVIDENCE_REQUIRED"}
-        
+
     try:
         from app.domain.financial.engine import FinancialCapacityEngine
         from decimal import Decimal
+
         cap = FinancialCapacityEngine.compute_capacity_from_features(
             features=features,
             requested_amount=Decimal(str(req.amount)),
             requested_product=req.product_type,
             custom_tenure_months=req.tenure_months,
-            custom_annual_rate=Decimal(str(req.interest_rate))
+            custom_annual_rate=Decimal(str(req.interest_rate)),
         )
-        
-        limit_dict = cap.get("product_limits", {}).get(cap.get("requested_product_method", ""), {})
-        
+
+        limit_dict = cap.get("product_limits", {}).get(
+            cap.get("requested_product_method", ""), {}
+        )
+
         return {
             "assessment_id": str(assessment.assessment_id),
             "case_version": assessment.case_version,
@@ -1778,8 +1980,12 @@ def simulate_product_structure(
             "rate": req.interest_rate,
             "tenor": req.tenure_months,
             "proposed_emi": float(cap.get("proposed_emi", 0) or 0),
-            "operating_cash_available": float(cap.get("operating_cash_available_for_debt_service_monthly", 0) or 0),
-            "existing_debt_service": float(cap.get("verified_existing_debt_service_monthly", 0) or 0),
+            "operating_cash_available": float(
+                cap.get("operating_cash_available_for_debt_service_monthly", 0) or 0
+            ),
+            "existing_debt_service": float(
+                cap.get("verified_existing_debt_service_monthly", 0) or 0
+            ),
             "current_dscr": cap.get("current_dscr"),
             "post_loan_dscr": cap.get("post_loan_dscr"),
             "stressed_dscr": cap.get("stressed_dscr"),
@@ -1789,34 +1995,31 @@ def simulate_product_structure(
             "covenants": limit_dict.get("limitations", []),
             "assumptions": limit_dict.get("formula"),
             "limitations": limit_dict.get("limitations", []),
-            "engine_versions": {
-                "calculation": cap.get("calculation_version")
-            }
+            "engine_versions": {"calculation": cap.get("calculation_version")},
         }
     except Exception as e:
         return {"error": f"Engine failed: {str(e)}"}
 
-        
     p = req.amount
     r = (req.interest_rate / 100.0) / 12.0
     n = req.tenure_months
-    
+
     if r > 0 and n > 0:
         emi = p * r * ((1 + r) ** n) / (((1 + r) ** n) - 1)
     else:
         emi = p / (n if n > 0 else 1)
-        
+
     revenue = float(case.monthly_revenue_inr)
     dscr = revenue / emi if emi > 0 else 0
-    
+
     # Policy checks
     viable = dscr >= 1.25
-    
+
     return {
         "simulated_emi": emi,
         "simulated_dscr": dscr,
         "viable": viable,
-        "policy_breaches": ["DSCR below 1.25"] if not viable else []
+        "policy_breaches": ["DSCR below 1.25"] if not viable else [],
     }
 
 
@@ -1832,21 +2035,41 @@ def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
     promoter_id = "PRM-991A"
     related_biz_id = "BIZ-882B"
     bank_acc_id = "ACC-001X"
-    
+
     nodes = [
         {"id": business_id, "label": case.business_name, "type": "BUSINESS"},
         {"id": promoter_id, "label": "Main Promoter", "type": "PERSON"},
         {"id": related_biz_id, "label": "Supplier Corp", "type": "BUSINESS"},
         {"id": bank_acc_id, "label": "Shared Bank Acct", "type": "BANK_ACCOUNT"},
     ]
-    
+
     edges = [
-        {"source": promoter_id, "target": business_id, "relationship": "PROMOTER_OF", "matched_identifiers": ["PAN", "Name"]},
-        {"source": related_biz_id, "target": business_id, "relationship": "SUPPLIER_OF", "matched_identifiers": ["GSTIN"]},
-        {"source": business_id, "target": bank_acc_id, "relationship": "SHARES_BANK_ACCOUNT", "matched_identifiers": ["Bank Account No"]},
-        {"source": related_biz_id, "target": bank_acc_id, "relationship": "SHARES_BANK_ACCOUNT", "matched_identifiers": ["Bank Account No"]},
+        {
+            "source": promoter_id,
+            "target": business_id,
+            "relationship": "PROMOTER_OF",
+            "matched_identifiers": ["PAN", "Name"],
+        },
+        {
+            "source": related_biz_id,
+            "target": business_id,
+            "relationship": "SUPPLIER_OF",
+            "matched_identifiers": ["GSTIN"],
+        },
+        {
+            "source": business_id,
+            "target": bank_acc_id,
+            "relationship": "SHARES_BANK_ACCOUNT",
+            "matched_identifiers": ["Bank Account No"],
+        },
+        {
+            "source": related_biz_id,
+            "target": bank_acc_id,
+            "relationship": "SHARES_BANK_ACCOUNT",
+            "matched_identifiers": ["Bank Account No"],
+        },
     ]
-    
+
     return {
         "status": "REVIEW",
         "reason_code": "SHARED_BANK_ACCOUNT_WITH_SUPPLIER",
@@ -1858,7 +2081,7 @@ def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
         "evidence_ids": ["EVID-BANK-001", "EVID-GST-002"],
         "synthetic_demonstration": True,
         "nodes": nodes,
-        "edges": edges
+        "edges": edges,
     }
 
 
@@ -1869,37 +2092,58 @@ def get_applicant_view(
     user: User = Depends(get_current_user),
 ):
     case = can_view_case(db, user, case_id)
-    
+
     from app.services.assessment_service import AssessmentService
+
     service = AssessmentService(db)
     snapshot = service.get_latest_assessment(str(case_id))
-    
+
     if not snapshot:
-        raise HTTPException(status_code=404, detail="No assessment snapshot found for applicant view")
-        
+        raise HTTPException(
+            status_code=404, detail="No assessment snapshot found for applicant view"
+        )
+
     assessment = snapshot.canonical_assessment_json
-    
-    status_str = case.status.value if hasattr(case.status, 'value') else str(case.status)
-    sanctioned_amt = float(case.approved_amount) if status_str == "HUMAN_APPROVED" and case.approved_amount else None
-    
+
+    status_str = (
+        case.status.value if hasattr(case.status, "value") else str(case.status)
+    )
+    sanctioned_amt = (
+        float(case.approved_amount)
+        if status_str == "HUMAN_APPROVED" and case.approved_amount
+        else None
+    )
+
     pillars = assessment.get("six_pillars", [])
-    positive = [p["name"] for p in pillars if p.get("health_status") in ("STRONG", "HEALTHY")]
-    
+    positive = [
+        p["name"] for p in pillars if p.get("health_status") in ("STRONG", "HEALTHY")
+    ]
+
     interventions = assessment.get("bankability_interventions", [])
-    bank_actions = [f"{i.get('intervention_type')}: {i.get('description')}" for i in interventions]
-    
+    bank_actions = [
+        f"{i.get('intervention_type')}: {i.get('description')}" for i in interventions
+    ]
+
     missing = assessment.get("evidence_passport", {}).get("missing_mandatory", [])
-    
+
     return {
         "status": status_str,
         "sanctioned_amount_after_human_decision": sanctioned_amt,
         "positive_factors": positive,
         "safe_adverse_factors": ["Data freshness could be improved"],
         "missing_evidence": missing,
-        "conditions": [c.get("condition_text") for c in assessment.get("conditions", [])] if assessment.get("conditions") else [],
+        "conditions": [
+            c.get("condition_text") for c in assessment.get("conditions", [])
+        ]
+        if assessment.get("conditions")
+        else [],
         "bankability_actions": bank_actions,
-        "milestones_30_60_90": ["30 days: Update GST filings", "60 days: Re-sync bank", "90 days: Re-apply"],
+        "milestones_30_60_90": [
+            "30 days: Update GST filings",
+            "60 days: Re-sync bank",
+            "90 days: Re-apply",
+        ],
         "reconsideration_requirements": ["Provide missing evidence"] if missing else [],
         "english_text": "Your application has been processed. Check actions required.",
-        "hindi_text": "आपके आवेदन पर कार्रवाई की गई है। कृपया आवश्यक कार्रवाई देखें।"
+        "hindi_text": "आपके आवेदन पर कार्रवाई की गई है। कृपया आवश्यक कार्रवाई देखें।",
     }

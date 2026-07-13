@@ -18,6 +18,7 @@ def db_session():
     yield db
     db.close()
 
+
 @pytest.fixture(scope="module")
 def test_users(db_session):
     users = []
@@ -90,64 +91,77 @@ def test_users(db_session):
 
 def test_human_decision_approve_success(test_users):
     case = test_users["case"]
-    
+
     resp = client.post(
         "/api/auth/login",
-        json={"email": "alice@idbibank.com", "password": "password123"}
+        json={"email": "alice@idbibank.com", "password": "password123"},
     )
     if resp.status_code != 200:
         resp = client.post(
             "/api/auth/login",
-            json={"email": "bob@idbibank.com", "password": "password123"}
+            json={"email": "bob@idbibank.com", "password": "password123"},
         )
     cookies = resp.cookies
     csrf_token = cookies.get("vyapar_csrf_token", "dummy")
-    
+
     case_id = str(case.id)
-    
+
     payload = {
         "decision": "APPROVE_AS_REQUESTED",
         "reason": "Clear repayment capacity seen in GST data.",
-        "expected_version": case.version
+        "expected_version": case.version,
     }
-    
+
     res = client.post(
         f"/api/cases/{case_id}/human-decision",
         json=payload,
         cookies=cookies,
-        headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4()), "X-Expected-Version": str(case.version)}
+        headers={
+            "x-csrf-token": csrf_token,
+            "Idempotency-Key": str(uuid.uuid4()),
+            "X-Expected-Version": str(case.version),
+        },
     )
-    
-    assert res.status_code in [200, 403, 400], f"Expected 200/403/400 but got {res.status_code} - {res.text}"
+
+    assert res.status_code in [200, 403, 400], (
+        f"Expected 200/403/400 but got {res.status_code} - {res.text}"
+    )
+
 
 def test_human_decision_decline(test_users):
     case = test_users["case"]
-    
+
     resp = client.post(
         "/api/auth/login",
-        json={"email": "alice@idbibank.com", "password": "password123"}
+        json={"email": "alice@idbibank.com", "password": "password123"},
     )
     if resp.status_code != 200:
         resp = client.post(
             "/api/auth/login",
-            json={"email": "bob@idbibank.com", "password": "password123"}
+            json={"email": "bob@idbibank.com", "password": "password123"},
         )
     cookies = resp.cookies
     csrf_token = cookies.get("vyapar_csrf_token", "dummy")
-    
+
     case_id = str(case.id)
-    
+
     payload = {
         "decision": "DECLINE",
         "reason": "High debt utilization.",
-        "expected_version": case.version
+        "expected_version": case.version,
     }
-    
+
     res = client.post(
         f"/api/cases/{case_id}/human-decision",
         json=payload,
         cookies=cookies,
-        headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4()), "X-Expected-Version": str(case.version)}
+        headers={
+            "x-csrf-token": csrf_token,
+            "Idempotency-Key": str(uuid.uuid4()),
+            "X-Expected-Version": str(case.version),
+        },
     )
-    
-    assert res.status_code in [200, 403, 400], f"Expected 200/403/400 but got {res.status_code} - {res.text}"
+
+    assert res.status_code in [200, 403, 400], (
+        f"Expected 200/403/400 but got {res.status_code} - {res.text}"
+    )

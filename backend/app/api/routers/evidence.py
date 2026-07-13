@@ -200,24 +200,32 @@ def get_assessment_history(
     res = []
     for e in events:
         meta = e.metadata_json or {}
-        
+
         # New approach: check for assessment_id in metadata
         assessment_id = meta.get("assessment_id")
         dec = meta.get("decision", {})
         scores = meta.get("scores", {})
-        
+
         recommendation = dec.get("recommendation", "UNKNOWN")
         binding_limit = dec.get("binding_limit", None)
         dscr = scores.get("dscr", None)
-        
+
         if assessment_id:
             # Query the snapshot
-            snapshot = db.query(AssessmentSnapshot).filter(AssessmentSnapshot.assessment_id == assessment_id).first()
+            snapshot = (
+                db.query(AssessmentSnapshot)
+                .filter(AssessmentSnapshot.assessment_id == assessment_id)
+                .first()
+            )
             if snapshot:
                 snap_json = snapshot.canonical_assessment_json
                 if snap_json:
-                    recommendation = snap_json.get("assessment_range", {}).get("recommendation", recommendation)
-                    binding_limit = snap_json.get("assessment_range", {}).get("supportable_limit", binding_limit)
+                    recommendation = snap_json.get("assessment_range", {}).get(
+                        "recommendation", recommendation
+                    )
+                    binding_limit = snap_json.get("assessment_range", {}).get(
+                        "supportable_limit", binding_limit
+                    )
                     dscr = snap_json.get("current_dscr", dscr)
 
         res.append(
@@ -257,31 +265,57 @@ def get_evidence_envelope(
 ):
     can_view_case(db, user, case_id)
     rec = run_reconciliation(db, str(case_id))
-    
+
     unresolved_ratio = 0.0
     adverse_codes = []
     if rec.get("total_discrepancies", 0) > 0:
-        unresolved = sum(1 for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED")
+        unresolved = sum(
+            1
+            for d in rec.get("discrepancies", [])
+            if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED"
+        )
         unresolved_ratio = unresolved / rec.get("total_discrepancies", 0)
-        adverse_codes = [d.get("type") if isinstance(d, dict) else d.type for d in rec.get("discrepancies", []) if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED"]
-    
+        adverse_codes = [
+            d.get("type") if isinstance(d, dict) else d.type
+            for d in rec.get("discrepancies", [])
+            if (d.get("status") if isinstance(d, dict) else d.status) == "UNRESOLVED"
+        ]
+
     from app.services.assessment_service import AssessmentService
     from app.domain.evidence.passport import generate_evidence_passport
-    
+
     assessment = AssessmentService.get_latest_assessment(db, case_id)
     passport = generate_evidence_passport(db, str(case_id))
-    
-    sufficiency = passport.get("metrics", {}).get("evidence_sufficiency_score", "NOT_AVAILABLE_NOT_USED")
-    certainty = assessment.evidence_certainty if assessment else "NOT_AVAILABLE_NOT_USED"
-    asmnt_range_obj = getattr(assessment, "assessment_range", None) if assessment else None
-    asmnt_range = asmnt_range_obj.model_dump() if asmnt_range_obj and hasattr(asmnt_range_obj, "model_dump") else "NOT_AVAILABLE_NOT_USED"
+
+    sufficiency = passport.get("metrics", {}).get(
+        "evidence_sufficiency_score", "NOT_AVAILABLE_NOT_USED"
+    )
+    certainty = (
+        assessment.evidence_certainty if assessment else "NOT_AVAILABLE_NOT_USED"
+    )
+    asmnt_range_obj = (
+        getattr(assessment, "assessment_range", None) if assessment else None
+    )
+    asmnt_range = (
+        asmnt_range_obj.model_dump()
+        if asmnt_range_obj and hasattr(asmnt_range_obj, "model_dump")
+        else "NOT_AVAILABLE_NOT_USED"
+    )
     integrity = assessment.integrity_state if assessment else "NOT_AVAILABLE_NOT_USED"
-    coverage = passport.get("metrics", {}).get("coverage_ratio", "NOT_AVAILABLE_NOT_USED")
-    freshness = passport.get("metrics", {}).get("freshness_score", "NOT_AVAILABLE_NOT_USED")
+    coverage = passport.get("metrics", {}).get(
+        "coverage_ratio", "NOT_AVAILABLE_NOT_USED"
+    )
+    freshness = passport.get("metrics", {}).get(
+        "freshness_score", "NOT_AVAILABLE_NOT_USED"
+    )
     missing = passport.get("missing_evidence_categories", [])
     ev_ids = passport.get("evidence_records", [])
-    ev_id_list = [r.get("id") for r in ev_ids] if isinstance(ev_ids, list) else "NOT_AVAILABLE_NOT_USED"
-    
+    ev_id_list = (
+        [r.get("id") for r in ev_ids]
+        if isinstance(ev_ids, list)
+        else "NOT_AVAILABLE_NOT_USED"
+    )
+
     return {
         "evidence_sufficiency_score": sufficiency,
         "evidence_certainty": certainty,
@@ -291,10 +325,11 @@ def get_evidence_envelope(
         "freshness_score": freshness,
         "unresolved_transaction_ratio": unresolved_ratio,
         "missing_evidence": missing,
-        "positive_reason_codes": ["EVIDENCE_VERIFIED"] if unresolved_ratio < 0.1 else [],
+        "positive_reason_codes": ["EVIDENCE_VERIFIED"]
+        if unresolved_ratio < 0.1
+        else [],
         "adverse_reason_codes": adverse_codes,
         "evidence_ids": ev_id_list,
         "passport_version": passport.get("version", "NOT_AVAILABLE_NOT_USED"),
-        "last_verified": datetime.utcnow().isoformat() + "Z"
+        "last_verified": datetime.utcnow().isoformat() + "Z",
     }
-

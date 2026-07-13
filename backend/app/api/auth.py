@@ -96,8 +96,6 @@ def create_demo_session(
             detail="Guided demo access is unavailable in this environment.",
         )
 
-
-
     # Rate limit based on IP
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()

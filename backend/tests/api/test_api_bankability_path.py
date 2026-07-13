@@ -123,7 +123,7 @@ def test_bankability_simulate_api(client: TestClient, db):
             "amount": 5000000,
             "tenure_months": 12,
             "interest_rate": 10.5,
-            "overrides": {"dscr": "2.25", "operating_inflows_monthly": "1500000"}
+            "overrides": {"dscr": "2.25", "operating_inflows_monthly": "1500000"},
         },
         **auth_kwargs,
     )

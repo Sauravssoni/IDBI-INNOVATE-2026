@@ -7,9 +7,11 @@ from app.core.config import get_settings
 
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
+
 @router.get("/debug_env")
 async def debug_env():
     import os
+
     settings = get_settings()
     return {
         "DEMO_RESET_ENABLED_SETTING": settings.DEMO_RESET_ENABLED,
@@ -17,6 +19,7 @@ async def debug_env():
         "DEMO_RESET_ENABLED_OS": os.getenv("DEMO_RESET_ENABLED"),
         "DEMO_RESET_TOKEN_OS": os.getenv("DEMO_RESET_TOKEN"),
     }
+
 
 @router.post("/reset")
 def reset_demo(
@@ -43,14 +46,13 @@ def reset_demo(
     token_authorized = False
     if client_token:
         if not settings.DEMO_RESET_TOKEN or client_token != settings.DEMO_RESET_TOKEN:
-            raise HTTPException(
-                status_code=403, detail="Invalid demo reset token."
-            )
+            raise HTTPException(status_code=403, detail="Invalid demo reset token.")
         token_authorized = True
 
     if not token_authorized:
         # Check if authorized via session
         from app.api.dependencies import get_current_user, verify_csrf
+
         try:
             user = get_current_user(request, db)
             verify_csrf(request, db)

@@ -2,11 +2,13 @@ from enum import Enum
 from pydantic import BaseModel
 from decimal import Decimal
 
+
 class ProductType(str, Enum):
     WORKING_CAPITAL_LINE = "WORKING_CAPITAL_LINE"
     RECEIVABLES_FINANCE = "RECEIVABLES_FINANCE"
     TERM_LOAN = "TERM_LOAN"
     EQUIPMENT_FINANCE = "EQUIPMENT_FINANCE"
+
 
 class ProductPolicy(BaseModel):
     policy_version: str
@@ -23,6 +25,7 @@ class ProductPolicy(BaseModel):
     stress_rate_hike_bps: int
     concentration_haircut: Decimal
 
+
 def get_product_policy(product: ProductType) -> ProductPolicy:
     common_stress = {
         "stress_revenue_drop": Decimal("0.10"),
@@ -30,7 +33,7 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
         "stress_rate_hike_bps": 200,
         "concentration_haircut": Decimal("0.50"),
     }
-    
+
     if product == ProductType.WORKING_CAPITAL_LINE:
         return ProductPolicy(
             policy_version="1.0",
@@ -42,7 +45,7 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("50000000.00"),
             receivable_advance_rate=Decimal("0.0"),
             equipment_ltv=Decimal("0.0"),
-            **common_stress
+            **common_stress,
         )
     elif product == ProductType.RECEIVABLES_FINANCE:
         return ProductPolicy(
@@ -55,7 +58,7 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("100000000.00"),
             receivable_advance_rate=Decimal("0.80"),
             equipment_ltv=Decimal("0.0"),
-            **common_stress
+            **common_stress,
         )
     elif product == ProductType.TERM_LOAN:
         return ProductPolicy(
@@ -68,7 +71,7 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("50000000.00"),
             receivable_advance_rate=Decimal("0.0"),
             equipment_ltv=Decimal("0.0"),
-            **common_stress
+            **common_stress,
         )
     elif product == ProductType.EQUIPMENT_FINANCE:
         return ProductPolicy(
@@ -81,7 +84,7 @@ def get_product_policy(product: ProductType) -> ProductPolicy:
             maximum_exposure=Decimal("100000000.00"),
             receivable_advance_rate=Decimal("0.0"),
             equipment_ltv=Decimal("0.75"),
-            **common_stress
+            **common_stress,
         )
     else:
         raise ValueError(f"Unknown product type: {product}")

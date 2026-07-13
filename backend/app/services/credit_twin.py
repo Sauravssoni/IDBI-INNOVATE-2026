@@ -113,6 +113,7 @@ def calculate_independent_reamortization_dscr(
 
 def get_credit_twin(db: Session, case_id: str) -> dict:
     from app.services.assessment_service import AssessmentService
+
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
@@ -129,7 +130,9 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
                 revenue = Decimal(str(snap["total_annual_revenue"]))
             elif snap.get("annual_revenue"):
                 revenue = Decimal(str(snap["annual_revenue"]))
-            elif isinstance(snap.get("gst_metrics"), dict) and snap["gst_metrics"].get("total_annual_revenue"):
+            elif isinstance(snap.get("gst_metrics"), dict) and snap["gst_metrics"].get(
+                "total_annual_revenue"
+            ):
                 revenue = Decimal(str(snap["gst_metrics"]["total_annual_revenue"]))
         elif hasattr(snap, "model_dump"):
             snap_dict = snap.model_dump()
@@ -138,7 +141,9 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
             elif snap_dict.get("annual_revenue"):
                 revenue = Decimal(str(snap_dict["annual_revenue"]))
 
-    ev_conf = Decimal("90.0") if assessment.evidence_certainty == "HIGH" else Decimal("75.0")
+    ev_conf = (
+        Decimal("90.0") if assessment.evidence_certainty == "HIGH" else Decimal("75.0")
+    )
 
     return {
         "case_id": str(case.id),
@@ -148,10 +153,13 @@ def get_credit_twin(db: Session, case_id: str) -> dict:
         "calculation_version": assessment.calculation_version,
         "total_annual_revenue": revenue,
         "binding_limit": assessment.supportable_amount,
-        "recommendation": assessment.policy_recommendation or (case.recommendation.value if case.recommendation else None),
+        "recommendation": assessment.policy_recommendation
+        or (case.recommendation.value if case.recommendation else None),
         "source_coverage": Decimal("100.0"),
         "evidence_confidence": ev_conf,
         "reconciliation_quality": Decimal("100.0"),
-        "evaluated_at": assessment.generated_at.isoformat() if assessment.generated_at else None,
+        "evaluated_at": assessment.generated_at.isoformat()
+        if assessment.generated_at
+        else None,
         "policy_version": assessment.policy_version,
     }

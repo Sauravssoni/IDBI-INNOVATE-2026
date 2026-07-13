@@ -2,10 +2,12 @@ from pydantic import BaseModel
 from decimal import Decimal
 from typing import List, Optional
 
+
 class OCENBorrower(BaseModel):
     entity_name: str
     gstin: str
     pan: str
+
 
 class OCENCreditDecision(BaseModel):
     status: str
@@ -19,6 +21,7 @@ class OCENCreditDecision(BaseModel):
     covenants: List[str]
     reason_codes: List[str]
 
+
 class OCENEvidence(BaseModel):
     gstr1_revenue: Optional[Decimal]
     bank_inflows: Optional[Decimal]
@@ -26,10 +29,12 @@ class OCENEvidence(BaseModel):
     integrity_status: str
     evidence_ids: List[str]
 
+
 class OCENAudit(BaseModel):
     audit_hash: str
     package_hash: str
     generated_by: str
+
 
 class OCENExportResponse(BaseModel):
     schema_version: str

@@ -292,7 +292,7 @@ describe("CaseEvaluationPage - Role Gating and Read-Only Load", () => {
       if (url === "/api/cases/CASE-001/reconciliation") {
         return { status: 200, data: { status: "PENDING" } };
       }
-      if (url === "/api/cases/CASE-001/assessment-history") {
+      if (url === "/api/cases/CASE-001/audit") {
         return { status: 200, data: [] };
       }
       return {

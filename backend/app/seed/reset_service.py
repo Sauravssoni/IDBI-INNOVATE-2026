@@ -43,7 +43,7 @@ def get_db_fingerprint(db: Session) -> str:
     ).fetchone()
     if row is None:
         return hashlib.sha256(b"localhost:5432:postgres:public").hexdigest()[:8]
-    
+
     user, db_name, schema = row
     raw = f"{user}:{db_name}:{schema}".encode("utf-8")
     return hashlib.sha256(raw).hexdigest()[:8]
@@ -104,35 +104,69 @@ def execute_bounded_reset(db: Session, actor_email: str = "system"):
     logger.info(f"DEMO_RESET_STARTED: User={actor_email}")
     fingerprint = get_db_fingerprint(db)
     logger.info(f"DB_FINGERPRINT: {fingerprint}")
-    
+
     try:
         # Scoped deletion of all business records to ensure pristine invariant state
         demo_business_ids_query = db.query(Business.id)
-        demo_case_ids_query = db.query(Case.id).filter(Case.business_id_fk.in_(demo_business_ids_query))
-        
+        demo_case_ids_query = db.query(Case.id).filter(
+            Case.business_id_fk.in_(demo_business_ids_query)
+        )
+
         from app.db.orm.cases import DecisionPackage
-        db.query(DecisionPackage).filter(DecisionPackage.case_id.in_(demo_case_ids_query)).delete(synchronize_session=False)
-        db.query(AuditEvent).filter(AuditEvent.case_id.in_(demo_case_ids_query)).delete(synchronize_session=False)
-        db.query(IdempotencyRecord).filter(IdempotencyRecord.case_id.in_(demo_case_ids_query)).delete(synchronize_session=False)
-        
-        db.query(GSTPeriod).filter(GSTPeriod.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        db.query(BankTransaction).filter(BankTransaction.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        demo_invoice_ids_query = db.query(Invoice.id).filter(Invoice.business_id_fk.in_(demo_business_ids_query))
-        db.query(InvoicePayment).filter(InvoicePayment.invoice_id_fk.in_(demo_invoice_ids_query)).delete(synchronize_session=False)
-        db.query(Invoice).filter(Invoice.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        db.query(EmploymentPeriod).filter(EmploymentPeriod.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        db.query(Obligation).filter(Obligation.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        
-        db.query(DataConnection).filter(DataConnection.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        db.query(Consent).filter(Consent.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
-        
-        db.query(Case).filter(Case.business_id_fk.in_(demo_business_ids_query)).delete(synchronize_session=False)
+
+        db.query(DecisionPackage).filter(
+            DecisionPackage.case_id.in_(demo_case_ids_query)
+        ).delete(synchronize_session=False)
+        db.query(AuditEvent).filter(AuditEvent.case_id.in_(demo_case_ids_query)).delete(
+            synchronize_session=False
+        )
+        db.query(IdempotencyRecord).filter(
+            IdempotencyRecord.case_id.in_(demo_case_ids_query)
+        ).delete(synchronize_session=False)
+
+        db.query(GSTPeriod).filter(
+            GSTPeriod.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+        db.query(BankTransaction).filter(
+            BankTransaction.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+        demo_invoice_ids_query = db.query(Invoice.id).filter(
+            Invoice.business_id_fk.in_(demo_business_ids_query)
+        )
+        db.query(InvoicePayment).filter(
+            InvoicePayment.invoice_id_fk.in_(demo_invoice_ids_query)
+        ).delete(synchronize_session=False)
+        db.query(Invoice).filter(
+            Invoice.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+        db.query(EmploymentPeriod).filter(
+            EmploymentPeriod.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+        db.query(Obligation).filter(
+            Obligation.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+
+        db.query(DataConnection).filter(
+            DataConnection.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+        db.query(Consent).filter(
+            Consent.business_id_fk.in_(demo_business_ids_query)
+        ).delete(synchronize_session=False)
+
+        db.query(Case).filter(Case.business_id_fk.in_(demo_business_ids_query)).delete(
+            synchronize_session=False
+        )
         db.query(Business).delete(synchronize_session=False)
 
         # Delete demo sessions
         from app.db.orm.users import SessionStore
-        demo_user_ids_query = db.query(User.id).filter(User.email.like("demo_%@vyaparpulse.com"))
-        db.query(SessionStore).filter(SessionStore.user_id.in_(demo_user_ids_query)).delete(synchronize_session=False)
+
+        demo_user_ids_query = db.query(User.id).filter(
+            User.email.like("demo_%@vyaparpulse.com")
+        )
+        db.query(SessionStore).filter(
+            SessionStore.user_id.in_(demo_user_ids_query)
+        ).delete(synchronize_session=False)
 
         seed_demo_principals(db)
         seed_shakti(db)

@@ -24,9 +24,7 @@ def run_seed():
         # 2. Seed exactly ONE test case (idempotent - it deletes if exists)
         seed_shakti(db)
 
-        logger.info(
-            "Successfully seeded exactly one reliable test case."
-        )
+        logger.info("Successfully seeded exactly one reliable test case.")
     except Exception as e:
         logger.error(f"Seeding failed: {e}")
         db.rollback()

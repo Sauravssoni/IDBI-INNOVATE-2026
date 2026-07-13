@@ -5,7 +5,10 @@ from app.seed.reset_service import execute_bounded_reset, DemoResetConflict
 
 
 def reset_demo():
-    if os.environ.get("APP_ENV") == "production" and os.environ.get("DEMO_ACCESS_ENABLED", "false").lower() != "true":
+    if (
+        os.environ.get("APP_ENV") == "production"
+        and os.environ.get("DEMO_ACCESS_ENABLED", "false").lower() != "true"
+    ):
         print("Demo seeding is refused in production.")
         sys.exit(1)
 

@@ -215,6 +215,7 @@ class DecisionPackageResponse(BaseModel):
     DEPRECATED: Do not use for calculations or rendering components.
     Use AssessmentResultResponse for all authoritative data.
     """
+
     model_config = ConfigDict(extra="allow")
     case_id: str
     business_name: str
@@ -257,6 +258,7 @@ class DecisionPackageResponse(BaseModel):
     # ADDED: Embed authoritative assessment
     assessment: Optional["AssessmentResultResponse"] = None
 
+
 class AuditVerificationResponse(BaseModel):
     bola_verification_status: str
     cas_verification_status: str
@@ -275,16 +277,20 @@ class AuditVerificationResponse(BaseModel):
     verified_at: datetime
     error_message: Optional[str] = None
 
+
 class AuditChainResponse(BaseModel):
     items: List[DecisionPackageAuditItem]
     total_events: int
     verified: bool
 
+
 class EvidencePassportResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
 
+
 class CanonicalFeatureSnapshotResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
+
 
 class FinancialHealthPillarResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -295,38 +301,46 @@ class FinancialHealthPillarResponse(BaseModel):
     adverse_reason_codes: List[str] = Field(default_factory=list)
     evidence_ids: List[str] = Field(default_factory=list)
 
+
 class AssessmentRangeResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     min_amount: Decimal
     max_amount: Decimal
+
 
 class ProductCapacityResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     product_name: str
     capacity: Decimal
 
+
 class BindingConstraintResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     constraint_type: str
     reason: str
+
 
 class StressScenarioResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     scenario_name: str
     impact: str
 
+
 class BankabilityInterventionResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     intervention_type: str
     description: str
 
+
 class ConditionResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     condition_text: str
 
+
 class CovenantResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     covenant_text: str
+
 
 class AssessmentResultResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -384,11 +398,13 @@ class AssessmentResultResponse(BaseModel):
     evidence_ids: List[UUID]
     limitations: List[str]
 
+
 class AnalystActionResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     action: str
     reason: str
     timestamp: datetime
+
 
 class HumanDecisionResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
@@ -396,31 +412,37 @@ class HumanDecisionResponse(BaseModel):
     reason: str
     timestamp: datetime
 
+
 class AuditSummaryResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     events: int
     last_event: str
+
 
 class BilingualSummaryResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     english: str
     hindi: str
 
+
 class ExportLinksResponse(BaseModel):
     model_config = ConfigDict(extra="allow")
     json_url: str
     pdf_url: str
+
 
 class IntegrityNode(BaseModel):
     id: str
     label: str
     type: str
 
+
 class IntegrityEdge(BaseModel):
     source: str
     target: str
     relationship: str
     matched_identifiers: List[str]
+
 
 class IntegrityGraphResult(BaseModel):
     status: str
@@ -442,10 +464,12 @@ class ApplicantViewOffer(BaseModel):
     interest_rate_pct: float
     tenure_months: int
 
+
 class ApplicantViewHindiSummary(BaseModel):
     decision_label: str
     reason_explanation: str
     bankability_path_actions: List[str]
+
 
 class ApplicantViewResponse(BaseModel):
     status: str
@@ -459,4 +483,3 @@ class ApplicantViewResponse(BaseModel):
     reconsideration_requirements: List[str]
     english_text: str
     hindi_text: str
-

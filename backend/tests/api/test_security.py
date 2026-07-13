@@ -152,7 +152,11 @@ def test_horizontal_escalation_credit_analyst_cannot_sanction(test_users):
             "expected_version": 1,
         },
         cookies=cookies,
-        headers={"x-csrf-token": csrf_token, "Idempotency-Key": str(uuid.uuid4()), "X-Expected-Version": "1"},
+        headers={
+            "x-csrf-token": csrf_token,
+            "Idempotency-Key": str(uuid.uuid4()),
+            "X-Expected-Version": "1",
+        },
     )
     assert resp.status_code == 403
     assert "Only sanctioning authorities can record decisions" in str(

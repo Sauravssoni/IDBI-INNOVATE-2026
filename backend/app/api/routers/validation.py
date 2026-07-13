@@ -4,6 +4,7 @@ from app.validation.invariant_checker import run_validation_suite
 
 router = APIRouter(prefix="/api/validation", tags=["validation"])
 
+
 @router.get("/run")
 def run_invariants() -> Dict[str, Any]:
     """

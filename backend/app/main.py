@@ -7,7 +7,17 @@ import hashlib
 import secrets
 from alembic.config import Config
 from alembic.script import ScriptDirectory
-from app.api.routers import cases, portfolio, audit, evidence, demo, stress, bankability, ocen, validation
+from app.api.routers import (
+    cases,
+    portfolio,
+    audit,
+    evidence,
+    demo,
+    stress,
+    bankability,
+    ocen,
+    validation,
+)
 from app.api import auth
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -128,9 +138,12 @@ def ready() -> Any:
             text("SELECT version_num FROM alembic_version")
         ).scalar()
         import os
+
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         alembic_cfg = Config(os.path.join(base_dir, "alembic.ini"))
-        alembic_cfg.set_main_option("script_location", os.path.join(base_dir, "alembic"))
+        alembic_cfg.set_main_option(
+            "script_location", os.path.join(base_dir, "alembic")
+        )
         script = ScriptDirectory.from_config(alembic_cfg)
         heads = script.get_heads()
         if len(heads) != 1:

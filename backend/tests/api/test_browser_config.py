@@ -10,6 +10,7 @@ from app.api.auth import get_password_hash
 
 client = TestClient(app)
 
+
 @pytest.fixture(scope="module")
 def test_user():
     db = SessionLocal()

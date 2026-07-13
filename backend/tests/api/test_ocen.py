@@ -8,8 +8,12 @@ import uuid
 import datetime
 from app.db.orm.cases import AssessmentSnapshot
 
+
 def override_get_current_user():
-    return User(id=uuid.uuid4(), email="test@vyaparpulse.example", role="CREDIT_ANALYST")
+    return User(
+        id=uuid.uuid4(), email="test@vyaparpulse.example", role="CREDIT_ANALYST"
+    )
+
 
 def test_ocen_export():
     app.dependency_overrides[get_current_user] = override_get_current_user
@@ -17,25 +21,35 @@ def test_ocen_export():
     db = SessionLocal()
     try:
         # Get the shakti case
-        business = db.query(Business).filter(Business.business_id == "SHAKTI_PRECISION_001").first()
+        business = (
+            db.query(Business)
+            .filter(Business.business_id == "SHAKTI_PRECISION_001")
+            .first()
+        )
         assert business is not None
         case = db.query(Case).filter(Case.business_id_fk == business.id).first()
         assert case is not None
 
         # Manually create DecisionPackage
-        pkg = db.query(DecisionPackage).filter(DecisionPackage.case_id == case.id).first()
+        pkg = (
+            db.query(DecisionPackage).filter(DecisionPackage.case_id == case.id).first()
+        )
         if pkg:
             db.delete(pkg)
-            
-        snap = db.query(AssessmentSnapshot).filter(
-            AssessmentSnapshot.case_id == case.id, 
-            AssessmentSnapshot.case_version == 1
-        ).first()
+
+        snap = (
+            db.query(AssessmentSnapshot)
+            .filter(
+                AssessmentSnapshot.case_id == case.id,
+                AssessmentSnapshot.case_version == 1,
+            )
+            .first()
+        )
         if snap:
             db.delete(snap)
-            
+
         db.commit()
-            
+
         assm_id = uuid.uuid4()
         pkg = DecisionPackage(
             id=uuid.uuid4(),
@@ -44,10 +58,10 @@ def test_ocen_export():
             case_id=case.id,
             case_version=1,
             canonical_json={"binding_limit": 50000.00},
-            package_hash="some_hash"
+            package_hash="some_hash",
         )
         db.add(pkg)
-        
+
         snap = AssessmentSnapshot(
             assessment_id=assm_id,
             case_id=case.id,
@@ -55,8 +69,13 @@ def test_ocen_export():
             generated_at=datetime.datetime.utcnow(),
             feature_snapshot={"total_revenue": 1000000, "total_bank_credits": 1000000},
             canonical_assessment_json={"supportable_amount": 50000.00},
-            engine_versions={"scoring": "1", "calculation": "1", "policy": "1", "feature": "1"},
-            evidence_ids=[]
+            engine_versions={
+                "scoring": "1",
+                "calculation": "1",
+                "policy": "1",
+                "feature": "1",
+            },
+            evidence_ids=[],
         )
         db.add(snap)
         db.commit()
@@ -71,7 +90,9 @@ def test_ocen_export():
         assert data["prototype_interoperability_payload"] is True
         assert data["borrower"]["entity_name"] == case.business.legal_name
         assert data["credit_decision"]["status"] == case.status.value
-        assert float(data["credit_decision"]["indicative_supportable_amount"]) == float(pkg.canonical_json["binding_limit"])
+        assert float(data["credit_decision"]["indicative_supportable_amount"]) == float(
+            pkg.canonical_json["binding_limit"]
+        )
 
     finally:
         db.close()

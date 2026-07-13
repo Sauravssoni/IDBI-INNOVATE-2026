@@ -10,7 +10,13 @@ from app.api.dependencies import get_current_user
 from app.db.orm.users import User
 from app.db.orm.cases import Case, DecisionPackage, AssessmentSnapshot
 from app.db.orm.consents import Consent
-from app.schemas.ocen import OCENExportResponse, OCENBorrower, OCENCreditDecision, OCENEvidence, OCENAudit
+from app.schemas.ocen import (
+    OCENExportResponse,
+    OCENBorrower,
+    OCENCreditDecision,
+    OCENEvidence,
+    OCENAudit,
+)
 
 router = APIRouter(prefix="/api/cases", tags=["ocen"])
 logger = logging.getLogger(__name__)
@@ -47,7 +53,9 @@ def get_ocen_export(
         .first()
     )
     if not pkg:
-        raise HTTPException(status_code=404, detail="No decision package found. Cannot export.")
+        raise HTTPException(
+            status_code=404, detail="No decision package found. Cannot export."
+        )
 
     snapshot = (
         db.query(AssessmentSnapshot)
@@ -59,15 +67,30 @@ def get_ocen_export(
 
     features = snapshot.feature_snapshot
     assessment = snapshot.canonical_assessment_json
-    
+
     # Extract values
     supportable = Decimal(str(assessment.get("supportable_amount", 0.0)))
-    status_str = case_db.status.value if hasattr(case_db.status, "value") else str(case_db.status)
-    _sanctioned = Decimal(str(case_db.approved_amount)) if status_str == "SANCTIONED" and case_db.approved_amount else None
+    status_str = (
+        case_db.status.value
+        if hasattr(case_db.status, "value")
+        else str(case_db.status)
+    )
+    _sanctioned = (
+        Decimal(str(case_db.approved_amount))
+        if status_str == "SANCTIONED" and case_db.approved_amount
+        else None
+    )
 
-        
-    conditions = [c.get("condition_text") for c in assessment.get("conditions", [])] if assessment.get("conditions") else []
-    covenants = [c.get("covenant_text") for c in assessment.get("covenants", [])] if assessment.get("covenants") else []
+    conditions = (
+        [c.get("condition_text") for c in assessment.get("conditions", [])]
+        if assessment.get("conditions")
+        else []
+    )
+    covenants = (
+        [c.get("covenant_text") for c in assessment.get("covenants", [])]
+        if assessment.get("covenants")
+        else []
+    )
     reason_codes = assessment.get("policy_reason_codes", ["NO_CONSTRAINT_FLAGGED"])
 
     gstr1_revenue = Decimal(str(features.get("total_revenue", 0.0)))
@@ -88,12 +111,15 @@ def get_ocen_export(
     scor_v = eng.get("scoring", "UNAVAILABLE")
     pass_v = eng.get("passport", "UNAVAILABLE")
 
-    tenor = features.get("proposed_tenor_months") or getattr(case_db, 'proposed_tenor_months', None)
-    rate = features.get("proposed_annual_rate") or getattr(case_db, 'proposed_annual_rate', None)
+    tenor = features.get("proposed_tenor_months") or getattr(
+        case_db, "proposed_tenor_months", None
+    )
+    rate = features.get("proposed_annual_rate") or getattr(
+        case_db, "proposed_annual_rate", None
+    )
     repay = features.get("repayment_type", "UNAVAILABLE")
 
     audit_h = pkg.audit_tip_hash if pkg.audit_tip_hash else "UNAVAILABLE"
-
 
     # Generate the OCEN export
     return OCENExportResponse(
@@ -103,43 +129,47 @@ def get_ocen_export(
         package_id=str(pkg.id),
         case_version=str(case_db.version),
         consent_artefact_reference=consent_ref,
-        product=case_db.requested_product.value if hasattr(case_db.requested_product, "value") else str(case_db.requested_product),
+        product=case_db.requested_product.value
+        if hasattr(case_db.requested_product, "value")
+        else str(case_db.requested_product),
         prototype_interoperability_payload=True,
         interoperability_disclaimer="Not certified by OCEN or ULI. Hackathon interoperability prototype.",
         limitations="Indicative assessment only. Human sanction required. Synthetic validation.",
         borrower=OCENBorrower(
             entity_name=business.legal_name,
             gstin=getattr(business, "gstin", "UNAVAILABLE") or "UNAVAILABLE",
-            pan=getattr(business, "pan", "UNAVAILABLE") or "UNAVAILABLE"
+            pan=getattr(business, "pan", "UNAVAILABLE") or "UNAVAILABLE",
         ),
         credit_decision=OCENCreditDecision(
             status=status_str,
             indicative_supportable_amount=supportable,
-            sanctioned_amount=case_db.approved_amount if status_str == "SANCTIONED" else None,
+            sanctioned_amount=case_db.approved_amount
+            if status_str == "SANCTIONED"
+            else None,
             currency=case_db.currency,
             tenure_months=int(tenor) if tenor else None,
             interest_rate=float(rate) if rate else None,
             repayment=repay,
             conditions=conditions,
             covenants=covenants,
-            reason_codes=reason_codes
+            reason_codes=reason_codes,
         ),
         evidence=OCENEvidence(
             gstr1_revenue=gstr1_revenue,
             bank_inflows=bank_inflows,
             variance_percentage=variance,
             integrity_status=integrity,
-            evidence_ids=ev_ids
+            evidence_ids=ev_ids,
         ),
         audit=OCENAudit(
             audit_hash=audit_h,
             package_hash=pkg.package_hash if pkg.package_hash else "",
-            generated_by="system"
+            generated_by="system",
         ),
         engine_versions={
             "policy": pol_v,
             "calculation": calc_v,
             "scoring": scor_v,
-            "passport": pass_v
-        }
+            "passport": pass_v,
+        },
     )

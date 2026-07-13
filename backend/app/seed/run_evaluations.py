@@ -33,6 +33,7 @@ def run_evaluations(db_session=None):
 
         try:
             from app.services.assessment_service import AssessmentService
+
             assessment_result = AssessmentService.evaluate_case(db, case)
 
             dscr_val = assessment_result.current_dscr
