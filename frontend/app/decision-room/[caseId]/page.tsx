@@ -23,7 +23,11 @@ export default function DecisionRoomPage() {
   const { caseId } = useParams();
   const router = useRouter();
   
-  const [data, setData] = useState<DecisionPackageResponse | null>(null);
+  const [decisionPackage, setDecisionPackage] = useState<DecisionPackageResponse | null>(null);
+  const [sealedPackageMetadata, setSealedPackageMetadata] = useState<Record<string, unknown> | null>(null);
+  const data = decisionPackage;
+  const setData = setDecisionPackage;
+
   const [stressData, setStressData] = useState<StressResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +45,7 @@ export default function DecisionRoomPage() {
 
   // Verification & Replay State
   const [packageId, setPackageId] = useState<string | null>(null);
+  const [packageHash, setPackageHash] = useState<string | null>(null);
   const [sealing, setSealing] = useState(false);
   const [sealError, setSealError] = useState<string | null>(null);
 
@@ -64,12 +69,20 @@ export default function DecisionRoomPage() {
           if (casesRes.offline) setIsOffline(true);
         }
 
-        // Call POST to either get the existing package or seal a new one
-        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`, { method: "POST" });
+        // Call GET to get the full unsealed decision view required by the page. Do not POST or seal on page load.
+        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`, { method: "GET" });
         if (res.status === 200 && res.data) {
-          setData(res.data);
-          if (res.data.package_id) setPackageId(res.data.package_id);
+          setDecisionPackage(res.data);
           if (res.offline) setIsOffline(true);
+          if (res.data.package_id) {
+            setPackageId(res.data.package_id);
+            if (res.data.package_hash) setPackageHash(res.data.package_hash);
+            setSealedPackageMetadata({
+              package_id: res.data.package_id,
+              package_hash: res.data.package_hash,
+              case_version: res.data.case_version,
+            });
+          }
           // Fetch stress data concurrently
           apiFetch(`/api/cases/${caseId}/stress-lab`).then(stressRes => {
             if (stressRes.status === 200) {
@@ -121,6 +134,17 @@ export default function DecisionRoomPage() {
       });
       if (res.status === 200) {
         setDecision(status);
+        try {
+          const sealRes = await apiFetch(`/api/cases/${caseId}/decision-package`, { method: "POST" });
+          if (sealRes.status === 200 && sealRes.data) {
+            const sealData = sealRes.data as Record<string, unknown>;
+            setSealedPackageMetadata(sealData);
+            if (sealData.package_id) setPackageId(sealData.package_id as string);
+            if (sealData.package_hash) setPackageHash(sealData.package_hash as string);
+          }
+        } catch {
+          // ignore
+        }
         setTimeout(() => router.push(`/cases/${caseId}`), 2000);
       } else {
         setSanctionError(res.error || JSON.stringify(res.data));
@@ -138,51 +162,74 @@ export default function DecisionRoomPage() {
     try {
       const res = await apiFetch(`/api/cases/${caseId}/decision-package`, { method: "POST" });
       if (res.status === 200 && res.data) {
-        setPackageId((res.data as DecisionPackageResponse).package_id || (res.data as unknown as { id: string }).id);
-        setData(res.data as DecisionPackageResponse);
+        const sealRes = res.data as Record<string, unknown>;
+        const newPkgId = (sealRes.package_id as string) || (sealRes.id as string);
+        const newPkgHash = sealRes.package_hash as string;
+        setSealedPackageMetadata(sealRes);
+        if (newPkgId) setPackageId(newPkgId);
+        if (newPkgHash) setPackageHash(newPkgHash);
       } else {
         setSealError(res.error || "Failed to seal package");
       }
     } catch (err: unknown) {
-      setSealError((err as Error).message);
+      const msg = err instanceof Error ? err.message : String(err);
+      setSealError(msg || "Error sealing package");
     } finally {
       setSealing(false);
     }
   };
 
   const handleVerify = async () => {
-    if (!packageId) return;
+    if (!packageId || packageId === "undefined") {
+      setVerificationError("Decision package has not been sealed yet. Complete a terminal decision and seal the package before verifying or replaying.");
+      return;
+    }
     setVerifying(true);
     setVerificationError(null);
     setVerificationResult(null);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${packageId}/verify`, { method: "POST" });
-      if (res.status === 200) {
+      const res = await apiFetch<VerificationResult>(`/api/cases/${caseId}/verify-package/${packageId}`, { 
+        method: "POST",
+        headers: {
+          "X-Expected-Version": (data?.case_version || 0).toString(),
+        }
+      });
+      if (res.status === 200 && res.data) {
         setVerificationResult(res.data as import('@/types').VerificationResult);
       } else {
         setVerificationError(res.error || "Verification failed");
       }
     } catch (err: unknown) {
-      setVerificationError((err as Error).message);
+      const msg = err instanceof Error ? err.message : String(err);
+      setVerificationError(msg || "Error verifying package signature");
     } finally {
       setVerifying(false);
     }
   };
 
   const handleReplay = async () => {
-    if (!packageId) return;
+    if (!packageId || packageId === "undefined") {
+      setReplayError("Decision package has not been sealed yet. Complete a terminal decision and seal the package before verifying or replaying.");
+      return;
+    }
     setReplaying(true);
     setReplayError(null);
     setReplayResult(null);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${packageId}/replay`, { method: "POST" });
-      if (res.status === 200) {
+      const res = await apiFetch<ReplayResult>(`/api/cases/${caseId}/replay-package/${packageId}`, { 
+        method: "POST",
+        headers: {
+          "X-Expected-Version": (data?.case_version || 0).toString(),
+        }
+      });
+      if (res.status === 200 && res.data) {
         setReplayResult(res.data as import('@/types').ReplayResult);
       } else {
         setReplayError(res.error || "Replay failed");
       }
     } catch (err: unknown) {
-      setReplayError((err as Error).message);
+      const msg = err instanceof Error ? err.message : String(err);
+      setReplayError(msg || "Error executing replay");
     } finally {
       setReplaying(false);
     }
@@ -687,7 +734,7 @@ export default function DecisionRoomPage() {
                      <>
                        <button 
                          onClick={handleSeal}
-                         disabled={sealing || isOffline}
+                         disabled={sealing}
                          className="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 transition disabled:opacity-50 text-sm mb-4"
                        >
                          {sealing ? "Sealing..." : "Seal Package"}
@@ -698,7 +745,7 @@ export default function DecisionRoomPage() {
                      <>
                        <button 
                          onClick={handleVerify}
-                         disabled={verifying || isOffline}
+                         disabled={verifying}
                          className="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 transition disabled:opacity-50 text-sm mb-4"
                        >
                          {verifying ? "Verifying..." : "Verify Package Signature"}
@@ -708,9 +755,30 @@ export default function DecisionRoomPage() {
                    )}
                    {verificationResult && (
                      <div className="p-3 bg-black rounded-lg border border-white/10 text-sm font-mono space-y-2">
-                       <p className="text-emerald-400 font-bold">Verification: {verificationResult.valid === true ? "HASH VERIFIED" : "HASH MISMATCH"}</p>
+                       <p className={`font-bold ${verificationResult.valid ? "text-emerald-400" : "text-red-400"}`}>
+                         {verificationResult.valid ? "Verified — Cryptographic Seal Intact" : "Seal Mismatch — Canonical Hash Changed"}
+                       </p>
                        <p className="text-gray-400 break-all text-xs">Expected Hash: {verificationResult.expected_hash}</p>
                        <p className="text-gray-400 break-all text-xs">Actual Hash: {verificationResult.actual_hash}</p>
+                       {verificationResult.valid && data?.audit_chain && Array.isArray(data.audit_chain) && (
+                         <div className="mt-4 pt-3 border-t border-white/10">
+                           <p className="text-xs font-bold text-white mb-2">Chronological Audit Trail:</p>
+                           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                             {[...data.audit_chain]
+                               .sort((a, b) => (new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()))
+                               .map((evt, idx) => (
+                                 <div key={idx} className="text-[11px] bg-white/5 p-2 rounded flex flex-col gap-1">
+                                   <div className="flex justify-between items-center text-gray-300">
+                                     <span className="font-semibold text-blue-300">{evt.event_type}</span>
+                                     <span className="text-gray-500">{evt.created_at ? new Date(evt.created_at).toLocaleString() : ""}</span>
+                                   </div>
+                                   <div className="text-gray-400">Actor: <span className="text-gray-300">{evt.actor}</span></div>
+                                   {evt.event_hash && <div className="text-gray-500 font-mono text-[9px] truncate">Hash: {evt.event_hash}</div>}
+                                 </div>
+                               ))}
+                           </div>
+                         </div>
+                       )}
                      </div>
                    )}
                  </div>
@@ -721,7 +789,7 @@ export default function DecisionRoomPage() {
                    </h3>
                    <button 
                      onClick={handleReplay}
-                     disabled={replaying || !packageId || isOffline}
+                     disabled={replaying || !packageId}
                      className="px-4 py-2 bg-purple-600 rounded-lg text-white font-bold hover:bg-purple-700 transition disabled:opacity-50 text-sm mb-4"
                    >
                      {replaying ? "Replaying..." : "Execute Full Engine Replay"}

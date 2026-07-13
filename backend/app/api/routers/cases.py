@@ -1731,6 +1731,7 @@ def seal_decision_package(
 
 
 @router.post("/{case_id}/decision-package/{package_id}/verify")
+@router.post("/{case_id}/verify-package/{package_id}")
 def verify_decision_package_hash(
     case_id: str,
     package_id: str,
@@ -1749,15 +1750,28 @@ def verify_decision_package_hash(
         raise HTTPException(status_code=404, detail="Decision package not found")
     expected_hash = record.package_hash
     actual_hash = _hash_package_data(record.canonical_json)
+    if record.case_version != case.version:
+        return {
+            "package_id": package_id,
+            "expected_hash": expected_hash,
+            "actual_hash": actual_hash,
+            "valid": False,
+            "error": f"Case version mismatch: package sealed at v{record.case_version}, current case is v{case.version}",
+            "case_version": record.case_version,
+            "current_case_version": case.version,
+        }
     return {
         "package_id": package_id,
         "expected_hash": expected_hash,
         "actual_hash": actual_hash,
         "valid": expected_hash == actual_hash,
+        "case_version": record.case_version,
+        "current_case_version": case.version,
     }
 
 
 @router.post("/{case_id}/decision-package/{package_id}/replay")
+@router.post("/{case_id}/replay-package/{package_id}")
 def replay_decision_package(
     case_id: str,
     package_id: str,
@@ -1774,6 +1788,13 @@ def replay_decision_package(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Decision package not found")
+    if record.case_version != case.version:
+        return {
+            "status": "REPLAY_MISMATCH",
+            "package_id": package_id,
+            "differences": [{"field": "case_version", "original": record.case_version, "replayed": case.version}],
+            "replayed": {"case_version": case.version},
+        }
     recorded_versions = record.engine_versions or {}
     unavailable_versions = [
         {"version": key, "recorded": recorded_versions.get(key), "available": value}
