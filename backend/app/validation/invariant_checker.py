@@ -76,20 +76,26 @@ def generate_synthetic_features(seed: int = 20260713) -> List[Dict[str, Any]]:
     ]
     
     cases = []
-    # Include all 4 products by iterating products per profile
-    # but products are just requested products. Features don't contain requested product directly.
-    # We just create 25 deterministic cases.
-    for i in range(25):
+    products = [
+        "WORKING_CAPITAL_LINE",
+        "TERM_LOAN",
+        "RECEIVABLES_FINANCE",
+        "EQUIPMENT_FINANCE",
+    ]
+    
+    for i in range(1000):
         profile_name, overrides = profiles[i % len(profiles)]
+        product = products[i % len(products)]
         case_features = json.loads(json.dumps(base_features))
-        # apply overrides recursively
+        
         for k, v in overrides.items():
             if isinstance(v, dict) and k in case_features:
                 case_features[k].update(v)
             else:
                 case_features[k] = v
-        # assign requested products (to be used later if needed)
+                
         case_features["_test_profile"] = profile_name
+        case_features["_test_product"] = product
         cases.append(case_features)
 
     return cases
@@ -109,8 +115,9 @@ def run_validation_suite() -> Dict[str, Any]:
     }
 
     for idx, features in enumerate(cases):
-        # We temporarily remove _test_profile for processing
+        # We temporarily remove _test_profile and _test_product for processing
         profile = features.pop("_test_profile", "unknown")
+        product = features.pop("_test_product", "unknown")
         try:
             # 1. Primary Engine Runs
             scores = ScoringEngine(features).compute_all_scores()
@@ -215,8 +222,9 @@ def run_validation_suite() -> Dict[str, Any]:
             results["invariants_failed"] += 1
             results["failures"].append({"case_index": idx, "profile": profile, "error": str(e)})
             
-        # Add profile back if needed later
+        # Add profile and product back if needed later
         features["_test_profile"] = profile
+        features["_test_product"] = product
 
     if results["invariants_failed"] > 0:
         results["status"] = "FAIL"
@@ -240,6 +248,7 @@ def run_validation_suite() -> Dict[str, Any]:
     for i in range(min(25, len(cases))):
         features = cases[i]
         profile = features.pop("_test_profile", "unknown")
+        product = features.pop("_test_product", "unknown")
         
         canonical_scores = ScoringEngine(features).compute_all_scores()
         canonical_limits = SafeLimitEngine.calculate_all_limits(features)

@@ -3,9 +3,10 @@
 A governed evidence-to-sanction operating system for MSME credit.
 
 ## Deployment Links
-- **Production (Vercel)**: [https://vyapar-pulse.vercel.app](https://vyapar-pulse.vercel.app)
-- **API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **GitHub Repository**: [https://github.com/vyapar-pulse/vyapar-pulse-starter](https://github.com/vyapar-pulse/vyapar-pulse-starter)
+- **Frontend (Vercel)**: [https://frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app)
+- **Backend (Vercel)**: [https://vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app)
+- **API Documentation (Swagger)**: [https://vyapar-pulse-backend.vercel.app/docs](https://vyapar-pulse-backend.vercel.app/docs)
+- **GitHub Repository**: [https://github.com/Sauravssoni/IDBI-INNOVATE-2026](https://github.com/Sauravssoni/IDBI-INNOVATE-2026)
 
 ## Strict Architectural Separation
 
@@ -57,9 +58,14 @@ The system operates a deterministic 25-case cryptographic verification loop buil
 5. Runs an independent full-engine replay.
 6. Compares the governed outputs against the sealed package to detect any mismatches.
 
-This loop guarantees that the calculation engine is deterministic and the payload disclosure is an exact match to the engine's real-time state.
+This loop demonstrates deterministic reproduction for the tested synthetic cases and the payload disclosure is an exact match to the engine's real-time state.
 
-[Deterministic Validation and Replay Proof (25 Cases)](artifacts/validation/release_assurance.json)
+- 1,000 deterministic synthetic cases
+- zero executed invariant failures
+- 25 production-serializer engine replay checks
+- no real-world predictive-performance claim
+
+[Deterministic Validation and Replay Proof (1,000 Cases)](artifacts/validation/release_assurance.json)
 
 ## Explicit Limitations
 - The integrity graph relationships used for demonstration are seeded.
