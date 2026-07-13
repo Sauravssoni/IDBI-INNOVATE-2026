@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
@@ -21,7 +22,7 @@ export default function DecisionRoomPage() {
   const { caseId } = useParams();
   const router = useRouter();
   
-  const [data, setData] = useState<DecisionPackageResponse | null>(null);
+  const [data, setData] = useState<any>(null);
   const [stressData, setStressData] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +57,7 @@ export default function DecisionRoomPage() {
           setAllCases(casesRes.data);
         }
 
-        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`);
+        const res = await apiFetch<any>(`/api/cases/${caseId}/decision-package`);
         if (res.status === 200 && res.data) {
           setData(res.data);
           // Fetch stress data concurrently

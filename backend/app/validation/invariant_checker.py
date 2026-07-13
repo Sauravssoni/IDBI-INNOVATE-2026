@@ -9,7 +9,7 @@ from app.api.routers.cases import _hash_package_data, _canonical_package_json
 
 def generate_synthetic_features(seed: int = 20260713) -> List[Dict[str, Any]]:
     # We will generate specific profiles as requested
-    base_features = {
+    base_features: Dict[str, Any] = {
         "monthly_revenue_inr": "5000000",
         "consent_status": "VALID",
         "obligation_verification_state": "VERIFIED_OBLIGATIONS",
@@ -42,7 +42,7 @@ def generate_synthetic_features(seed: int = 20260713) -> List[Dict[str, Any]]:
         "equipment_value": "3000000",
     }
     
-    profiles = [
+    profiles: List[tuple[str, Dict[str, Any]]] = [
         ("healthy_full_file", {}),
         ("thin_file_assessable", {
             "gst_metrics": {"months_filed": 6, "revenue_cv": "0.20", "trend": "STABLE"},

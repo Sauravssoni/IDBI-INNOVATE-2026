@@ -277,4 +277,5 @@ export interface DecisionPackageResponse {
     event_hash: string;
     created_at: string;
   }[];
+  [key: string]: any;
 }
