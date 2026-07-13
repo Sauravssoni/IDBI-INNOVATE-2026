@@ -825,7 +825,7 @@ def record_human_decision(
         return result_payload
     except HTTPException:
         raise
-    except Exception as exc:
+    except Exception:
         import traceback
         traceback.print_exc()
         db.rollback()
@@ -1823,7 +1823,7 @@ def simulate_product_structure(
 @router.get("/{case_id}/integrity-graph", response_model=IntegrityGraphResult)
 def get_integrity_graph(case_id: UUID, db: Session = Depends(get_db)):
     # Check if case exists
-    case = db.query(ApplicationCase).filter(ApplicationCase.id == case_id).first()
+    case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 

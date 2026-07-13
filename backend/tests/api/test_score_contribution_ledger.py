@@ -1,5 +1,3 @@
-import pytest
-from decimal import Decimal
 from app.core.scoring.scorer import ScoringEngine
 
 def test_score_ledger_reconciliation():
