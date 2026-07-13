@@ -41,6 +41,8 @@ class AssessmentService:
         # 1. Derive Features
         feature_engine = FeatureEngine(db, str(case.business_id_fk))
         features = feature_engine.derive_all_features()
+        if case.monthly_revenue_inr is not None:
+            features["monthly_revenue_inr"] = str(case.monthly_revenue_inr)
 
         # 2. Score
         scorer = ScoringEngine(features)
@@ -268,7 +270,7 @@ class AssessmentService:
             generated_at=now,
             consent_state="VERIFIED",
             evidence_passport=EvidencePassportResponse(**ep_dict),
-            feature_snapshot=CanonicalFeatureSnapshotResponse(),
+            feature_snapshot=CanonicalFeatureSnapshotResponse(**features),
             financial_health_index=fhi,
             six_pillars=pillars,
             vyapar_credit_health_score=credit_score,

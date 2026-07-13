@@ -581,10 +581,9 @@ def evaluate_case(
 
     try:
         assessment_result = AssessmentService.evaluate_case(db, case)
-        latest_snapshot = AssessmentService.get_latest_assessment(db, case.id)
         features_dict: Any = (
-            latest_snapshot.feature_snapshot
-            if latest_snapshot and latest_snapshot.feature_snapshot
+            assessment_result.feature_snapshot.model_dump(mode="json")
+            if assessment_result.feature_snapshot
             else {}
         )
 
