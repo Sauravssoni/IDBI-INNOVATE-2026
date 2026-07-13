@@ -32,8 +32,9 @@ def generate_validation():
         "invariant_failures": results["invariants_failed"],
         "failed_case_ids": [f["case_index"] for f in results["failures"]],
         "checksum": results["deterministic_checksum"],
-        "replay_cases": 25,
-        "replay_failures": 0,
+        "replay_cases": len(results.get("replay_results", [])),
+        "replay_failures": sum(1 for r in results.get("replay_results", []) if r["replay_status"] != "REPLAY_MATCHED"),
+        "replay_details": results.get("replay_results", [])
     }
     
     with open("artifacts/validation/release_assurance.json", "w") as f:

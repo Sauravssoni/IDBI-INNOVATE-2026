@@ -35,6 +35,15 @@ export default function DecisionRoomPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sanctionError, setSanctionError] = useState<string | null>(null);
 
+  // Verification & Replay State
+  const [verifying, setVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  const [replaying, setReplaying] = useState(false);
+  const [replayResult, setReplayResult] = useState<any>(null);
+  const [replayError, setReplayError] = useState<string | null>(null);
+
   // For Persona Switcher
   const [allCases, setAllCases] = useState<any[]>([]);
 
@@ -103,6 +112,44 @@ export default function DecisionRoomPage() {
       setSanctionError(err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!data?.package_id) return;
+    setVerifying(true);
+    setVerificationError(null);
+    setVerificationResult(null);
+    try {
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.package_id}/verify`, { method: "POST" });
+      if (res.status === 200) {
+        setVerificationResult(res.data);
+      } else {
+        setVerificationError(res.error || "Verification failed");
+      }
+    } catch (err: any) {
+      setVerificationError(err.message);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleReplay = async () => {
+    if (!data?.package_id) return;
+    setReplaying(true);
+    setReplayError(null);
+    setReplayResult(null);
+    try {
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.package_id}/replay`, { method: "POST" });
+      if (res.status === 200) {
+        setReplayResult(res.data);
+      } else {
+        setReplayError(res.error || "Replay failed");
+      }
+    } catch (err: any) {
+      setReplayError(err.message);
+    } finally {
+      setReplaying(false);
     }
   };
 
@@ -500,7 +547,7 @@ export default function DecisionRoomPage() {
                 </div>
                 <div className="bg-black border border-white/10 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 mb-1">Mandate Ceiling</p>
-                  <p className="text-lg font-bold text-gray-300 font-mono">{formatCurrency(50000000)}</p>
+                  <p className="text-sm font-bold text-gray-300 font-mono">MANDATE NOT AVAILABLE</p>
                 </div>
                 <div className="bg-black border border-white/10 p-4 rounded-xl">
                   <p className="text-xs text-gray-500 mb-1">Analyst Rec / Case Version</p>
@@ -586,6 +633,52 @@ export default function DecisionRoomPage() {
                  <div className="bg-black border border-white/10 p-5 rounded-xl">
                    <p className="text-xs text-gray-500 mb-2">Calculation Engine</p>
                    <p className="font-mono text-sm text-white">{data.calculation_version}</p>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                 <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+                   <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                     <ShieldCheck className="w-5 h-5 text-blue-400" /> Verify Seal
+                   </h3>
+                   <button 
+                     onClick={handleVerify}
+                     disabled={verifying}
+                     className="px-4 py-2 bg-blue-600 rounded-lg text-white font-bold hover:bg-blue-700 transition disabled:opacity-50 text-sm mb-4"
+                   >
+                     {verifying ? "Verifying..." : "Verify Package Signature"}
+                   </button>
+                   {verificationError && <p className="text-red-400 text-sm">{verificationError}</p>}
+                   {verificationResult && (
+                     <div className="p-3 bg-black rounded-lg border border-white/10 text-sm font-mono space-y-2">
+                       <p className="text-emerald-400 font-bold">Verification: {verificationResult.is_valid ? "SEALED / VERIFIED" : "MISMATCH"}</p>
+                       <p className="text-gray-400 break-all text-xs">Calculated: {verificationResult.calculated_hash}</p>
+                       <p className="text-gray-400 break-all text-xs">Stored: {verificationResult.stored_hash}</p>
+                     </div>
+                   )}
+                 </div>
+
+                 <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+                   <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                     <RefreshCw className="w-5 h-5 text-purple-400" /> Independent Replay
+                   </h3>
+                   <button 
+                     onClick={handleReplay}
+                     disabled={replaying}
+                     className="px-4 py-2 bg-purple-600 rounded-lg text-white font-bold hover:bg-purple-700 transition disabled:opacity-50 text-sm mb-4"
+                   >
+                     {replaying ? "Replaying..." : "Execute Full Engine Replay"}
+                   </button>
+                   {replayError && <p className="text-red-400 text-sm">{replayError}</p>}
+                   {replayResult && (
+                     <div className="p-3 bg-black rounded-lg border border-white/10 text-sm font-mono space-y-2">
+                       <p className="text-emerald-400 font-bold">Replay: {replayResult.mismatch_count === 0 ? "EXACT MATCH" : "MISMATCH"}</p>
+                       <p className="text-gray-400">Time taken: {replayResult.time_ms} ms</p>
+                       {replayResult.mismatch_count > 0 && (
+                         <p className="text-red-400 text-xs">Mismatches: {JSON.stringify(replayResult.mismatches)}</p>
+                       )}
+                     </div>
+                   )}
                  </div>
               </div>
 
