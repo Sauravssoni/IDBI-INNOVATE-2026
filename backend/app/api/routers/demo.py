@@ -8,24 +8,28 @@ from app.core.config import get_settings
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
 
-@router.get("/debug_env")
-async def debug_env():
-    import os
+import hmac
+import time
+from collections import defaultdict
 
-    settings = get_settings()
-    return {
-        "DEMO_RESET_ENABLED_SETTING": settings.DEMO_RESET_ENABLED,
-        "DEMO_RESET_TOKEN_SETTING": settings.DEMO_RESET_TOKEN,
-        "DEMO_RESET_ENABLED_OS": os.getenv("DEMO_RESET_ENABLED"),
-        "DEMO_RESET_TOKEN_OS": os.getenv("DEMO_RESET_TOKEN"),
-    }
-
+reset_rate_limits: defaultdict[str, list[float]] = defaultdict(list)
+RESET_MAX_REQUESTS = 5
+RESET_TIME_WINDOW = 60
 
 @router.post("/reset")
 def reset_demo(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    reset_rate_limits[client_ip] = [
+        t for t in reset_rate_limits[client_ip] if now - t < RESET_TIME_WINDOW
+    ]
+    if len(reset_rate_limits[client_ip]) >= RESET_MAX_REQUESTS:
+        raise HTTPException(status_code=429, detail="Too many reset requests.")
+    reset_rate_limits[client_ip].append(now)
+
     settings = get_settings()
     if not settings.DEMO_ACCESS_ENABLED:
         raise HTTPException(
@@ -45,7 +49,7 @@ def reset_demo(
     # Check if authorized via token
     token_authorized = False
     if client_token:
-        if not settings.DEMO_RESET_TOKEN or client_token != settings.DEMO_RESET_TOKEN:
+        if not settings.DEMO_RESET_TOKEN or not hmac.compare_digest(client_token, settings.DEMO_RESET_TOKEN):
             raise HTTPException(status_code=403, detail="Invalid demo reset token.")
         token_authorized = True
 
@@ -92,10 +96,13 @@ def get_validations(
             detail="Guided demo access is unavailable in this environment.",
         )
 
-    # These counts reflect the test assertions in the backend test suite
-    # to demonstrate persona separation, BOLA constraints, and idempotency guarantees.
-    return {
-        "personaSeparation": {"passed": 12, "total": 12, "status": "PASS"},
-        "roleBoundaryMatrix": {"passed": 24, "total": 24, "status": "PASS"},
-        "idempotencyReplay": {"passed": 8, "total": 8, "status": "PASS"},
-    }
+    import json
+    import os
+    
+    # Path relative to this router file: backend/app/api/routers/demo.py -> backend/artifacts/validation/release_assurance.json
+    file_path = os.path.join(os.path.dirname(__file__), "../../../artifacts/validation/release_assurance.json")
+    try:
+        with open(file_path, "r") as f:
+            return json.load(f)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Assurance artifact not found.")

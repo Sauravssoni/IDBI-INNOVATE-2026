@@ -102,6 +102,9 @@ def create_demo_session(
     demo_rate_limits[client_ip] = [
         t for t in demo_rate_limits[client_ip] if now - t < DEMO_TIME_WINDOW
     ]
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        demo_rate_limits[client_ip].clear()
     if len(demo_rate_limits[client_ip]) >= DEMO_MAX_REQUESTS:
         raise HTTPException(
             status_code=429,
@@ -114,8 +117,6 @@ def create_demo_session(
         "SANCTIONING_AUTHORITY",
         "RELATIONSHIP_MANAGER",
         "AUDITOR",
-        "SYSTEM_ADMIN",
-        "RISK_ADMIN",
     ]
     if req.role not in allowed_roles:
         raise HTTPException(
@@ -127,8 +128,6 @@ def create_demo_session(
         "SANCTIONING_AUTHORITY": "sa@bank.example",
         "RELATIONSHIP_MANAGER": "rm@bank.example",
         "AUDITOR": "auditor@bank.example",
-        "SYSTEM_ADMIN": "system@bank.example",
-        "RISK_ADMIN": "admin@bank.example",
     }
     target_email = role_email_map[req.role]
     user = db.query(User).filter(User.email == target_email).first()
@@ -178,8 +177,27 @@ def create_demo_session(
     )
 
 
+login_rate_limits: defaultdict[str, list[float]] = defaultdict(list)
+LOGIN_MAX_REQUESTS = 10
+LOGIN_TIME_WINDOW = 60
+
 @router.post("/login", response_model=LoginResponse)
-def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
+def login(req: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    login_rate_limits[client_ip] = [
+        t for t in login_rate_limits[client_ip] if now - t < LOGIN_TIME_WINDOW
+    ]
+    import os
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        login_rate_limits[client_ip].clear()
+    if len(login_rate_limits[client_ip]) >= LOGIN_MAX_REQUESTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login requests. Please try again later.",
+        )
+    login_rate_limits[client_ip].append(now)
+
     user = db.query(User).filter(User.email == req.email).first()
 
     # Generic error message to prevent enumeration

@@ -173,7 +173,7 @@ def ready() -> Any:
                 "('SHAKTI_PRECISION_001', 'NAVPRERNA_TRADERS_001', 'RANGREZ_TEXTILES_001', 'NIRMAAN_WORKS_001')"
             )
         ).scalar()
-        demo_seed_ready = int(seed_count or 0) >= 1
+        demo_seed_ready = int(seed_count or 0) == 4
         if settings.DEMO_ACCESS_ENABLED and not demo_seed_ready:
             raise RuntimeError("Demo access is enabled but demo seed is incomplete")
         return {
