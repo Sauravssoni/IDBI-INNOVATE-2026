@@ -103,6 +103,9 @@ export default function LoginPage() {
           <ShieldCheck className="w-4 h-4 text-brand-teal" />
           <span>BUILT FOR IDBI INNOVATE 2026 • HACKATHON EDITION</span>
         </div>
+        <div className="flex items-center justify-center mb-4">
+          <img src="/logo.png" alt="Vyapar Pulse Logo" className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl shadow-xl border-2 border-white/20 object-cover" />
+        </div>
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white mb-2">
           Vyapar <span className="text-brand-teal">Pulse</span>
         </h1>

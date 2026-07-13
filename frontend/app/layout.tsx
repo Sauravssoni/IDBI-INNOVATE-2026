@@ -18,6 +18,11 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "Vyapar Pulse | IDBI Innovate 2026 - AI-Assisted Credit Assessment Prototype",
   description: "Next-generation SME credit assessment with deterministic evidence-linked recommendations, BOLA governance, and tamper-evident prototype audit chain. Hackathon prototype—not an official IDBI Bank production system.",
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/logo.png',
+  },
 };
 
 export default function RootLayout({
