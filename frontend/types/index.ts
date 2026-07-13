@@ -277,5 +277,40 @@ export interface DecisionPackageResponse {
     event_hash: string;
     created_at: string;
   }[];
-  [key: string]: any;
+  [key: string]: unknown; // Removed 'any' bypass
+}
+
+export interface VerificationResult {
+  valid: boolean;
+  expected_hash: string;
+  actual_hash: string;
+  package_id: string;
+}
+
+export interface ReplayResult {
+  status: string;
+  differences: string[];
+  replayed_decision: string;
+  package_hash_verified: boolean;
+  mismatch_fields: string[];
+}
+
+export interface StressResponse {
+  baseline_limit: number;
+  overall_stress_status?: string;
+  scenarios: {
+    scenario_id: string;
+    scenario_name?: string;
+    name?: string;
+    stressed_limit: number;
+    description: string;
+    impact?: string;
+    status?: string;
+    recomputed_dscr?: number;
+    reverse_stress_details?: Record<string, string>;
+  }[];
+}
+
+export interface HumanContext {
+  [key: string]: unknown; // Replaced 'any'
 }

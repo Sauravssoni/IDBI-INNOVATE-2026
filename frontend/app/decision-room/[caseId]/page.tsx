@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
 import type { DecisionPackageResponse } from "@/lib/types";
+import type { VerificationResult, ReplayResult, StressResponse, HumanContext } from "@/types";
 import { IntegrityGraph } from "@/components/IntegrityGraph";
 
 const PERSONAS = [
@@ -22,11 +23,11 @@ export default function DecisionRoomPage() {
   const { caseId } = useParams();
   const router = useRouter();
   
-  const [data, setData] = useState<any>(null);
-  const [stressData, setStressData] = useState<any | null>(null);
+  const [data, setData] = useState<DecisionPackageResponse | null>(null);
+  const [stressData, setStressData] = useState<StressResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [humanContext, setHumanContext] = useState<any | null>(null);
+  const [humanContext, setHumanContext] = useState<HumanContext | null>(null);
   
   const [currentStep, setCurrentStep] = useState(0);
   const [decision, setDecision] = useState<string | null>(null);
@@ -39,43 +40,43 @@ export default function DecisionRoomPage() {
 
   // Verification & Replay State
   const [verifying, setVerifying] = useState(false);
-  const [verificationResult, setVerificationResult] = useState<any>(null);
+  const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
 
   const [replaying, setReplaying] = useState(false);
-  const [replayResult, setReplayResult] = useState<any>(null);
+  const [replayResult, setReplayResult] = useState<ReplayResult | null>(null);
   const [replayError, setReplayError] = useState<string | null>(null);
 
   // For Persona Switcher
-  const [allCases, setAllCases] = useState<any[]>([]);
+  const [allCases, setAllCases] = useState<Record<string, unknown>[]>([]);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const casesRes = await apiFetch<any[]>("/api/cases");
+        const casesRes = await apiFetch<Record<string, unknown>[]>("/api/cases");
         if (casesRes.status === 200 && casesRes.data) {
           setAllCases(casesRes.data);
         }
 
-        const res = await apiFetch<any>(`/api/cases/${caseId}/decision-package`);
+        const res = await apiFetch<DecisionPackageResponse>(`/api/cases/${caseId}/decision-package`);
         if (res.status === 200 && res.data) {
           setData(res.data);
           // Fetch stress data concurrently
           apiFetch(`/api/cases/${caseId}/stress-lab`).then(stressRes => {
             if (stressRes.status === 200) {
-              setStressData(stressRes.data);
+              setStressData(stressRes.data as import('@/types').StressResponse);
             }
           });
           apiFetch(`/api/cases/${caseId}/human-decision-context`).then(hcRes => {
             if (hcRes.status === 200 && hcRes.data) {
-              setHumanContext(hcRes.data);
+              setHumanContext(hcRes.data as import('@/types').HumanContext);
             }
           });
         } else {
           setError(res.error || "Failed to load decision package");
         }
-      } catch (err: any) {
-        setError(err.message || "Unknown error");
+      } catch (err: unknown) {
+        setError((err as Error).message || "Unknown error");
       } finally {
         setLoading(false);
       }
@@ -84,7 +85,7 @@ export default function DecisionRoomPage() {
   }, [caseId]);
 
   const handlePersonaSwitch = (bizId: string) => {
-    const targetCase = allCases.find((c: any) => c.business_id === bizId);
+    const targetCase = allCases.find((c: Record<string, unknown>) => c.business_id === bizId);
     if (targetCase) {
       router.push(`/decision-room/${targetCase.id}`);
     } else {
@@ -115,8 +116,8 @@ export default function DecisionRoomPage() {
       } else {
         setSanctionError(res.error || JSON.stringify(res.data));
       }
-    } catch (err: any) {
-      setSanctionError(err.message);
+    } catch (err: unknown) {
+      setSanctionError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
@@ -128,14 +129,14 @@ export default function DecisionRoomPage() {
     setVerificationError(null);
     setVerificationResult(null);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.package_id}/verify`, { method: "POST" });
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.case_id}/verify`, { method: "POST" });
       if (res.status === 200) {
-        setVerificationResult(res.data);
+        setVerificationResult(res.data as import('@/types').VerificationResult);
       } else {
         setVerificationError(res.error || "Verification failed");
       }
-    } catch (err: any) {
-      setVerificationError(err.message);
+    } catch (err: unknown) {
+      setVerificationError((err as Error).message);
     } finally {
       setVerifying(false);
     }
@@ -147,14 +148,14 @@ export default function DecisionRoomPage() {
     setReplayError(null);
     setReplayResult(null);
     try {
-      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.package_id}/replay`, { method: "POST" });
+      const res = await apiFetch(`/api/cases/${caseId}/decision-package/${data.case_id}/replay`, { method: "POST" });
       if (res.status === 200) {
-        setReplayResult(res.data);
+        setReplayResult(res.data as import('@/types').ReplayResult);
       } else {
         setReplayError(res.error || "Replay failed");
       }
-    } catch (err: any) {
-      setReplayError(err.message);
+    } catch (err: unknown) {
+      setReplayError((err as Error).message);
     } finally {
       setReplaying(false);
     }
@@ -197,8 +198,8 @@ export default function DecisionRoomPage() {
   const integrityState = assessment.integrity_state || "N/A";
   const fhi = assessment.financial_health_index !== undefined ? Number(assessment.financial_health_index).toFixed(2) : "N/A";
   const vyaparScore = assessment.vyapar_credit_health_score ?? "N/A";
-  const currentDSCR = assessment.dscr_metrics?.current_dscr ? Number(assessment.dscr_metrics.current_dscr).toFixed(2) + "x" : "N/A";
-  const postLoanDSCR = assessment.dscr_metrics?.post_loan_dscr ? Number(assessment.dscr_metrics.post_loan_dscr).toFixed(2) + "x" : "N/A";
+  const currentDSCR = assessment.current_dscr ? Number(assessment.dscr_metrics?.current_dscr).toFixed(2) + "x" : "N/A";
+  const postLoanDSCR = assessment.post_loan_dscr ? Number(assessment.dscr_metrics?.post_loan_dscr).toFixed(2) + "x" : "N/A";
   const supportableAmt = assessment.limit_bridge?.final_supportable_amount || assessment.supportable_amount || 0;
   const bindingConstraint = assessment.limit_bridge?.binding_constraint || assessment.binding_constraint || "N/A";
   const stressVerdict = stressData?.overall_stress_status || "PENDING";
@@ -226,7 +227,7 @@ export default function DecisionRoomPage() {
               <select 
                 className="bg-black text-white border border-white/20 rounded px-3 py-1.5 text-sm font-medium focus:outline-none focus:border-emerald-500"
                 onChange={(e) => handlePersonaSwitch(e.target.value)}
-                value={allCases.find(c => c.id === caseId)?.business_id || ""}
+                value={String(allCases.find(c => c.id === caseId)?.business_id || "")}
               >
                 <option value="" disabled>Select Persona</option>
                 {PERSONAS.map(p => (
@@ -274,7 +275,7 @@ export default function DecisionRoomPage() {
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mt-4 border border-white/10 rounded-xl p-4 bg-white/[0.02]">
              <div className="col-span-2">
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Binding Constraint</p>
-                <p className="font-bold text-red-400 text-sm truncate">{bindingConstraint}</p>
+                <p className="font-bold text-red-400 text-sm truncate">{String(bindingConstraint)}</p>
              </div>
              <div>
                 <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stress Verdict</p>
@@ -365,7 +366,7 @@ export default function DecisionRoomPage() {
                    </div>
                  </div>
                  <div className="space-y-4">
-                  {assessment.six_pillars?.map((p: any, i: number) => (
+                  {assessment.six_pillars?.map((p: import('@/lib/types').FinancialHealthPillarResponse, i: number) => (
                     <div key={i} className="flex justify-between items-center p-4 bg-black/40 rounded-lg border border-white/5 hover:bg-black/60 transition">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -400,11 +401,11 @@ export default function DecisionRoomPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {assessment.product_capacities ? Object.values(assessment.product_capacities).map((pc: any, i: number) => (
+                    {assessment.product_capacities ? Object.values(assessment.product_capacities).map((pc: import('@/lib/types').LimitDetail, i: number) => (
                       <tr key={i} className="border-b border-white/5 hover:bg-white/5">
-                        <td className="p-4 font-bold text-white">{pc.product || pc.product_name}</td>
-                        <td className="p-4 font-bold text-emerald-400 text-right">{formatCurrency(Number(pc.binding_limit || pc.capacity))}</td>
-                        <td className="p-4 text-xs text-red-400 font-mono">{pc.binding_constraint || "N/A"}</td>
+                        <td className="p-4 font-bold text-white">{pc.product || pc.product}</td>
+                        <td className="p-4 font-bold text-emerald-400 text-right">{formatCurrency(Number(pc.binding_limit || pc.max_capacity))}</td>
+                        <td className="p-4 text-xs text-red-400 font-mono">{pc.reason_codes?.[0] || "N/A"}</td>
                       </tr>
                     )) : (
                       <tr><td colSpan={3} className="p-4 text-gray-500 text-center">No data available</td></tr>
@@ -421,7 +422,7 @@ export default function DecisionRoomPage() {
               <div className="bg-white/5 p-6 rounded-xl border border-white/10">
                 {assessment.limit_bridge?.stages ? (
                   <div className="space-y-4">
-                    {assessment.limit_bridge.stages.map((stage: any, i: number) => (
+                    {((assessment.limit_bridge?.stages || []) as Record<string, unknown>[]).map((stage: { label?: string, amount?: number, impact_type?: string, reason?: string, rationale?: string, applied?: boolean, stage_id?: string, explanation?: string, formula?: string, calculated_value?: number }, i: number) => (
                       <div key={i} className={`flex justify-between items-start pb-4 border-b border-white/5 ${stage.applied ? 'opacity-100' : 'opacity-50'}`}>
                         <div className="flex-1 pr-4">
                           <p className="text-white font-bold flex items-center gap-2">
@@ -439,7 +440,7 @@ export default function DecisionRoomPage() {
                     <div className="pt-2 flex justify-between items-center mt-2">
                        <div>
                          <p className="text-emerald-400 font-bold text-xl">Final Supportable Amount</p>
-                         <p className="text-xs text-red-400 mt-1">Constrained by: {assessment.limit_bridge.binding_constraint}</p>
+                         <p className="text-xs text-red-400 mt-1">Constrained by: {String(assessment.limit_bridge.binding_constraint)}</p>
                        </div>
                        <p className="text-3xl font-bold text-emerald-400 font-mono">{formatCurrency(assessment.limit_bridge.final_supportable_amount)}</p>
                     </div>
@@ -460,7 +461,7 @@ export default function DecisionRoomPage() {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                    <div className="space-y-4">
                      <h3 className="text-lg font-bold text-gray-400">Stress Matrix</h3>
-                     {stressData.scenarios?.filter((s:any) => s.scenario_id !== 'REVERSE_STRESS').map((scen: any, idx: number) => {
+                     {stressData.scenarios?.filter((s: import('@/types/index').StressResponse['scenarios'][0]) => s.scenario_id !== 'REVERSE_STRESS').map((scen: import('@/types/index').StressResponse['scenarios'][0], idx: number) => {
                        const isPass = scen.status === 'PASS' || scen.status === 'SECURE';
                        return (
                          <div key={idx} className={`p-4 rounded-xl border ${isPass ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
@@ -481,7 +482,7 @@ export default function DecisionRoomPage() {
                    
                    <div className="space-y-4">
                      <h3 className="text-lg font-bold text-gray-400">Reverse Stress Boundaries</h3>
-                     {stressData.scenarios?.filter((s:any) => s.scenario_id === 'REVERSE_STRESS').map((scen: any, idx: number) => (
+                     {stressData.scenarios?.filter((s: import('@/types/index').StressResponse['scenarios'][0]) => s.scenario_id === 'REVERSE_STRESS').map((scen: import('@/types/index').StressResponse['scenarios'][0], idx: number) => (
                        <div key={idx} className="bg-black border border-amber-500/30 p-5 rounded-xl">
                          <div className="flex items-center gap-2 mb-4">
                            <AlertTriangle className="w-5 h-5 text-amber-500"/>
@@ -523,7 +524,7 @@ export default function DecisionRoomPage() {
 
               <h3 className="text-lg font-bold text-gray-400 mb-4">Bankability Interventions (Before / After)</h3>
               <div className="space-y-4">
-                {assessment.bankability_interventions?.map((inv: any, i: number) => (
+                {assessment.bankability_interventions?.map((inv: import("@/lib/types").BankabilityIntervention, i: number) => (
                   <div key={i} className="bg-white/5 p-5 rounded-xl border border-white/10">
                     <p className="text-white font-bold mb-2 flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-emerald-500" />
@@ -706,7 +707,7 @@ export default function DecisionRoomPage() {
         <div className="lg:w-72 bg-black/50 border-l border-white/10 p-6 overflow-y-auto shrink-0">
           <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Critical Alerts</h3>
           <div className="space-y-3 mb-8">
-            {data.monitoring_status?.alerts?.map((alert: any, i: number) => (
+            {data.monitoring_status?.alerts?.map((alert: { status?: string, rule_name?: string, detail?: string, severity?: string, message?: string, date?: string }, i: number) => (
               <div key={i} className={`p-3 rounded-lg border text-xs ${alert.status === 'TRIGGERED' ? 'bg-red-500/10 border-red-500/30' : 'bg-white/5 border-white/10'}`}>
                 <p className={`font-bold ${alert.status === 'TRIGGERED' ? 'text-red-400' : 'text-gray-300'}`}>{alert.rule_name}</p>
                 <p className="text-gray-500 mt-1">{alert.detail}</p>
@@ -725,7 +726,7 @@ export default function DecisionRoomPage() {
              </div>
              <div>
                <p className="text-gray-500">Last Modified</p>
-               <p className="font-mono text-white">{new Date(data.generated_at).toLocaleString()}</p>
+               <p className="font-mono text-white">{new Date(data.generated_at || new Date().toISOString()).toLocaleString()}</p>
              </div>
           </div>
         </div>

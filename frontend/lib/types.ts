@@ -132,6 +132,8 @@ export interface BankabilityIntervention {
   before_policy_result?: string | null;
   after_policy_result?: string | null;
   impact_status?: string | null;
+  intervention_type?: string;
+  description?: string;
 }
 
 export interface BankabilityPath {
@@ -159,7 +161,7 @@ export interface DecisionPackageResponse {
   assessment_certainty?: string | null;
   certainty_reasons?: string[] | null;
   peer_context?: PeerContext | null;
-  hindi_summary?: Record<string, any> | null;
+  hindi_summary?: Record<string, unknown> | null;
   policy_version: string;
   calculation_version: string;
   scoring_version?: string | null;
@@ -174,6 +176,10 @@ export interface DecisionPackageResponse {
   audit_chain: DecisionPackageAuditItem[];
   bankability_path?: BankabilityPath | null;
   assessment?: AssessmentResultResponse | null;
+  package_id?: string;
+  monitoring_status?: { alerts?: { severity: string; message: string; date: string }[] };
+  generated_at?: string;
+  package_hash?: string;
 }
 
 export interface ScenarioResult {
@@ -218,7 +224,7 @@ export interface AssessmentResultResponse {
   supportable_amount?: number | null;
   binding_constraint?: BindingConstraintResponse | null;
   six_pillars?: FinancialHealthPillarResponse[] | null;
-  stress_results?: any[] | null;
+  stress_results?: unknown[] | null;
   
   // Added fields to match page.tsx usage
   binding_limit?: number | null;
@@ -228,10 +234,12 @@ export interface AssessmentResultResponse {
   vyapar_credit_health_score?: number | null;
   financial_health_index?: number | null;
   product_capacities?: Record<string, LimitDetail>;
-  limit_bridge?: any;
-  analyst_recommendation?: any;
-  policy_recommendation?: any;
-  bankability_interventions?: any[];
+  limit_bridge?: Record<string, unknown>;
+  analyst_recommendation?: string;
+  policy_recommendation?: string;
+  bankability_interventions?: BankabilityIntervention[];
+  assessment_certainty?: string;
+  dscr_metrics?: { historical_dscr?: number; max_dscr?: number; min_dscr?: number; volatility?: number; current_dscr?: number; post_loan_dscr?: number };
 }
 
 export interface ApplicantViewResponse {

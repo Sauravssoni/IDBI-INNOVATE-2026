@@ -209,7 +209,7 @@ def test_decision_package_cd_fields(setup_data):
     assert data["peer_context"]["sample_status"] in [
         "VALID_PEER_SAMPLE",
         "INSUFFICIENT_PEER_SAMPLE",
-        "NOT AVAILABLE — NOT USED",
+        "NOT_USED",
     ]
     assert "hindi_summary" in data
     assert "decision_label" in data["hindi_summary"]

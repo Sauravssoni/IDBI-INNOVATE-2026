@@ -29,7 +29,10 @@ class DecisionPolicy:
         consent_status = self.features.get("consent_status", "VALID")
         if consent_status != "VALID":
             return {
-                "decision": SystemRecommendation.DECLINE_RECOMMENDED.value,
+                "decision": "PROCESSING_BLOCKED",
+                "reason_code": "CONSENT_REQUIRED",
+                "score": None,
+                "offer": "none",
                 "reasons": ["Invalid, revoked or expired consent"],
                 "offers": [],
                 "binding_limit": Decimal("0"),

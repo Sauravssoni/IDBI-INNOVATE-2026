@@ -1192,31 +1192,8 @@ def get_decision_package(
 
     # CD-002: Synthetic peer context
     peer_context = {
-        "peer_sector": case.business.sector
-        if case.business
-        else "NOT AVAILABLE — NOT USED",
-        "peer_sample_size": "NOT AVAILABLE — NOT USED",
-        "sample_status": "NOT AVAILABLE — NOT USED",
-        "metrics_comparison": {
-            "revenue_stability": {
-                "case_score": "NOT AVAILABLE — NOT USED",
-                "sector_median": "NOT AVAILABLE — NOT USED",
-                "percentile": "NOT AVAILABLE — NOT USED",
-                "status": "NOT AVAILABLE — NOT USED",
-            },
-            "dscr": {
-                "case_value": "NOT AVAILABLE — NOT USED",
-                "sector_median": "NOT AVAILABLE — NOT USED",
-                "percentile": "NOT AVAILABLE — NOT USED",
-                "status": "NOT AVAILABLE — NOT USED",
-            },
-            "filing_regularity": {
-                "case_score": "NOT AVAILABLE — NOT USED",
-                "sector_median": "NOT AVAILABLE — NOT USED",
-                "percentile": "NOT AVAILABLE — NOT USED",
-                "status": "NOT AVAILABLE — NOT USED",
-            },
-        },
+        "sample_status": "NOT_USED",
+        "reason": "Peer benchmarking is not used in this decision."
     }
 
     try:
