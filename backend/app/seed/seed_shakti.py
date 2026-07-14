@@ -186,7 +186,7 @@ def seed_shakti(db_session=None):
 
             # Bank
             bank_credits = round(
-                monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))),
+                monthly_rev * Decimal(str(round(random.uniform(0.95, 1.02), 4))),  # nosec B311
                 2,  # nosec B311
             )
             db.add(

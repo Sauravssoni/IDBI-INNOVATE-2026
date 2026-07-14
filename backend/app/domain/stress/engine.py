@@ -117,7 +117,7 @@ def run_case_stress_lab(
         # Enforce invariant: stressed_limit <= baseline_limit
         if result["supportable_amount"] > float(base_limit):
             result["supportable_amount"] = float(base_limit)
-        assert result["supportable_amount"] <= float(base_limit), (
+        assert result["supportable_amount"] <= float(base_limit), (  # nosec B101
             "adverse_supportable_amount <= baseline_supportable_amount"
         )
 

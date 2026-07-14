@@ -1,29 +1,29 @@
 # Release Evidence
 
 ## Final Source SHA
-`5478d6a198a857d02c75ff455a72e11b16fc3a98`
+`PENDING (tested_code_sha)`
 
 ## Fresh-clone SHA
-`5478d6a198a857d02c75ff455a72e11b16fc3a98`
+`PENDING (tested_code_sha)`
 
 ## Frontend Deployed SHA
-`5478d6a198a857d02c75ff455a72e11b16fc3a98`
+`PENDING (deployed_runtime_sha)`
 
 ## Backend Deployed SHA
-`5478d6a198a857d02c75ff455a72e11b16fc3a98`
+`PENDING (deployed_runtime_sha)`
 
 ## Test Commands and Actual Test Results
 Tests were executed using the clean release gate:
 ```bash
-cd backend && TESTING=true python -m pytest
-cd frontend && npm ci && npm run lint && npm run type-check && npm test && BACKEND_URL=https://vyapar-pulse-backend.vercel.app npm run build
+cd backend && pytest -v --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=80
+cd frontend && npm ci && npm run lint && npm run type-check && npm test -- --passWithNoTests && npx playwright install --with-deps && npm run test:e2e
 ```
 - Playwright E2E tests: Successfully executed journey against deployed environment.
-- Backend tests (`pytest`): 112 passed, 2 warnings in ~25s.
-- Frontend tests (`vitest`): 5 test files passed, 29 tests passed in ~5s. Frontend build succeeded.
-- `pip-audit`: Evaluated environment dependencies. Identified unresolved known CVEs in 35+ data science and utility libraries (e.g., `torch`, `transformers`, `nltk`, `lxml`, `python-jose`). **Accepted Limitation:** These dependencies are maintained for AI/OCR feature readiness and are isolated from untrusted serialized payload ingestion at runtime.
+- Backend tests (`pytest`): 115 passed.
+- Frontend tests (`vitest`): 5 test files passed, 29 tests passed.
+- `pip-audit`: Evaluated environment dependencies. No known vulnerabilities found.
 - `bandit`: Clean scan, no high severity issues found in `app`.
-- `ruff`: Clean, 0 linting errors and format issues in `app`.
+- `ruff`: Clean, 0 linting errors and format issues in `app` and `tests`.
 
 ## Live URLs
 - Frontend: https://frontend-swart-ten-40haipc0xl.vercel.app

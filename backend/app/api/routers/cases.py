@@ -1134,9 +1134,9 @@ def get_decision_package(
 
             scorer = ScoringEngine(features_dict)
             scores_meta = scorer.compute_all_scores()
-        except Exception:
-            pass
-
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Error computing scores: {e}")
     evidence_confidence = (
         Decimal(str(scores_meta["evidence_confidence_score"]))
         if scores_meta.get("evidence_confidence_score") is not None
@@ -1351,9 +1351,9 @@ def get_decision_package(
                 )
             if binding_limit is None and policy_res.get("binding_limit") is not None:
                 binding_limit = float(policy_res["binding_limit"])
-        except Exception:
-            pass
-
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Error computing binding limit: {e}")
     current_dscr_val = None
     if latest_assessment and latest_assessment.current_dscr is not None:
         current_dscr_val = latest_assessment.current_dscr

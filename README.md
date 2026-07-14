@@ -26,10 +26,10 @@ Vyapar Pulse is fully deployed and verified across production environments with 
 
 | Component | Live Production URL | Description | Verified Status |
 | :--- | :--- | :--- | :---: |
-| 🖥️ **Frontend App** | [frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app) | Executive Command Center, Decision Room, & Credit Twin Sandbox | `ONLINE (SHA: 8ca1fda)` |
-| ⚡ **Backend API** | [vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app) | Governed Scoring, Financial Capacity Engine, & Stress Lab v2.0 | `ONLINE (SHA: 8ca1fda)` |
+| 🖥️ **Frontend App** | [frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app) | Executive Command Center, Decision Room, & Credit Twin Sandbox | `ONLINE (deployed_runtime_sha)` |
+| ⚡ **Backend API** | [vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app) | Governed Scoring, Financial Capacity Engine, & Stress Lab v2.0 | `ONLINE (deployed_runtime_sha)` |
 | 📖 **OpenAPI / Swagger** | [vyapar-pulse-backend.vercel.app/docs](https://vyapar-pulse-backend.vercel.app/docs) | Interactive API documentation, schemas, and live test client | `ONLINE (v2.0.0)` |
-| 🔒 **Assurance Proof** | [artifacts/validation/release_assurance.json](artifacts/validation/release_assurance.json) | Deterministic 1,000-case verification and 25-case replay ledger | `100% PASSED` |
+| 🔒 **Assurance Proof** | [artifacts/validation/release_assurance.json](artifacts/validation/release_assurance.json) | Deterministic 1,000-case verification and 25-case replay ledger | `100% PASSED (tested_code_sha)` |
 
 ---
 

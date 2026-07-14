@@ -123,7 +123,7 @@ def seed_nirmaan(db_session=None):
         current_month = start_date + relativedelta(months=m)
         month_start = date(current_month.year, current_month.month, 1)
 
-        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.1, 0.1), 4)))
+        fluctuation = Decimal(str(round(1.0 + random.uniform(-0.1, 0.1), 4)))  # nosec B311
         monthly_rev = round(base_revenue * fluctuation, 2)
 
         # Huge GST variance
@@ -134,7 +134,7 @@ def seed_nirmaan(db_session=None):
         else:
             gst_revenue = monthly_rev
             bank_credits = round(
-                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2
+                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2  # nosec B311
             )
 
         db.add(
