@@ -5,6 +5,14 @@
 
 At its core, Vyapar Pulse converts alternate financial evidence into an explainable Financial Health Score, a supportable credit limit and a governed sanction decision.
 
+## 🚀 Judge Start Here
+
+### 🎥 [Watch the Final 3-Minute Live Demo](https://drive.google.com/file/d/1io4_vgZD4rxJGTCxyfSXwrNyHEbiVFOT/view?usp=sharing)
+
+**[Open Live Product](https://frontend-swart-ten-40haipc0xl.vercel.app)**  
+Then follow the 90-second evaluation route below:  
+**Shakti → Evidence → Capacity → Analyst → Sanction Authority → Seal → Verify → Replay**
+
 
 [![Invariance Assurance](https://img.shields.io/badge/Invariance%20Assurance-1%2C000%20Cases%20Passed-00C853?style=for-the-badge&logo=checkmarx&logoColor=white)](artifacts/validation/release_assurance.json)
 [![Test Coverage](https://img.shields.io/badge/Backend%20Tests-116%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
@@ -16,7 +24,7 @@ At its core, Vyapar Pulse converts alternate financial evidence into an explaina
   <b>Bridging India's ₹25+ Lakh Crore MSME Credit Gap not with opaque black-box AI, but through a deterministic, cryptographically auditable, and mathematically invariant credit decision pipeline.</b>
 </p>
 
-[Executive Command Center](https://frontend-swart-ten-40haipc0xl.vercel.app) • [Core API Server](https://vyapar-pulse-backend.vercel.app) • [Interactive Swagger Specs](https://vyapar-pulse-backend.vercel.app/docs) • [1,000-Case Assurance Proof](artifacts/validation/release_assurance.json) • [Architecture Guide](docs/architecture/SYSTEM_ARCHITECTURE.md)
+[Executive Command Center](https://frontend-swart-ten-40haipc0xl.vercel.app) • [🎥 Final Demo Video](https://drive.google.com/file/d/1io4_vgZD4rxJGTCxyfSXwrNyHEbiVFOT/view?usp=sharing) • [Core API Server](https://vyapar-pulse-backend.vercel.app) • [Interactive Swagger Specs](https://vyapar-pulse-backend.vercel.app/docs) • [1,000-Case Assurance Proof](artifacts/validation/release_assurance.json) • [Architecture Guide](docs/architecture/SYSTEM_ARCHITECTURE.md)
 
 </div>
 
@@ -178,20 +186,20 @@ The platform's release assurance loop continuously evaluates four canonical MSME
 
 ```mermaid
 graph LR
-    subgraph P1 [Shakti Precision Tools]
-        S1[Verified Prime MSME<br/>DSCR: 2.14x | FHI: 84.2] --> R1[CONDITIONAL OFFER<br/>Limit: ₹35,69,042.50]
+    subgraph P1 ["Shakti Precision Tools"]
+        S1["Verified Prime MSME<br/>DSCR: 2.14x | FHI: 84.2"] --> R1["CONDITIONAL OFFER<br/>Limit: ₹35,69,042.50"]
     end
 
-    subgraph P2 [Navprerna Tech Solutions]
-        S2[Thin-File / Data Gaps<br/>Missing Tax Reconciliation] --> R2[ADDITIONAL EVIDENCE REQUIRED<br/>Limit: ₹0.00 | Bankability Path Issued]
+    subgraph P2 ["Navprerna Tech Solutions"]
+        S2["Thin-File / Data Gaps<br/>Missing Tax Reconciliation"] --> R2["ADDITIONAL EVIDENCE REQUIRED<br/>Limit: ₹0.00 | Bankability Path Issued"]
     end
 
-    subgraph P3 [Rangrez Textiles]
-        S3[Reconciliation Mismatch<br/>GST vs. Bank Turnover Delta] --> R3[READY FOR REVIEW<br/>Strict Analyst Scrutiny Required]
+    subgraph P3 ["Rangrez Textiles"]
+        S3["Reconciliation Mismatch<br/>GST vs. Bank Turnover Delta"] --> R3["READY FOR REVIEW<br/>Strict Analyst Scrutiny Required"]
     end
 
-    subgraph P4 [Nirmaan Infrastructure]
-        S4[Over-Leveraged Profile<br/>Debt/EBITDA > 4.5x | DSCR < 1.0x] --> R4[DECLINE RECOMMENDED<br/>Binding Limit: ₹0.00]
+    subgraph P4 ["Nirmaan Infrastructure"]
+        S4["Over-Leveraged Profile<br/>Debt/EBITDA > 4.5x | DSCR < 1.0x"] --> R4["DECLINE RECOMMENDED<br/>Binding Limit: ₹0.00"]
     end
 
     style P1 fill:#1B3B2B,stroke:#43A047,stroke-width:2px,color:#fff
