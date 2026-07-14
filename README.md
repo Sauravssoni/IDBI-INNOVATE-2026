@@ -3,6 +3,8 @@
 # VYAPAR PULSE
 ### The Governed Evidence-to-Sanction Operating System for Indian MSME Credit
 
+At its core, Vyapar Pulse converts alternate financial evidence into an explainable Financial Health Score, a supportable credit limit and a governed sanction decision.
+
 
 [![Invariance Assurance](https://img.shields.io/badge/Invariance%20Assurance-1%2C000%20Cases%20Passed-00C853?style=for-the-badge&logo=checkmarx&logoColor=white)](artifacts/validation/release_assurance.json)
 [![Test Coverage](https://img.shields.io/badge/Backend%20Tests-116%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
@@ -26,10 +28,27 @@ Vyapar Pulse is cryptographically verified across production environments with z
 
 | Component | Live Production URL | Description | Verified Status |
 | :--- | :--- | :--- | :---: |
-| 🖥️ **Frontend App** | [frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app) | Executive Command Center, Decision Room, & Credit Twin Sandbox | `ONLINE (deployed_runtime_sha)` |
-| ⚡ **Backend API** | [vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app) | Governed Scoring, Financial Capacity Engine, & Stress Lab v2.0 | `ONLINE (deployed_runtime_sha)` |
+| 🖥️ **Frontend App** | [frontend-swart-ten-40haipc0xl.vercel.app](https://frontend-swart-ten-40haipc0xl.vercel.app) | Executive Command Center, Decision Room, & Credit Twin Sandbox | `ONLINE — Source SHA: 21e83d2` |
+| ⚡ **Backend API** | [vyapar-pulse-backend.vercel.app](https://vyapar-pulse-backend.vercel.app) | Governed Scoring, Financial Capacity Engine, & Stress Lab v2.0 | `ONLINE — Source SHA: 21e83d2` |
 | 📖 **OpenAPI / Swagger** | [vyapar-pulse-backend.vercel.app/docs](https://vyapar-pulse-backend.vercel.app/docs) | Interactive API documentation, schemas, and live test client | `ONLINE (v2.0.0)` |
-| 🔒 **Assurance Proof** | [artifacts/validation/release_assurance.json](artifacts/validation/release_assurance.json) | Deterministic 1,000-case verification and 25-case replay ledger | `100% PASSED (tested_code_sha)` |
+| 🔒 **Assurance Proof** | [artifacts/validation/release_assurance.json](artifacts/validation/release_assurance.json) | Deterministic 1,000-case verification and 25-case replay ledger | `100% PASSED — Tested SHA: 21e83d2` |
+
+---
+
+## ⏱️ Judge Quick Evaluation (90 Seconds)
+
+1. Open the live frontend and enter as **Credit Analyst**.
+2. Select **Shakti Precision Tools**.
+3. Inspect evidence, run reconciliation and execute the assessment.
+4. Submit the analyst recommendation.
+5. Continue as **Sanctioning Authority** and approve within mandate.
+6. Seal the Decision Package.
+7. Verify its SHA-256 hash and execute Independent Replay.
+
+Then inspect:
+- **Navprerna** for evidence-based abstention.
+- **Rangrez** for reconciliation-risk escalation.
+- **Nirmaan** for stress-triggered hard decline.
 
 ---
 
@@ -84,7 +103,7 @@ Auditors and regulators access a continuous, tamper-evident hash chain (`audit_h
 
 ## ⚡ Design Principles and Verified Properties
 
-Vyapar Pulse introduces several fundamental engineering breakthroughs that eliminate model hallucinations, tampering risks, and opaque AI scoring in institutional credit underwriting.
+Vyapar Pulse introduces several verified engineering properties that eliminate model hallucinations, tampering risks, and opaque AI scoring in institutional credit underwriting.
 
 ```mermaid
 graph TD
@@ -114,8 +133,8 @@ Every assessment is frozen into a canonical `DecisionPackage` triggered via `POS
 
 ---
 
-### 3. Mathematical Monotonicity Theorems & Stress Lab Invariants
-To prevent quantitative anomalies (such as an applicant receiving a larger loan when their revenue drops or debt increases), the `FinancialCapacityEngine` and `Stress Lab Engine v2.0` enforce proven mathematical theorems across all evaluations:
+### 3. Tested Monotonicity Invariants & Stress Lab Limits
+To prevent quantitative anomalies (such as an applicant receiving a larger loan when their revenue drops or debt increases), the `FinancialCapacityEngine` and `Stress Lab Engine v2.0` enforce tested monotonicity invariants across all evaluations:
 
 $$\frac{\partial \text{Limit}}{\partial \text{Revenue}} \ge 0 \quad \text{(Revenue Monotonicity)}$$
 
