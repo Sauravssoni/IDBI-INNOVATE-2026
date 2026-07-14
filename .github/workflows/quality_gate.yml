@@ -203,6 +203,8 @@ jobs:
       env:
         DATABASE_URL: postgresql+psycopg2://vyapar_local:change-this-local-development-password@localhost:5432/vyapar_test
         PYTHONPATH: .
+        DEMO_USER_PASSWORD: VyaparPulseDemo2026!
+        DEMO_ACCESS_ENABLED: "true"
       run: |
         cd backend
         source .venv/bin/activate

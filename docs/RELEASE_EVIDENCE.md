@@ -19,7 +19,7 @@ cd backend && pytest -v --cov=app --cov-report=term-missing --cov-report=xml --c
 cd frontend && npm ci && npm run lint && npm run type-check && npm test -- --passWithNoTests && npx playwright install --with-deps && npm run test:e2e
 ```
 - Playwright E2E tests: Successfully executed journey against deployed environment.
-- Backend tests (`pytest`): 115 passed.
+- Backend tests (`pytest`): 116 passed.
 - Frontend tests (`vitest`): 5 test files passed, 29 tests passed.
 - `pip-audit`: Evaluated environment dependencies. No known vulnerabilities found.
 - `bandit`: Clean scan, no high severity issues found in `app`.

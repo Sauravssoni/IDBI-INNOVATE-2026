@@ -134,7 +134,8 @@ def seed_nirmaan(db_session=None):
         else:
             gst_revenue = monthly_rev
             bank_credits = round(
-                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2  # nosec B311
+                monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))),
+                2,  # nosec B311
             )
 
         db.add(

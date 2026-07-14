@@ -22,7 +22,7 @@
 
 ## 🌐 Live Submission Environment
 
-Vyapar Pulse is fully deployed and verified across production environments with zero horizontal overflow on mobile devices (390px viewport certified) and complete end-to-end cryptographic integrity.
+Vyapar Pulse is cryptographically verified across production environments with zero horizontal overflow on mobile devices (390px viewport certified) and complete end-to-end cryptographic integrity.
 
 | Component | Live Production URL | Description | Verified Status |
 | :--- | :--- | :--- | :---: |
@@ -37,7 +37,6 @@ Vyapar Pulse is fully deployed and verified across production environments with 
 
 ### 🎥 Live Video Demonstrations
 - **[Final Live Demo Video (Google Drive)](https://drive.google.com/file/d/1io4_vgZD4rxJGTCxyfSXwrNyHEbiVFOT/view?usp=sharing)**
-- **[Final Live Demo Video (Local Repo)](docs/assets/video_demo.mov)**
 
 Vyapar Pulse turns complex, fragmented MSME financial data into clean, actionable, and cryptographically sealed decision packages. Below is the operational workflow across the platform's core interfaces:
 
@@ -76,7 +75,7 @@ The platform enforces non-negotiable quantitative policy boundaries: any Debt-to
 
 ---
 
-### 6. Cryptographic Auditor Trace & Byte-for-Byte Replay (`AuditTab`)
+### 6. Cryptographic Auditor Trace & Canonical Semantic Replay (`AuditTab`)
 Auditors and regulators access a continuous, tamper-evident hash chain (`audit_hash`) with one-click verification (`POST /verify`) and full mathematical engine re-execution (`POST /replay`).
 
 ![Auditor Trace & Replay](docs/assets/screenshots/09-auditor-trace.png)
@@ -111,7 +110,7 @@ In typical financial workflows, human bias or manual spreadsheet adjustments can
 Every assessment is frozen into a canonical `DecisionPackage` triggered via `POST /api/cases/{caseId}/decision-package`.
 * **Tamper-Evident Hash (`package_hash`):** The system calculates an immutable `SHA-256` digest over the canonical JSON payload containing the full feature snapshot, score contribution ledger, financial capacity metrics, and policy rules.
 * **Route Hygiene & Parameter Isolation:** The verification endpoints (`POST /api/cases/{caseId}/decision-package/{package_id}/verify` and `/replay`) rigorously isolate parameters (`package_id` without `case_id` route pollution).
-* **Byte-for-Byte Deterministic Replay:** Regulators or internal auditors can invoke `/replay` at any future timestamp. The system re-instantiates the historical `ScoringEngine` and `FinancialCapacityEngine` with the exact sealed snapshot and proves that recomputed outputs match the original recommendation byte-for-byte (`INDEPENDENT REPLAY MATCHED`).
+* **Canonical Semantic Replay:** Regulators or internal auditors can invoke `/replay` at any future timestamp. The system re-instantiates the historical `ScoringEngine` and `FinancialCapacityEngine` with the exact sealed snapshot and proves that recomputed outputs match the original recommendation via canonical semantic replay (`INDEPENDENT REPLAY MATCHED`).
 
 ---
 
@@ -187,7 +186,7 @@ graph LR
 | **Shakti Precision Tools** (`SHAKTI_001`) | Precision CNC Manufacturing | `2.14x` / `84.20` | `CONDITIONAL_OFFER` | **`₹35,69,042.50`** (Term Loan / Working Capital structure approved) |
 | **Navprerna Tech Solutions** (`NAVPRERNA_001`) | IT & Digital Services | `1.46x` / `N/A` | `INSUFFICIENT_TO_ASSESS` | **`₹0.00`** (`ADDITIONAL_EVIDENCE_REQUIRED` via Bankability Path) |
 | **Rangrez Textiles** (`RANGREZ_001`) | Textile Processing & Export | `1.45x` / `68.50` | `READY_FOR_REVIEW` | Held for manual credit analyst scrutiny due to GST reconciliation variance |
-| **Nirmaan Infrastructure** (`NIRMAAN_001`) | Civil & Structural Engineering | `1.50x` / `65.00` | `DECLINE_RECOMMENDED` | **`₹0.00`** (Hard Gating: DSCR $< 1.15\times$) |
+| **Nirmaan Infrastructure** (`NIRMAAN_001`) | Civil & Structural Engineering | `1.50x` / `65.00` | `DECLINE_RECOMMENDED` | **`₹0.00`** (Hard Gating: base DSCR 1.50x → stressed DSCR 0.66x) |
 
 ---
 
@@ -217,7 +216,7 @@ The release pipeline executes an automated verification run across 1,000 synthet
 cd backend && python -m app.assurance.run_assurance
 ```
 * **Result:** `1,000 / 1,000 cases completed with ZERO recorded invariant violations or unhandled calculation errors.`
-* **25-Case Replay Verification:** 25 randomly sampled packages from the cohort are verified and re-executed byte-for-byte against the engine serializer (`artifacts/validation/release_assurance.json`).
+* **25-Case Replay Verification:** 25 deterministic serializer/scoring replay checks from the cohort are verified and re-executed via canonical semantic replay against the engine serializer (`artifacts/validation/release_assurance.json`).
 
 ---
 
@@ -301,7 +300,7 @@ vyapar-pulse-starter/
 │   │   │   └── verification/      # DecisionPackage SHA-256 sealing, verify, & replay engine
 │   │   ├── seed/                  # Deterministic persona seeds (Shakti, Navprerna, Rangrez, Nirmaan)
 │   │   └── assurance/             # 1,000-case automated invariant verification scripts
-│   ├── tests/                     # Comprehensive 111-test suite (unit, domain, API, E2E, security)
+│   ├── tests/                     # Comprehensive 116-test suite (unit, domain, API, E2E, security)
 │   └── requirements.txt           # Python backend dependencies
 ├── frontend/
 │   ├── app/

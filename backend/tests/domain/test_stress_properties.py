@@ -67,19 +67,20 @@ def test_monotonicity_properties(rev_drop, expense_inc, rate_hike, tenor):
     # The invariant: limit cannot increase under purely adverse conditions (lower revenue, higher expense, higher rate)
     assert stressed_result["max_borrowing_limit"] <= base_result["max_borrowing_limit"]
 
+
 def test_canned_scenario_invariant_violation():
     from app.domain.stress.engine import run_case_stress_lab
-    
+
     # We create a scenario where the stressed features magically result in a HIGHER limit than baseline,
     # which violates the monotonicity invariant. The engine should catch this and return INVARIANT_VIOLATION.
     # To simulate this easily, we can mock or construct features such that the base limit is extremely low,
     # but the recomputed limit is higher (e.g. by passing higher revenue in the "stressed" features if we could).
     # Since run_case_stress_lab hardcodes the stress multipliers, we can achieve this by passing a negative rate or manipulating base_limit directly if we mock.
     # The simplest way is to test the internal scenario_payload logic by injecting a scenario that breaks it.
-    
+
     # But since scenario_payload is nested inside run_case_stress_lab, we must use run_case_stress_lab.
     # We can pass an artificially low base_limit to run_case_stress_lab.
-    
+
     base_features = {
         "gst_metrics": {"avg_monthly_revenue": 5000000.0},
         "bank_metrics": {
@@ -93,10 +94,10 @@ def test_canned_scenario_invariant_violation():
         "requested_amount": 1000000.0,
         "requested_tenor_months": 24,
     }
-    
+
     from decimal import Decimal
     from unittest import mock
-    
+
     # We mock DecisionPolicy.evaluate to return a very small base_limit.
     # The actual FinancialCapacityEngine (which is NOT mocked) will recompute
     # the capacity for the canned scenarios and yield a limit around 15 Million.
@@ -106,22 +107,35 @@ def test_canned_scenario_invariant_violation():
         # We can use a counter attached to the function to track calls
         if not hasattr(mock_eval_side_effect, "calls"):
             mock_eval_side_effect.calls = 0
-        
+
         mock_eval_side_effect.calls += 1
         if mock_eval_side_effect.calls == 1:
-            return {"decision": "APPROVED", "binding_limit": Decimal("100.00"), "reasons": []}
+            return {
+                "decision": "APPROVED",
+                "binding_limit": Decimal("100.00"),
+                "reasons": [],
+            }
         else:
-            return {"decision": "APPROVED", "binding_limit": Decimal("50000.00"), "reasons": []}
-            
+            return {
+                "decision": "APPROVED",
+                "binding_limit": Decimal("50000.00"),
+                "reasons": [],
+            }
+
     with mock.patch("app.domain.stress.engine.DecisionPolicy.evaluate") as mock_eval:
-        mock_eval.side_effect = mock_eval_side_effect   
+        mock_eval.side_effect = mock_eval_side_effect
         result = run_case_stress_lab(
             features=base_features,
-            scores={"evidence_confidence_score": 100, "financial_health_index": 850, "vyapar_credit_health_score": 850, "score_range": "EXCELLENT"},
+            scores={
+                "evidence_confidence_score": 100,
+                "financial_health_index": 850,
+                "vyapar_credit_health_score": 850,
+                "score_range": "EXCELLENT",
+            },
             requested_amount=Decimal("1000000.00"),
             requested_product="TERM_LOAN",
         )
-    
+
     scenarios = result["scenarios"]
     # All scenarios will compute a raw limit > 100.00 and fail the invariant.
     for s in scenarios:
@@ -131,3 +145,4 @@ def test_canned_scenario_invariant_violation():
         assert s["after"]["decision"] == "REJECTED"
         assert s["after"]["binding_constraint"] == "STRESS_MONOTONICITY_VIOLATION"
         assert s["offer_generated"] is False
+    assert result["overall_stress_status"] == "INVARIANT_VIOLATION"

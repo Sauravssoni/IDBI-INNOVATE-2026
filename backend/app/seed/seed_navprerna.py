@@ -142,7 +142,8 @@ def seed_navprerna(db_session=None):
             )
 
         bank_credits = round(
-            monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))), 2  # nosec B311
+            monthly_rev * Decimal(str(round(random.uniform(0.98, 1.05), 4))),
+            2,  # nosec B311
         )
         db.add(
             BankTransaction(

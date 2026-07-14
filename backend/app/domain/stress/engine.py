@@ -116,12 +116,14 @@ def run_case_stress_lab(
 
         # Enforce invariant: stressed_limit <= baseline_limit
         raw_stressed_limit = result["supportable_amount"]
-        
+
         if raw_stressed_limit > float(base_limit):
             status = "INVARIANT_VIOLATION"
             result["decision"] = "REJECTED"
             result["binding_constraint"] = "STRESS_MONOTONICITY_VIOLATION"
-            result["breached_rules"] = ["Adverse limit exceeded baseline limit (Non-monotonic)"]
+            result["breached_rules"] = [
+                "Adverse limit exceeded baseline limit (Non-monotonic)"
+            ]
             offer_generated = False
         else:
             dscr_dec = (
@@ -136,7 +138,9 @@ def run_case_stress_lab(
             "scenario_id": scenario_id,
             "name": name,
             "description": description,
-            "recomputed_dscr": float(result["post_loan_dscr"]) if result["post_loan_dscr"] else 0.0,
+            "recomputed_dscr": float(result["post_loan_dscr"])
+            if result["post_loan_dscr"]
+            else 0.0,
             "recomputed_limit": raw_stressed_limit,
             "status": status,
             "policy_rule_id": policy_rule_id,
@@ -521,7 +525,9 @@ def run_case_stress_lab(
     )
 
     overall_stress_status = (
-        "NOT_ASSESSABLE"
+        "INVARIANT_VIOLATION"
+        if any(s["status"] == "INVARIANT_VIOLATION" for s in scenarios)
+        else "NOT_ASSESSABLE"
         if any(s["status"] == "NOT_ASSESSABLE" for s in scenarios)
         else "PASS"
         if all(s["status"] == "PASS" for s in scenarios)
