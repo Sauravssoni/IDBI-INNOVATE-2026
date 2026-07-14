@@ -117,3 +117,5 @@ coverage/
 gitleaks-report*
 replacements.txt
 *.patch
+cookies*.txt
+*.bak
