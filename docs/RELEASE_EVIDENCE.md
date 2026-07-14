@@ -1,16 +1,16 @@
 # Release Evidence
 
 ## Final Source SHA
-`PENDING (tested_code_sha)`
+`21e83d270508d4d95f016f7ad1d1ee2f523ac181`
 
 ## Fresh-clone SHA
-`PENDING (tested_code_sha)`
+`21e83d270508d4d95f016f7ad1d1ee2f523ac181`
 
 ## Frontend Deployed SHA
-`PENDING (deployed_runtime_sha)`
+`21e83d270508d4d95f016f7ad1d1ee2f523ac181`
 
 ## Backend Deployed SHA
-`PENDING (deployed_runtime_sha)`
+`21e83d270508d4d95f016f7ad1d1ee2f523ac181`
 
 ## Test Commands and Actual Test Results
 Tests were executed using the clean release gate:
