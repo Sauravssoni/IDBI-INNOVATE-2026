@@ -152,22 +152,43 @@ class FinancialCapacityEngine:
                 "custom_annual_rate", kwargs.get("interest_rate_pct", Decimal("0.135"))
             )
             custom_tenure_months = int(
-                kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36)) or 36
+                kwargs.get("custom_tenure_months", kwargs.get("tenure_months", 36))
+                or 36
             )
 
-        if custom_annual_rate is None or str(custom_annual_rate).strip().lower() in ("none", "null", ""):
+        if custom_annual_rate is None or str(custom_annual_rate).strip().lower() in (
+            "none",
+            "null",
+            "",
+        ):
             custom_annual_rate = kwargs.get("interest_rate_pct", Decimal("0.135"))
-        if custom_annual_rate is None or str(custom_annual_rate).strip().lower() in ("none", "null", ""):
+        if custom_annual_rate is None or str(custom_annual_rate).strip().lower() in (
+            "none",
+            "null",
+            "",
+        ):
             custom_annual_rate = Decimal("0.135")
 
-        if requested_amount is None or str(requested_amount).strip().lower() in ("none", "null", ""):
+        if requested_amount is None or str(requested_amount).strip().lower() in (
+            "none",
+            "null",
+            "",
+        ):
             requested_amount = kwargs.get("requested_amount_inr", Decimal("0.00"))
-        if requested_amount is None or str(requested_amount).strip().lower() in ("none", "null", ""):
+        if requested_amount is None or str(requested_amount).strip().lower() in (
+            "none",
+            "null",
+            "",
+        ):
             requested_amount = Decimal("0.00")
 
-        if custom_tenure_months is None or str(custom_tenure_months).strip().lower() in ("none", "null", ""):
+        if custom_tenure_months is None or str(
+            custom_tenure_months
+        ).strip().lower() in ("none", "null", ""):
             custom_tenure_months = kwargs.get("tenure_months", 36)
-        if custom_tenure_months is None or str(custom_tenure_months).strip().lower() in ("none", "null", ""):
+        if custom_tenure_months is None or str(
+            custom_tenure_months
+        ).strip().lower() in ("none", "null", ""):
             custom_tenure_months = 36
 
         requested_amount_dec = _safe_decimal(requested_amount, Decimal("0.00"))
@@ -241,7 +262,8 @@ class FinancialCapacityEngine:
             and cash_flow_status == "SUFFICIENT_CASH_FLOW_DATA"
         ):
             operating_cash_available = (
-                _safe_decimal(financials["ebitda_reported"], Decimal("0.00")) / Decimal("12")
+                _safe_decimal(financials["ebitda_reported"], Decimal("0.00"))
+                / Decimal("12")
             ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             if (
                 observed_operating_outflows <= 0

@@ -578,8 +578,8 @@ def run_case_stress_lab(
                 "dscr": float(custom_dscr),
                 "max_loan_amount": float(custom_limit),
                 "status": "INVARIANT_VIOLATION",
-                "message": "adverse_supportable_amount > baseline_supportable_amount"
-            }
+                "message": "adverse_supportable_amount > baseline_supportable_amount",
+            },
         }
     custom_status = get_custom_status(custom_dscr, custom_inflows - base_outflows)
     baseline_status = get_custom_status(base_dscr, base_inflows - base_outflows)

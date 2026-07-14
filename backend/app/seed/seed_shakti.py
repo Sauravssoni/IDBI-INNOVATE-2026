@@ -2,7 +2,7 @@ import random
 from datetime import date, timedelta
 from dateutil.relativedelta import relativedelta
 from decimal import Decimal
-from app.db.orm.cases import Business, Case, CaseStatus, DecisionPackage
+from app.db.orm.cases import Business, Case, CaseStatus
 from app.db.orm.consents import Consent, DataConnection, ConsentStatus
 from app.db.orm.evidence import (
     GSTPeriod,
@@ -22,6 +22,7 @@ import os
 import sys
 from sqlalchemy import text
 
+
 def seed_shakti(db_session=None):
     if db_session is None:
         from app.db.session import SessionLocal
@@ -39,7 +40,6 @@ def seed_shakti(db_session=None):
     ):
         print("Demo seeding is refused in production.")
         sys.exit(1)
-
 
     try:
         # Clean previous data to be idempotent
@@ -81,21 +81,29 @@ def seed_shakti(db_session=None):
             db.query(DataConnection).filter(
                 DataConnection.business_id_fk == existing_business.id
             ).delete()
-            
+
             # Delete audit events for the case
-            case = db.query(Case).filter(Case.business_id_fk == existing_business.id).first()
+            case = (
+                db.query(Case)
+                .filter(Case.business_id_fk == existing_business.id)
+                .first()
+            )
             if case:
-                db.execute(text("DELETE FROM audit_events WHERE case_id = :case_id"), {"case_id": case.id})
-                db.execute(text("DELETE FROM idempotency_records WHERE case_id = :case_id"), {"case_id": case.id})
-            db.query(Case).filter(
-                Case.business_id_fk == existing_business.id
-            ).delete()
-            db.query(Business).filter(
-                Business.id == existing_business.id
-            ).delete()
+                db.execute(
+                    text("DELETE FROM audit_events WHERE case_id = :case_id"),
+                    {"case_id": case.id},
+                )
+                db.execute(
+                    text("DELETE FROM idempotency_records WHERE case_id = :case_id"),
+                    {"case_id": case.id},
+                )
+            db.query(Case).filter(Case.business_id_fk == existing_business.id).delete()
+            db.query(Business).filter(Business.id == existing_business.id).delete()
             db.commit()
 
-        malviya_nagar_branch = db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
+        malviya_nagar_branch = (
+            db.query(Branch).filter(Branch.code == "BR-MN-JAI").first()
+        )
         if not malviya_nagar_branch:
             from app.seed.seed_demo_principals import seed_demo_principals
 
@@ -368,6 +376,7 @@ def seed_shakti(db_session=None):
     finally:
         if db_session is None:
             db.close()
+
 
 if __name__ == "__main__":
     seed_shakti()

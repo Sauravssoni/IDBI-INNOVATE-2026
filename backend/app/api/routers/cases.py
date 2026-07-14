@@ -47,7 +47,7 @@ from app.domain.financial.engine import FinancialCapacityEngine
 from app.api.dependencies import get_current_user
 from app.core.audit import calculate_audit_hash
 from app.domain.audit.verification import verify_audit_chain
-from app.db.orm.users import User, UserRole
+from app.db.orm.users import User
 from app.services.assessment_service import AssessmentService
 from app.services.authz import (
     apply_case_list_scope,
@@ -1614,7 +1614,9 @@ def seal_decision_package(
 
     role_val = getattr(user.role, "value", user.role)
     if role_val != "SANCTIONING_AUTHORITY":
-        raise HTTPException(status_code=403, detail="Caller not authorized to seal package")
+        raise HTTPException(
+            status_code=403, detail="Caller not authorized to seal package"
+        )
 
     assessment_snap = (
         db.query(AssessmentSnapshot)
@@ -1623,13 +1625,22 @@ def seal_decision_package(
         .first()
     )
     if not assessment_snap:
-        raise HTTPException(status_code=409, detail="Cannot seal: No latest assessment exists")
+        raise HTTPException(
+            status_code=409, detail="Cannot seal: No latest assessment exists"
+        )
 
-    if not case.analyst_recommendation or case.analyst_recommendation in ["PENDING", ""]:
-        raise HTTPException(status_code=409, detail="Cannot seal: No analyst recommendation exists")
+    if not case.analyst_recommendation or case.analyst_recommendation in [
+        "PENDING",
+        "",
+    ]:
+        raise HTTPException(
+            status_code=409, detail="Cannot seal: No analyst recommendation exists"
+        )
 
     if not case.human_decision or case.human_decision in ["PENDING", ""]:
-        raise HTTPException(status_code=409, detail="Cannot seal: No terminal human decision exists")
+        raise HTTPException(
+            status_code=409, detail="Cannot seal: No terminal human decision exists"
+        )
 
     dp = get_decision_package(case_id, db, user)
     latest_eval = (

@@ -67,8 +67,10 @@ class AssessmentService:
                 "decision": "DECLINE_RECOMMENDED",
                 "binding_limit": Decimal("0"),
                 "offers": [],
-                "reasons": [f"Malformed financial inputs rejected: {str(e)}. Zero capacity."],
-                "conditions": []
+                "reasons": [
+                    f"Malformed financial inputs rejected: {str(e)}. Zero capacity."
+                ],
+                "conditions": [],
             }
         from app.domain.financial.engine import FinancialCapacityEngine
 
