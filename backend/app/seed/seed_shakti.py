@@ -30,10 +30,6 @@ def seed_shakti(db_session=None):
         db = SessionLocal()
     else:
         db = db_session
-    if db_session is None:
-        from app.db.session import SessionLocal
-    else:
-        db = db_session
     if (
         os.environ.get("APP_ENV") == "production"
         and os.environ.get("DEMO_ACCESS_ENABLED", "false").lower() != "true"

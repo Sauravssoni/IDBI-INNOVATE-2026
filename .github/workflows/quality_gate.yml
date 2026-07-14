@@ -50,8 +50,8 @@ jobs:
       run: |
         cd backend
         source .venv/bin/activate
-        ruff check app/
-        ruff format --check app/
+        ruff check app/ tests/
+        ruff format --check app/ tests/
 
     - name: Run Typecheck
       run: |
@@ -130,7 +130,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: "20.x"
+        node-version: "22.x"
         cache: 'npm'
         cache-dependency-path: 'frontend/package-lock.json'
         
@@ -163,3 +163,15 @@ jobs:
       run: |
         cd frontend
         npm run build
+
+    - name: Install Playwright Browsers
+      run: |
+        cd frontend
+        npx playwright install --with-deps
+
+    - name: Run Playwright e2e tests
+      run: |
+        cd frontend
+        npm run test:e2e
+      env:
+        PLAYWRIGHT_TEST_BASE_URL: http://localhost:3005
