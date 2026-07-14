@@ -115,27 +115,33 @@ def run_case_stress_lab(
         result = recompute_scenario(scenario_features, rate)
 
         # Enforce invariant: stressed_limit <= baseline_limit
-        if result["supportable_amount"] > float(base_limit):
-            result["supportable_amount"] = float(base_limit)
-        assert result["supportable_amount"] <= float(base_limit), (  # nosec B101
-            "adverse_supportable_amount <= baseline_supportable_amount"
-        )
+        raw_stressed_limit = result["supportable_amount"]
+        
+        if raw_stressed_limit > float(base_limit):
+            status = "INVARIANT_VIOLATION"
+            result["decision"] = "REJECTED"
+            result["binding_constraint"] = "STRESS_MONOTONICITY_VIOLATION"
+            result["breached_rules"] = ["Adverse limit exceeded baseline limit (Non-monotonic)"]
+            offer_generated = False
+        else:
+            dscr_dec = (
+                Decimal(str(result["post_loan_dscr"]))
+                if result["post_loan_dscr"] is not None
+                else Decimal("0.00")
+            )
+            status = get_status(dscr_dec if dscr_dec > 0 else None)
+            offer_generated = True
 
-        dscr_dec = (
-            Decimal(str(result["post_loan_dscr"]))
-            if result["post_loan_dscr"] is not None
-            else Decimal("0.00")
-        )
-        status = get_status(dscr_dec if dscr_dec > 0 else None)
         return {
             "scenario_id": scenario_id,
             "name": name,
             "description": description,
-            "recomputed_dscr": float(dscr_dec),
-            "recomputed_limit": result["supportable_amount"],
+            "recomputed_dscr": float(result["post_loan_dscr"]) if result["post_loan_dscr"] else 0.0,
+            "recomputed_limit": raw_stressed_limit,
             "status": status,
             "policy_rule_id": policy_rule_id,
             "transition_explanation": f"{name}: policy state {base_decision.get('decision')} -> {result['decision']}.",
+            "offer_generated": offer_generated,
             "before": {
                 "fhi": scores.get("financial_health_index"),
                 "credit_health_score": scores.get("vyapar_credit_health_score"),
@@ -151,7 +157,7 @@ def run_case_stress_lab(
                 "credit_health_score": result["credit_health_score"],
                 "assessment_range": result["assessment_range"],
                 "post_loan_dscr": result["post_loan_dscr"],
-                "supportable_amount": result["supportable_amount"],
+                "supportable_amount": raw_stressed_limit,
                 "decision": result["decision"],
                 "binding_constraint": result["binding_constraint"],
                 "breached_rules": result["breached_rules"],

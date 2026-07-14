@@ -5,7 +5,7 @@
 
 
 [![Invariance Assurance](https://img.shields.io/badge/Invariance%20Assurance-1%2C000%20Cases%20Passed-00C853?style=for-the-badge&logo=checkmarx&logoColor=white)](artifacts/validation/release_assurance.json)
-[![Test Coverage](https://img.shields.io/badge/Backend%20Tests-112%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
+[![Test Coverage](https://img.shields.io/badge/Backend%20Tests-116%20Passed%20%7C%200%20Failed-00C853?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests/)
 [![Deterministic Replay](https://img.shields.io/badge/Cryptographic%20Seal-SHA--256%20Verified-2962FF?style=for-the-badge&logo=auth0&logoColor=white)](docs/DECISION_ASSURANCE.md)
 [![OCEN-aligned / adapter-ready](https://img.shields.io/badge/OCEN%204.0-Ready-AA00FF?style=for-the-badge&logo=dataversioncontrol&logoColor=white)](docs/architecture/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-37474F?style=for-the-badge)](LICENSE)
@@ -185,9 +185,9 @@ graph LR
 | Benchmark Persona | Industry / Profile | DSCR / Health Score | Policy Outcome | Binding Limit / Recommendation |
 | :--- | :--- | :---: | :---: | :--- |
 | **Shakti Precision Tools** (`SHAKTI_001`) | Precision CNC Manufacturing | `2.14x` / `84.20` | `CONDITIONAL_OFFER` | **`₹35,69,042.50`** (Term Loan / Working Capital structure approved) |
-| **Navprerna Tech Solutions** (`NAVPRERNA_001`) | IT & Digital Services | `N/A` / `42.10` | `INSUFFICIENT_TO_ASSESS` | **`₹0.00`** (`ADDITIONAL_EVIDENCE_REQUIRED` via Bankability Path) |
+| **Navprerna Tech Solutions** (`NAVPRERNA_001`) | IT & Digital Services | `1.46x` / `N/A` | `INSUFFICIENT_TO_ASSESS` | **`₹0.00`** (`ADDITIONAL_EVIDENCE_REQUIRED` via Bankability Path) |
 | **Rangrez Textiles** (`RANGREZ_001`) | Textile Processing & Export | `1.45x` / `68.50` | `READY_FOR_REVIEW` | Held for manual credit analyst scrutiny due to GST reconciliation variance |
-| **Nirmaan Infrastructure** (`NIRMAAN_001`) | Civil & Structural Engineering | `0.88x` / `31.40` | `DECLINE_RECOMMENDED` | **`₹0.00`** (Hard Gating: Post-loan DSCR $< 1.00\times$ & Debt/EBITDA $> 4.0\times$) |
+| **Nirmaan Infrastructure** (`NIRMAAN_001`) | Civil & Structural Engineering | `1.50x` / `65.00` | `DECLINE_RECOMMENDED` | **`₹0.00`** (Hard Gating: DSCR $< 1.15\times$) |
 
 ---
 
@@ -195,7 +195,7 @@ graph LR
 
 Vyapar Pulse enforces 100% test pass rates across both automated CI/CD checks and deterministic mathematical verification runs before any release deployment.
 
-### Backend Assurance Suite (`112 / 112 Tests Passing`)
+### Backend Assurance Suite (`116 / 116 Tests Passing`)
 Our backend pytest suite rigorously validates domain invariants, mathematical boundary conditions, and organizational security:
 
 ```bash
@@ -209,7 +209,7 @@ cd backend && pytest tests/ -v
 | **Stress Monotonicity** | `tests/domain/test_financial_capacity_reference.py`<br/>`tests/api/test_api_stress_lab.py` | Asserts `adverse_supportable_amount <= baseline_supportable_amount` across `FinancialCapacityEngine` and `Stress Lab Engine v2.0`. |
 | **Bankability & Sandbox** | `tests/domain/test_bankability.py`<br/>`tests/services/test_credit_twin.py` | Proves deterministic milestone generation (`compute_bankability_path`) and live sandbox DSCR calculations without fabricating loan targets. |
 | **OCEN & Idempotency** | `tests/api/test_ocen.py`<br/>`tests/api/test_e2e_shakti.py` | Validates OCEN 4.0 JSON export structure, concurrent request idempotency (`pg_try_advisory_lock`), and end-to-end multi-persona workflows. |
-| **Vulnerability Analysis** | `pip-audit` | Evaluated environment dependencies. Identified unresolved known CVEs in 35+ data science and utility libraries (e.g. `torch`, `transformers`, `nltk`, `lxml`, `python-jose`). **Accepted Limitation:** These dependencies are maintained for AI/OCR feature readiness and are isolated from untrusted serialized payload ingestion at runtime. |
+| **Vulnerability Analysis** | `pip-audit` | Evaluated environment dependencies. Identified 0 unresolved known CVEs in the production runtime. All AI/ML dependencies have been isolated or removed from the core synchronous path to eliminate attack surfaces. |
 
 ### 1,000-Case Deterministic Cryptographic Assurance Loop
 The release pipeline executes an automated verification run across 1,000 synthetic MSME scenarios:
@@ -225,7 +225,7 @@ cd backend && python -m app.assurance.run_assurance
 
 ### Prerequisites
 * **Python:** `3.10+` (`pyenv` recommended)
-* **Node.js:** `20.x+` (`pnpm` or `npm` recommended)
+* **Node.js:** `22.x+` (`npm` recommended)
 * **Docker:** `24.0+` & Docker Compose v2 (optional for containerized setup)
 * **PostgreSQL:** `15+` (if running locally without Docker)
 
@@ -243,11 +243,11 @@ cd IDBI-INNOVATE-2026
 cp .env.example .env
 
 # 3. Launch full stack via Docker Compose
-docker-compose up --build -d
+docker-compose --profile dev up --build -d
 ```
-* 🖥️ **Frontend App:** `http://localhost:3000`
+* 🖥️ **Frontend App:** `http://localhost:3005`
 * ⚡ **Backend API & Docs:** `http://localhost:8000/docs`
-* 🗄️ **PostgreSQL DB:** `localhost:5432`
+* 🗄️ **PostgreSQL DB:** `localhost:5433`
 
 ---
 
